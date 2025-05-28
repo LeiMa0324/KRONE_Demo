@@ -1,0 +1,5 @@
+"id","log sequence","prediction","anomaly_explanation"
+0,"[start,pause,stop]",0,""
+1,"[start,running,stop]",0,""
+2,"[start,pause,restart]",0,""
+3,"[start,running,start]",1,"system restarts during running"
