@@ -39,7 +39,7 @@ function clearTable() {
     }
 }
 
-// parse the log sequence
+// parse the log sequence (removes brackets and splits by commas)
 function parseSequence(sequence) {
     return sequence
         .replace(/[\[\]]/g, '') // Remove square brackets
@@ -96,9 +96,24 @@ function appendOptionData(data) {
             const row = table.rows[i + 1]; // Adjust for header row
             row.deleteCell(2); // Remove the last column cell
         }
-        
+
         return;
     }
+}
+
+// Clears table and highlights necessary rows based on selected option
+function handleOptionSelection(data) {
+    const dropDownBar = document.getElementById('dropdown-bar');
+    const selectedIndex = dropDownBar.selectedIndex; // Get the selected index
+
+    const selectedOption = dropDownBar.options[selectedIndex].value; // Get the selected value
+
+    // Extract the option index from the value (e.g., "option0" -> 0)
+    const optionIndex = parseInt(selectedOption.replace('option', ''), 10);
+
+    // Clear the table and append data for the selected option
+    clearTable();
+    appendOptionData(data[optionIndex+1]);
 }
 
 //Initalize page content with data from demo_data.csv
@@ -108,18 +123,6 @@ function appendOptionData(data) {
     console.log(curData);
 
     // Add event listener to the submit button
-    document.querySelector('.run-option').addEventListener('click', () => {
-        const dropDownBar = document.getElementById('dropdown-bar');
-        const selectedIndex = dropDownBar.selectedIndex; // Get the selected index
-
-        const selectedOption = dropDownBar.options[selectedIndex].value; // Get the selected value
-
-        // Extract the option index from the value (e.g., "option0" -> 0)
-        const optionIndex = parseInt(selectedOption.replace('option', ''), 10);
-
-        // Clear the table and append data for the selected option
-        clearTable();
-        appendOptionData(curData[optionIndex+1]);
-    });
+    document.querySelector('.run-option').addEventListener('click', () => handleOptionSelection(curData));
 
 })();
