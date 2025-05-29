@@ -4,53 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Example Table</title>
-    <style>
-        table {
-            border-collapse: collapse;
-            width: 60%;
-            margin: 40px auto;
-        }
-        th, td {
-            border: 1px solid #ccc;
-            padding: 10px 16px;
-            text-align: center;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style>
+    <link rel="stylesheet" href="./demo_page.css">
 </head>
+
 <body>
-    <h2 style="text-align:center;">Example Table with Three Columns</h2>
-    <div style="width:60%;margin:0 auto 20px auto;text-align:center;">
+    <h2 class="pageHeader"> KRONE OUTPUT VISUALIZATION</h2>
+    <div class="dropDown">
         <label for="dropdown-bar">Choose an option: </label>
         <select id="dropdown-bar" name="dropdown-bar">
-            <option value="option1">Option 1</option>
-            <option value="option2">Option 2</option>
-            <option value="option3">Option 3</option>
         </select>
+        <button class="run-option">Run Option</button>
+        <br>
+        <b> Prediction: </b>
+        <span id="prediction">None</span>
     </div>
-    <table>
+    <table id="data-table">
         <tr>
             <th>Index</th>
             <th>Log Message</th>
             <th>Anomaly Explanation</th>
         </tr>
-        <tr>
-            <td>1</td>
-            <td>Row 1, Cell 2</td>
-            <td>Row 1, Cell 3</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>Row 2, Cell 2</td>
-            <td>Row 2, Cell 3</td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td>Row 3, Cell 2</td>
-            <td>Row 3, Cell 3</td>
-        </tr>
     </table>
+    <script src="./demo_page.js"></script>
 </body>
 </html>
