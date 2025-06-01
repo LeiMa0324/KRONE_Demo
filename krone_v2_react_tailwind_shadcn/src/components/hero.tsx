@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button"
+
 export const HeroSection = () => {
     return (
         <section
@@ -11,17 +13,16 @@ export const HeroSection = () => {
                         <span className="text-primary ml-2"> Krone </span>
                     </h1>
 
-                    <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                        The newest state-of-the-art pinpoint log anomaly detection
+                    <p className="text-lg md:text-xl text-red-600 max-w-2xl mx-auto">
+                        The newest state-of-the-art machine learning powered pinpoint log anomaly detector
                     </p>
 
                     <div className="pt-4">
-                        <a href="#projects" className="text-primary underline">
-                            Try Out Krone 
-                        </a>
+                        <Button> Try Out Krone </Button>
                     </div>
                 </div>
-            </div>
+            </div>❮
+
         </section>
     );
 };
