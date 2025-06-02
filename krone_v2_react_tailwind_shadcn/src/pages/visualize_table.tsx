@@ -55,8 +55,8 @@ export const VisualizeTable = () => {
     return (
         <div className="p-8">
             <div className="mb-6 flex flex-col gap-2 max-w-md mx-auto items-center mt-16"></div>
-            <h1 className="text-3xl font-extrabold text-amber-700 mb-4 text-center">
-                Log Sequence Visualizer
+            <h1 className="text-3xl font-extrabold text-WPIRed mb-4 text-center">
+                Log Sequence Table
             </h1>
             <div className="mb-6 flex flex-col gap-2 max-w-md mx-auto items-center">
                 <label htmlFor="dropdown-bar" className="font-medium">Choose a row:</label>
@@ -75,7 +75,7 @@ export const VisualizeTable = () => {
                         ))}
                     </select>
                     <button
-                        className="bg-amber-700 text-white px-4 py-1 rounded hover:bg-amber-800 transition"
+                        className="bg-WPIRed text-white px-4 py-1 rounded hover:bg-WPIRed/85 transition"
                         onClick={handleRunOption}
                     >
                         Run Option
@@ -87,7 +87,7 @@ export const VisualizeTable = () => {
                         id="prediction"
                         className={
                             prediction === "Abnormal"
-                                ? "px-2 py-1 rounded font-semibold bg-red-100 text-red-800"
+                                ? "px-2 py-1 rounded font-semibold bg-WPIRed/20 text-WPIRed"
                                 : prediction === "Normal"
                                 ? "px-2 py-1 rounded font-semibold bg-green-200 text-green-900"
                                 : ""
@@ -150,7 +150,7 @@ export const VisualizeTable = () => {
                                         return (
                                             <TableRow
                                                 key={`${row.id}-${j}`}
-                                                className="bg-red-100 font-semibold text-red-800"
+                                                className="bg-WPIRed/20 font-semibold text-WPIRed"
                                             >
                                                 <TableCell>{j}</TableCell>
                                                 <TableCell>{msg}</TableCell>
@@ -168,7 +168,7 @@ export const VisualizeTable = () => {
                                         return (
                                             <TableRow
                                                 key={`${row.id}-${j}`}
-                                                className="bg-red-100 font-semibold text-red-800"
+                                                className="bg-WPIRed/20 font-semibold text-WPIRed"
                                             >
                                                 <TableCell>{j}</TableCell>
                                                 <TableCell>{msg}</TableCell>
