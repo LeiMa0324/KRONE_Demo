@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 
 export const NavBar = () => {
     return (
-        <nav className="fixed w-full z-40 transition-all duration-300 bg-amber-600">
+        <nav className="fixed w-full z-40 transition-all duration-300 bg-WPIRed">
             <div className="container flex items-left gap-4 px-3 py-3 items-center">
                 <Link to="/">
                     <Avatar className="size-12">
