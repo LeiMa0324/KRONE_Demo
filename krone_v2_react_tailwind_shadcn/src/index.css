@@ -125,3 +125,10 @@
   padding: 0;
   text-align: center;
 }
+
+/* Add WPI Colors */
+@theme {
+  --color-WPIRed: #AC2B37;
+  --color-WPIGrey: #A9B0B7;
+  --color-WPIBlack: #000000;
+}
