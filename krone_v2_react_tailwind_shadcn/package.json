@@ -20,8 +20,11 @@
     "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-papaparse": "^4.4.0",
     "react-router-dom": "^7.6.1",
-    "tailwind-merge": "^3.3.0"
+    "regex": "^6.0.1",
+    "tailwind-merge": "^3.3.0",
+    "tailwindcss": "^4.1.8"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
