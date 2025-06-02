@@ -10,7 +10,7 @@ export const FileUpload = () => {
     };
 
     return (
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center justify-center gap-4 min-h-[calc(100vh-theme(spacing.20))]">
             <div className="text-4xl text-amber-900">Upload a file</div>
             <label className="cursor-pointer px-6 py-2 bg-amber-700 text-white rounded shadow hover:bg-amber-800 transition">
                 Choose File
