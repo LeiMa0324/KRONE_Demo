@@ -14,7 +14,6 @@ function App() {
     <FileProvider>
       <Router>
         <NavBar />
-        <div className="pt-18"> {/* Adjust pt-20 as needed for your navbar height */}
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -23,7 +22,6 @@ function App() {
             <Route path="/log-table" element={<VisualizeTable />} />
             <Route path="*" element={<ErrorPage />} />
           </Routes>
-        </div>
       </Router>
     </FileProvider>
   );
