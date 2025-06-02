@@ -23,11 +23,11 @@ export const FileUpload = () => {
 
     return (
 
-        <div className="flex flex-col items-center justify-center gap-8 min-h-[calc(100vh-theme(spacing.20))] bg-gradient-to-br from-amber-50 to-amber-100">
+        <div className="flex flex-col items-center justify-center gap-8 min-h-[calc(100vh-theme(spacing.20))] bg-gradient-to-br from-gray-300 to-gray-400">
             <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center gap-6">
-                <Upload className="w-12 h-12 text-amber-700 mb-2" />
-                <div className="text-4xl font-bold text-amber-900">Upload a file</div>
-                <label className="cursor-pointer px-8 py-3 bg-amber-700 text-white rounded-lg shadow hover:bg-amber-800 transition flex items-center gap-2 text-lg font-medium focus:ring-4 focus:ring-amber-300">
+                <Upload className="w-12 h-12 text-WPIRed mb-2" />
+                <div className="text-4xl font-bold text-WPIRed">Upload a File</div>
+                <label className="cursor-pointer px-8 py-3 text-WPIRed rounded-lg shadow shadow-gray-400 hover:bg-WPIRed hover:text-white transition flex items-center gap-2 text-lg font-medium focus:ring-4 focus:ring-amber-300">
                     <Upload className="w-5 h-5" />
                     Choose File
                     <input
@@ -48,7 +48,7 @@ export const FileUpload = () => {
                 {csvData && csvData.length > 0 && (
                     <div className="overflow-auto max-h-96 w-full">
                     <table className="min-w-full border border-gray-300 mt-4 rounded-lg overflow-hidden">
-                        <thead className="sticky top-0 bg-amber-100">
+                        <thead className="sticky top-0 bg-WPIGrey">
                         <tr>
                             {csvData[0].map((header, idx) => (
                             <th key={idx} className="border px-2 py-1 font-semibold">{header}</th>
@@ -57,7 +57,7 @@ export const FileUpload = () => {
                         </thead>
                         <tbody>
                         {csvData.slice(1, 101).map((row, rowIdx) => (
-                            <tr key={rowIdx} className="even:bg-gray-50 hover:bg-amber-50 transition">
+                            <tr key={rowIdx} className="even:bg-gray-50 hover:bg-red-100 transition">
                             {row.map((cell, cellIdx) => (
                                 <td key={cellIdx} className="border px-2 py-1">{cell}</td>
                             ))}
