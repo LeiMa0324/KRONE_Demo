@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFile } from "@/FileContext";
 import Papa from "papaparse";
+import { Upload } from "lucide-react"; // or use any icon library
 
 export const FileUpload = () => {
     const { file, setFile } = useFile();
@@ -21,47 +22,52 @@ export const FileUpload = () => {
     };
 
     return (
-        <div className="flex flex-col items-center justify-center gap-4 min-h-[calc(100vh-theme(spacing.20))]">
-            <div className="text-4xl text-amber-900">Upload a file</div>
-            <label className="cursor-pointer px-6 py-2 bg-amber-700 text-white rounded shadow hover:bg-amber-800 transition">
-                Choose File
-                <input
+
+        <div className="flex flex-col items-center justify-center gap-8 min-h-[calc(100vh-theme(spacing.20))] bg-gradient-to-br from-amber-50 to-amber-100">
+            <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center gap-6">
+                <Upload className="w-12 h-12 text-amber-700 mb-2" />
+                <div className="text-4xl font-bold text-amber-900">Upload a file</div>
+                <label className="cursor-pointer px-8 py-3 bg-amber-700 text-white rounded-lg shadow hover:bg-amber-800 transition flex items-center gap-2 text-lg font-medium focus:ring-4 focus:ring-amber-300">
+                    <Upload className="w-5 h-5" />
+                    Choose File
+                    <input
                     type="file"
                     accept=".csv,text/csv"
                     onChange={handleChange}
                     className="hidden"
-                />
-            </label>
-            {file && (
-                <div className="text-lg text-green-700">
-                    <div>Selected file: {file.name}</div>
-                    <div>Type: {file.type || "Unknown"}</div>
-                    <div>Size: {(file.size / 1024).toFixed(2)} KB</div>
-                    <div>Last modified: {new Date(file.lastModified).toLocaleString()}</div>
-                </div>
-            )}
-            {csvData && csvData.length > 0 && (
-                <div className="overflow-auto max-h-96 w-full">
-                    <table className="min-w-full border border-gray-300 mt-4">
-                        <thead>
-                            <tr>
-                                {csvData[0].map((header, idx) => (
-                                    <th key={idx} className="border px-2 py-1 bg-gray-100">{header}</th>
-                                ))}
-                            </tr>
+                    />
+                </label>
+                {file && (
+                    <div className="text-base text-green-700 bg-green-50 rounded p-3 w-full">
+                    <div><span className="font-semibold">Selected file:</span> {file.name}</div>
+                    <div><span className="font-semibold">Type:</span> {file.type || "Unknown"}</div>
+                    <div><span className="font-semibold">Size:</span> {(file.size / 1024).toFixed(2)} KB</div>
+                    <div><span className="font-semibold">Last modified:</span> {new Date(file.lastModified).toLocaleString()}</div>
+                    </div>
+                )}
+                {csvData && csvData.length > 0 && (
+                    <div className="overflow-auto max-h-96 w-full">
+                    <table className="min-w-full border border-gray-300 mt-4 rounded-lg overflow-hidden">
+                        <thead className="sticky top-0 bg-amber-100">
+                        <tr>
+                            {csvData[0].map((header, idx) => (
+                            <th key={idx} className="border px-2 py-1 font-semibold">{header}</th>
+                            ))}
+                        </tr>
                         </thead>
                         <tbody>
-                            {csvData.slice(1).map((row, rowIdx) => (
-                                <tr key={rowIdx}>
-                                    {row.map((cell, cellIdx) => (
-                                        <td key={cellIdx} className="border px-2 py-1">{cell}</td>
-                                    ))}
-                                </tr>
+                        {csvData.slice(1, 101).map((row, rowIdx) => (
+                            <tr key={rowIdx} className="even:bg-gray-50 hover:bg-amber-50 transition">
+                            {row.map((cell, cellIdx) => (
+                                <td key={cellIdx} className="border px-2 py-1">{cell}</td>
                             ))}
+                            </tr>
+                        ))}
                         </tbody>
                     </table>
-                </div>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
