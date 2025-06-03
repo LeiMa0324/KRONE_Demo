@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button"
+import { Link } from "react-router-dom"
 
 export const HeroSection = () => {
     return (
@@ -22,7 +23,9 @@ export const HeroSection = () => {
                     </p>
                 </div>
                 <div className="pt-8">
-                    <Button className="text-xl px-10 py-6 rounded-lg"> Try Out Krone </Button>
+                    <Link to="/file-upload">
+                        <Button className="text-xl px-10 py-6 rounded-lg"> Try Out Krone </Button>
+                    </Link>
                 </div>
             </div>
         </section>
