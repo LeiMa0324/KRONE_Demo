@@ -23,9 +23,9 @@ export const FileUpload = () => {
     };
 
     return (
-        <div>
+        <div className="flex flex-col min-h-screen">
             <div className="pt-[4.5rem]"></div> {/* Account for navbar */}
-            <div className="flex flex-col items-center justify-center gap-8 min-h-screen bg-gradient-to-br from-gray-300 to-gray-400">
+            <div className="flex-grow flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-gray-300 to-gray-400">
                 <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center gap-6">
                     <Upload className="w-12 h-12 text-WPIRed mb-2" />
                     <div className="text-4xl font-bold text-WPIRed">Upload a File</div>
