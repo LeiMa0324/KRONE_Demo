@@ -13,6 +13,7 @@
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.8",
+    "@xyflow/react": "^12.6.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
@@ -22,6 +23,7 @@
     "react-dom": "^18.3.1",
     "react-papaparse": "^4.4.0",
     "react-router-dom": "^7.6.1",
+    "reactflow": "^11.11.4",
     "regex": "^6.0.1",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.8"
