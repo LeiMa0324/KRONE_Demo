@@ -16,16 +16,16 @@ export const NavBar = () => {
                     <a className="font-bold text-3xl text-gray-100">KRONE</a>
                 </Link>
                 <Link to="/file-upload">
-                    <Button>File Upload</Button>
+                    <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0">File Upload</Button>
                 </Link>
                 <Link to="/visualize-tree">
-                    <Button>Visualize Tree</Button>
+                    <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0">Visualize Tree</Button>
                 </Link>
                 <Link to="/log-table">
-                    <Button>Log Table</Button>
+                    <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0">Log Table</Button>
                 </Link>
                 <Link to="/about">
-                    <Button>About</Button>
+                    <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0">About</Button>
                 </Link>
             </div>
         </nav>
