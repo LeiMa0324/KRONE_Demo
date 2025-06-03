@@ -101,7 +101,7 @@ export const VisualizeTable = () => {
                 {loading ? (
                     <div>Loading table...</div>
                 ) : (
-                    <div className="p-4 bg-white rounded-xl shadow-md ring-1 ring-gray-100 mx-auto border border-gray-300 rounded-lg">
+                    <div className="p-4 bg-white rounded-xl shadow-md ring-1 ring-gray-100 mx-auto border border-gray-300">
                         <Table className="w-full">
                             <TableHeader>
                                 <TableRow>
@@ -124,20 +124,26 @@ export const VisualizeTable = () => {
                                     }
                                     let logSeq: string[] = [];
                                     try {
-                                        logSeq = JSON.parse(row["log sequence"].replace(/'/g, '"'));
+                                        logSeq = row["log sequence"]
+                                            .replace(/[[\]\s]/g, "")
+                                            .split(",");
                                     } catch {
                                         logSeq = row["log sequence"]
-                                            .replace(/[\[\]\s]/g, "")
+                                            .replace(/[[\]\s]/g, "")
                                             .split(",");
                                     }
 
                                     // Parse anomaly_range as [start, end]
                                     let anomalyRange: number[] = [];
                                     try {
-                                        anomalyRange = JSON.parse(row.anomaly_range.replace(/'/g, '"'));
+                                        anomalyRange = row.anomaly_range
+                                            .replace(/[[\]\s]/g, "")
+                                            .split(",")
+                                            .filter(x => x !== "")
+                                            .map(Number);
                                     } catch {
                                         anomalyRange = row.anomaly_range
-                                            .replace(/[\[\]\s]/g, "")
+                                            .replace(/[[\]\s]/g, "")
                                             .split(",")
                                             .filter(x => x !== "")
                                             .map(Number);

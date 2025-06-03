@@ -1,5 +1,9 @@
 export const ErrorPage = () => {
     return (
-        <div className="text-9xl text-amber-900"> Wrong page bud, use the navbar to go back home </div>
+        <>
+            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+                <div className="text-9xl text-WPIRed">Error 404: Page Not Found</div>
+            </div>
+        </>
     )
 }
