@@ -6,8 +6,8 @@ export const Home = () => {
         <div className="min-h-screen text-foreground overflow-x-hidden">
             <WPIBackground></WPIBackground>
             <main> 
-                <HeroSection></HeroSection>
+                <HeroSection></HeroSection> 
             </main>
         </div>
     );
-};
+}; // Looking good
