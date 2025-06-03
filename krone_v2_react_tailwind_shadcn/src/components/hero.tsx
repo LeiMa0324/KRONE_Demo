@@ -12,7 +12,7 @@ export const HeroSection = () => {
                     <div className="relative bg-WPIRed shadow-2xl px-14 py-8 z-10">
                         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white">
                             <span> Introducing </span>
-                            <span className="text-primary ml-4 text-white"> Krone </span>
+                            <span className="ml-4 text-white"> Krone </span>
                         </h1>
                     </div>
                 </div>
