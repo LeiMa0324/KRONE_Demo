@@ -54,7 +54,7 @@ export const VisualizeTable = () => {
 
     return (
         <div className="flex flex-col min-h-screen">
-            <div className="flex-grow p-8">
+            <div className="flex-grow p-8 animate-fade-in-fast">
                 <div className="mb-6 flex flex-col gap-2 max-w-md mx-auto items-center mt-16"></div>
                 <h1 className="text-3xl font-extrabold text-WPIRed mb-4 text-center">
                     Log Sequence Table
