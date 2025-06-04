@@ -195,3 +195,19 @@
     }
   }
 }
+
+@theme {
+  --animate-fade-in-slow: fade-in 1s ease-out;
+  --animate-fade-in-med: fade-in 0.7s ease-out;
+  --animate-fade-in-fast: fade-in 0.4s ease-out;
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
+  }
+}

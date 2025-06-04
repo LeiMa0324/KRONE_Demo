@@ -85,7 +85,7 @@ export const About = () => {
             {/* Outer div with padding and background color */}
             <div className="flex-col w-full min-h-screen bg-white py-6 px-24"> {/* Changed h-screen to min-h-screen */}
                 {/* Inner div with a different background color */}
-                <div className="flex-col bg-WPIRed h-fit rounded-4xl items-center py-12">
+                <div className="flex-col bg-WPIRed h-fit rounded-4xl items-center py-12 [--duration:10s] animate-fade-in-fast">
                     <div className="font-bold text-3xl text-gray-100"> How KRONE Works </div>
                     <br></br>
                     <p className="text-white px-32"> {KRONE_desc} </p>
@@ -97,7 +97,6 @@ export const About = () => {
                     <CarouselSpacing />
                 </div>
             </div>
-            <div className="pb-6"></div> {/* Added padding to prevent bleeding into the footer */}
             <Footer></Footer>
         </div>
     );
