@@ -256,7 +256,7 @@ export const VisualizeTree = () => {
       <div className="flex flex-col min-h-screen items-center">
         <div className="pt-[4.5rem]"></div>
         <div className="items-center">
-          <div className="w-[1000px] h-[1000px]"> 
+          <div className="w-[1000px] h-[1000px] animate-fade-in-slow"> 
             <ReactFlow
               nodes={nodes}
               edges={edges}
