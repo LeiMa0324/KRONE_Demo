@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 export const NavBar = () => {
+    const location = useLocation();
+    const isHeroPage = location.pathname === "/";
+
     return (
-        <nav className="fixed w-full z-40 transition-all duration-300 bg-WPIRed">
+        <nav className={`fixed w-full z-40 bg-WPIRed ${isHeroPage ? "animate-slide-in-top" : ""}`}>
             <div className="container flex items-left gap-4 px-3 py-3 items-center">
                 <Link to="/">
                     <Avatar className="size-12">
