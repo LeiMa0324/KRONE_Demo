@@ -6,6 +6,7 @@ import { About } from "./pages/about"; // Create this page
 import { FileUpload } from "./pages/file_upload"; // Create this page
 import { VisualizeTree } from "./pages/visualize_tree"; // Create this page
 import { VisualizeTable } from "./pages/visualize_table"; // Create this page
+import VisualizeTreeHorizontal from "./pages/visualize_tree_horizontal"; // Create this page
 import { ErrorPage } from "./pages/error_page"
 import { FileProvider } from './FileContext';
 
@@ -20,6 +21,7 @@ function App() {
             <Route path="/file-upload" element={<FileUpload />} />
             <Route path="/visualize-tree" element={<VisualizeTree />} />
             <Route path="/log-table" element={<VisualizeTable />} />
+            <Route path="/visualze-tree-horizontal" element={<VisualizeTreeHorizontal />} />
             <Route path="*" element={<ErrorPage />} />
           </Routes>
       </Router>

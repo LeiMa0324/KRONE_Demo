@@ -30,6 +30,9 @@ export const NavBar = () => {
                 <Link to="/about">
                     <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0">About</Button>
                 </Link>
+                <Link to="/visualze-tree-horizontal">
+                    <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0">Visualize Tree Horizontal</Button>
+                </Link>
             </div>
         </nav>
     );
