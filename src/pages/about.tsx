@@ -67,8 +67,8 @@ function CarouselSpacing() {
                     </CarouselItem>
                 ))}
             </CarouselContent>
-            <CarouselPrevious />
-            <CarouselNext />
+            <CarouselPrevious className="max-md:left-4" />
+            <CarouselNext className="max-md:right-4"/>
         </Carousel>
     );
 }
@@ -79,25 +79,27 @@ const KRONE_desc = "KRONE is a novel log anomaly detection method designed to ov
 //Export about section
 export const About = () => {
     return (
-        <div className="bg-white"> {/* Outer div for padding area */}
+        <div className="bg-white overflow-x-hidden"> {/* Prevent horizontal overflow */}
             <div className="pt-[4.5rem]"></div> {/* Account for navbar */}
 
-            {/* Outer div with padding and background color */}
-            <div className="flex-col w-full min-h-screen bg-white py-6 px-24"> {/* Changed h-screen to min-h-screen */}
+            {/* Outer div with responsive padding */}
+            <div className="flex flex-col w-full min-h-screen bg-white py-6 px-4 sm:px-8 md:px-16 lg:px-24">
                 {/* Inner div with a different background color */}
-                <div className="flex-col bg-WPIRed h-fit rounded-4xl items-center py-12 [--duration:10s] animate-fade-in-fast">
-                    <div className="font-bold text-3xl text-gray-100"> How KRONE Works </div>
-                    <br></br>
-                    <p className="text-white px-32"> {KRONE_desc} </p>
-                    <br></br>
+                <div className="flex flex-col bg-WPIRed h-fit rounded-4xl items-center py-12 animate-fade-in-fast w-full">
+                    <div className="font-bold text-3xl text-gray-100 text-center"> How KRONE Works </div>
+                    <br />
+                    <p className="text-white px-4 sm:px-8 md:px-16 lg:px-32 text-center">
+                        {KRONE_desc}
+                    </p>
+                    <br />
                     <Button variant="outline"> Read the Paper </Button>
-                    <br></br>
-                    <br></br>
-                    <div className="font-bold text-3xl text-gray-100"> Meet The Team </div>
+                    <br />
+                    <br />
+                    <div className="font-bold text-3xl text-gray-100 text-center"> Meet The Team </div>
                     <CarouselSpacing />
                 </div>
             </div>
-            <Footer></Footer>
+            <Footer />
         </div>
     );
 };
