@@ -82,7 +82,7 @@ export default function VisualizeTreeHorizontal() {
           {entityTrees.map((tree, idx) => (
             <CarouselItem key={tree.entity} className="basis-1/5 px-2">
               <div
-                ref={el => (entityRefs.current[idx] = el)}
+                ref={el => { entityRefs.current[idx] = el; }}
                 className="flex flex-col items-center"
               >
                 <Card
