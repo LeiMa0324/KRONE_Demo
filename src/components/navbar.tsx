@@ -13,7 +13,7 @@ export const NavBar = () => {
 
     return (
         <nav className={`fixed w-full z-40 bg-WPIRed ${isHeroPage ? "animate-slide-in-top" : ""}`}>
-            <div className="container flex w-full justify-between items-center px-4 py-3">
+            <div className="flex w-full justify-between items-center px-4 py-3">
                 {/* Logo Section */}
                 <div className="flex items-center gap-4">
                     <Link to="/">
