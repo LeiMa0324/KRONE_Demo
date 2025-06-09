@@ -8,7 +8,6 @@ export const NavBar = () => {
     const location = useLocation();
     const isHeroPage = location.pathname === "/";
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
     return (
@@ -32,6 +31,7 @@ export const NavBar = () => {
                     <Button
                         className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0"
                         onClick={toggleMenu}
+                        aria-label={isMenuOpen ? "Close menu" : "Open menu"} // Add accessible name
                     >
                         {isMenuOpen ? <X className="text-gray-100 w-6 h-6" /> : <Menu className="text-gray-100 w-6 h-6" />}
                     </Button>

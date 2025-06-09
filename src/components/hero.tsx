@@ -17,11 +17,13 @@ export const HeroSection = () => {
                         </h1>
                     </div>
                 </div>
+
                 <div className="inline-block relative mt-8">
                     <p className="text-2xl md:text-3xl text-white max-w-3xl mx-auto font-WPIfont font-bold animate-slide-in-right" style={{ textShadow: "6px 6px 16px black" }}>
                         The newest state-of-the-art machine learning powered pinpoint log anomaly detector
                     </p>
                 </div>
+                
                 <div className="pt-8">
                     <Link to="/file-upload">
                         <Button className="text-xl font-WPIfont px-10 py-6 rounded-lg animate-slide-in-bot"> Try Out Krone </Button>
