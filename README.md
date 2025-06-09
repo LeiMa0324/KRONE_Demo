@@ -1,6 +1,6 @@
 # Project Overview
 
-KRONE is a hierarchically structure-aware log anomaly detection platform designed to help system administrators and security analysts monitor, analyze, and respond to system anomalies in real time. Traditional log anomaly detection tools often treat logs as flat sequences, missing important structural relationships. KRONE addresses this by breaking down logs into structured representations, capturing status, action, and entity, to enable fine-grained and context-aware anomaly detection.
+KRONE is a hierarchical structure-aware log anomaly detection platform designed to help system administrators and security analysts monitor, analyze, and respond to system anomalies in real time. Traditional log anomaly detection tools often treat logs as flat sequences, missing important structural relationships. KRONE addresses this by breaking down logs into structured representations, capturing status, action, and entity, to enable fine-grained and context-aware anomaly detection.
 
 With KRONE, users can:
 - Visualize and interact with large log sequences as knowledge graphs.
