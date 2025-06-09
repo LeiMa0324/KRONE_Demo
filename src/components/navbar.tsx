@@ -44,22 +44,22 @@ export const NavBar = () => {
                     }`}
                 >
                     <Link to="/file-upload">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             File Upload
                         </Button>
                     </Link>
                     <Link to="/visualize-tree">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             Visualize Tree
                         </Button>
                     </Link>
                     <Link to="/log-table">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             Log Table
                         </Button>
                     </Link>
                     <Link to="/about">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             About
                         </Button>
                     </Link>

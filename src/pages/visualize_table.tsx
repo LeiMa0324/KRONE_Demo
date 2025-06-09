@@ -56,11 +56,11 @@ export const VisualizeTable = () => {
         <div className="flex flex-col min-h-screen">
             <div className="flex-grow p-8 animate-fade-in-fast">
                 <div className="mb-6 flex flex-col gap-2 max-w-md mx-auto items-center mt-16"></div>
-                <h1 className="text-3xl font-extrabold text-WPIRed mb-4 text-center">
+                <h1 className="text-3xl font-WPIfont font-extrabold text-WPIRed mb-4 text-center">
                     Log Sequence Table
                 </h1>
                 <div className="mb-6 flex flex-col gap-2 max-w-md mx-auto items-center">
-                    <label htmlFor="dropdown-bar" className="font-medium">Choose a row:</label>
+                    <label htmlFor="dropdown-bar" className="font-WPIfont font-medium">Choose a row:</label>
                     <div className="flex gap-2 items-center">
                         <select
                             id="dropdown-bar"
@@ -76,21 +76,21 @@ export const VisualizeTable = () => {
                             ))}
                         </select>
                         <button
-                            className="bg-WPIRed text-white px-4 py-1 rounded hover:bg-WPIRed/85 transition"
+                            className="font-WPIfont bg-WPIRed text-white px-4 py-1 rounded hover:bg-WPIRed/85 transition"
                             onClick={handleRunOption}
                         >
                             Run Option
                         </button>
                     </div>
                     <div>
-                        <b>Prediction:</b>{" "}
+                        <b className="font-WPIfont">Prediction:</b>{" "}
                         <span
                             id="prediction"
                             className={
                                 prediction === "Abnormal"
-                                    ? "px-2 py-1 rounded font-semibold bg-WPIRed/20 text-WPIRed"
+                                    ? "px-2 py-1 rounded font-WPIfont font-semibold bg-WPIRed/20 text-WPIRed"
                                     : prediction === "Normal"
-                                    ? "px-2 py-1 rounded font-semibold bg-green-200 text-green-900"
+                                    ? "px-2 py-1 rounded font-WPIfont font-semibold bg-green-200 text-green-900"
                                     : ""
                             }
                         >
@@ -99,15 +99,15 @@ export const VisualizeTable = () => {
                     </div>
                 </div>
                 {loading ? (
-                    <div>Loading table...</div>
+                    <div className="font-WPIfont">Loading table...</div>
                 ) : (
                     <div className="p-4 bg-white rounded-xl shadow-md ring-1 ring-gray-100 mx-auto border border-gray-300">
                         <Table className="w-full">
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-center font-bold py-2" >Index</TableHead>
-                                    <TableHead className="text-center font-bold py-2" >Log Message</TableHead>
-                                    <TableHead className="text-center font-bold py-2" >Anomaly Explanation</TableHead>
+                                    <TableHead className="text-center font-WPIfont font-bold py-2" >Index</TableHead>
+                                    <TableHead className="text-center font-WPIfont font-bold py-2" >Log Message</TableHead>
+                                    <TableHead className="text-center font-WPIfont font-bold py-2" >Anomaly Explanation</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -116,7 +116,7 @@ export const VisualizeTable = () => {
                                     if (!row) {
                                         return (
                                             <TableRow>
-                                                <TableCell colSpan={3} className="px-4 py-2 text-center">
+                                                <TableCell colSpan={3} className="px-4 py-2 text-center font-WPIfont">
                                                     Row not found.
                                                 </TableCell>
                                             </TableRow>

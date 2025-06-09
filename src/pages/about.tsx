@@ -55,10 +55,10 @@ function CarouselSpacing() {
                                             alt={name}
                                         />
                                     </div>
-                                    <span className="text-lg font-semibold text-center mt-4">
+                                    <span className="text-lg font-WPIfont font-semibold text-center mt-4">
                                         {name}
                                     </span>
-                                    <p className="text-center text-sm text-gray-700 px-2 mt-2">
+                                    <p className="text-center font-WPIfont text-sm text-gray-700 px-2 mt-2">
                                         {descriptions[index]}
                                     </p>
                                 </CardContent>
@@ -86,16 +86,16 @@ export const About = () => {
             <div className="flex flex-col w-full min-h-screen bg-white py-6 px-4 sm:px-8 md:px-16 lg:px-24">
                 {/* Inner div with a different background color */}
                 <div className="flex flex-col bg-WPIRed h-fit rounded-4xl items-center py-12 animate-fade-in-fast w-full">
-                    <div className="font-bold text-3xl text-gray-100 text-center"> How KRONE Works </div>
+                    <div className="font-WPIfont font-bold text-3xl text-gray-100 text-center"> How KRONE Works </div>
                     <br />
-                    <p className="text-white px-4 sm:px-8 md:px-16 lg:px-32 text-center">
+                    <p className="font-WPIfont text-white px-4 sm:px-8 md:px-16 lg:px-32 text-center">
                         {KRONE_desc}
                     </p>
                     <br />
-                    <Button variant="outline"> Read the Paper </Button>
+                    <Button variant="outline" className="font-WPIfont"> Read the Paper </Button>
                     <br />
                     <br />
-                    <div className="font-bold text-3xl text-gray-100 text-center"> Meet The Team </div>
+                    <div className="font-WPIfont font-bold text-3xl text-gray-100 text-center"> Meet The Team </div>
                     <CarouselSpacing />
                 </div>
             </div>
