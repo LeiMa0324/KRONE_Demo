@@ -35,30 +35,40 @@ interface CsvRow {
   action_1_id: string;
   status: string;
   status_id: string;
+  is_anomaly?: string;
+  is_anomaly_reason?: string;
   // ...other columns if present
 }
 
 type StatusNode = {
   id: string;
   name: string;
+  isAnomaly?: boolean;
+  anomalyReasons?: string[];
 };
 type ActionNode = {
   id: string;
   name: string;
   statuses: StatusNode[];
+  isAnomaly?: boolean;
+  anomalyReasons?: string[];
 };
 type EntityTree = {
   id: string;
   name: string;
   actions: ActionNode[];
+  isAnomaly?: boolean;
+  anomalyReasons?: string[];
 };
 
 function buildEntityTrees(rows: CsvRow[]): EntityTree[] {
   const entityMap: Record<string, EntityTree> = {};
-  console.log(rows)
+  const entityAnomalySet = new Set<string>();
 
   rows.forEach(row => {
     if (!row.entity_1_id) return;
+    const isAnomaly = row.is_anomaly === "True";
+    const reason = row.is_anomaly_reason?.trim() || "Unknown anomaly";
 
     // Add entity if not present
     if (!entityMap[row.entity_1_id]) {
@@ -66,6 +76,8 @@ function buildEntityTrees(rows: CsvRow[]): EntityTree[] {
         id: row.entity_1_id,
         name: row.entity_1,
         actions: [],
+        isAnomaly: false,
+        anomalyReasons: [],
       };
     }
     const entity = entityMap[row.entity_1_id];
@@ -77,19 +89,43 @@ function buildEntityTrees(rows: CsvRow[]): EntityTree[] {
         id: row.action_1_id,
         name: row.action_1,
         statuses: [],
+        isAnomaly: false,
+        anomalyReasons: [],
       };
       entity.actions.push(action);
     }
 
     // Find or add status
-    if (
-      row.status_id &&
-      !action.statuses.some(s => s.id === row.status_id)
-    ) {
-      action.statuses.push({
+    let status = action.statuses.find(s => s.id === row.status_id);
+    if (!status && row.status_id) {
+      status = {
         id: row.status_id,
         name: row.status,
-      });
+        isAnomaly: false,
+        anomalyReasons: [],
+      };
+      action.statuses.push(status);
+    }
+
+    // Mark anomaly if present and collect reasons
+    if (isAnomaly) {
+      entity.isAnomaly = true;
+      action.isAnomaly = true;
+      if (status) status.isAnomaly = true;
+      entityAnomalySet.add(entity.id);
+
+      if (reason) {
+        if (!entity.anomalyReasons!.includes(reason)) entity.anomalyReasons!.push(reason);
+        if (!action.anomalyReasons!.includes(reason)) action.anomalyReasons!.push(reason);
+        if (status && !status.anomalyReasons!.includes(reason)) status.anomalyReasons!.push(reason);
+      }
+    }
+  });
+
+  // Attach anomaly info for minimap
+  Object.values(entityMap).forEach(entity => {
+    if (entityAnomalySet.has(entity.id)) {
+      entity.isAnomaly = true;
     }
   });
 
@@ -113,7 +149,11 @@ export default function VisualizeTreeHorizontal() {
   const [carouselIdx, setCarouselIdx] = useState(0);
   const carouselApiRef = useRef<CarouselApi | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
-
+  const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
+  const [anomalyPopover, setAnomalyPopover] = useState<{
+    reasons: string[];
+    anchor: HTMLElement | null;
+  } | null>(null);
 
   useEffect(() => {
     fetch("/structured_processes.csv")
@@ -155,7 +195,30 @@ export default function VisualizeTreeHorizontal() {
     0
   );
 
+  // Calculate the width and left position for the viewport indicator
+  const viewportSize = 5; // or whatever your visible count is
+  const clampedIdx = Math.min(carouselIdx, Math.max(0, entityTrees.length - viewportSize));
+  const leftPercent = (clampedIdx / entityTrees.length) * 100;
+  const widthPercent = (Math.min(viewportSize, entityTrees.length) / entityTrees.length) * 100;
+
   const selectedTree = entityTrees.find(tree => tree.id === selectedEntity);
+
+  // Exclamation SVG
+  const Exclamation = (reasons: string[] = []) => (
+    <span
+      className="absolute top-1 right-1 text-red-600 text-lg cursor-pointer z-20"
+      title="Anomaly"
+      onClick={e => {
+        e.stopPropagation();
+        setAnomalyPopover({ reasons, anchor: e.currentTarget });
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+        <circle cx="10" cy="10" r="9" fill="white" />
+        <text x="10" y="15" textAnchor="middle" fontSize="16" fontWeight="bold" fill="red">!</text>
+      </svg>
+    </span>
+  );
 
   return (
     <div className="flex flex-col min-h-screen items-center relative pt-20">
@@ -174,28 +237,41 @@ export default function VisualizeTreeHorizontal() {
         >
           {/* Viewport indicator */}
           <div
-            className="absolute top-0 left-0 h-full pointer-events-none transition-all duration-200"
-            style={{
-              left: `calc(${(carouselIdx / entityTrees.length) * 100}% - 2px)`,
-              width: `calc(${(5 / entityTrees.length) * 100}% + 4px)`,
-              background: "rgba(172,43,55,0.08)",
-              border: "2px solid #AC2B37",
-              borderRadius: 6,
-              zIndex: 1,
-            }}
-          />
+              className="absolute top-0 left-0 h-full pointer-events-none transition-all duration-200"
+              style={{
+                left: `calc(${leftPercent}% - 2px)`,
+                width: `calc(${widthPercent}% + 4px)`,
+                background: "rgba(172,43,55,0.08)",
+                border: "2px solid #AC2B37",
+                borderRadius: 6,
+                zIndex: 1,
+              }}
+            />
           {/* Minimap buttons */}
           {entityTrees.map((tree, idx) => (
             <button
               key={tree.id}
-              className={`relative z-10 w-6 h-6 rounded-sm border-2 flex items-center justify-center text-[10px] font-bold
-                ${carouselIdx <= idx && idx < carouselIdx + 5 ? "border-WPIRed bg-WPIRed/80 text-white" : "border-gray-400 bg-gray-200 text-gray-600"}
+              className={`relative z-10 w-6 h-6 rounded-sm border-2 flex items-center justify-center text-[10px] font-bold border-gray-400 bg-gray-200
                 ${selectedEntity === tree.id ? "ring-2 ring-amber-400" : ""}
+                ${tree.isAnomaly ? "text-red-600" : "text-gray-600"}
               `}
               title={tree.name}
               onClick={() => {
-                setCarouselIdx(idx);
-                carouselApiRef.current?.scrollTo(idx);
+                const viewportSize = 5; // or your actual minimap viewport size
+                let targetIdx = idx;
+                // Try to center the selected entity
+                if (entityTrees.length > viewportSize) {
+                  const half = Math.floor(viewportSize / 2);
+                  if (idx > half && idx < entityTrees.length - half) {
+                    targetIdx = idx - half;
+                  } else if (idx >= entityTrees.length - half) {
+                    targetIdx = entityTrees.length - viewportSize;
+                  } else {
+                    targetIdx = 0;
+                  }
+                }
+                setCarouselIdx(targetIdx);
+                carouselApiRef.current?.scrollTo(targetIdx);
                 setSelectedEntity(tree.id);
               }}
               style={{ minWidth: 24 }}
@@ -218,30 +294,33 @@ export default function VisualizeTreeHorizontal() {
                 ref={el => { entityRefs.current[idx] = el; }}
                 className="flex flex-col items-center"
               >
-                <Card
-                  className={`mb-4 w-11/12 h-2/6 flex flex-col items-center justify-center bg-WPIRed text-white shadow-lg transition ring-2
-                    ${selectedEntity === tree.id ? "border-4 border-black scale-105" : "border-2 border-transparent"}
-                  `}
-                  onClick={() =>
-                    setSelectedEntity(selectedEntity === tree.id ? null : tree.id)
-                  }
-                  onContextMenu={e => {
-                    e.preventDefault();
-                    setModalInfo({
-                      id: tree.id,
-                      level: "entity",
-                      numChildren: tree.actions.length,
-                    });
-                  }}
-                  title="Left click to select, right click for details"
-                >
-                  <CardTitle className="text-lg text-center">{tree.name}</CardTitle>
-                  <div className="mt-2 text-xs text-white/90 text-center">
-                    <div><span className="font-semibold">ID:</span> {tree.id}</div>
-                    <div><span className="font-semibold">Level:</span> entity</div>
-                    <div><span className="font-semibold">Number of children:</span> {tree.actions.length}</div>
-                  </div>
-                </Card>
+                <div className="relative w-full">
+                  <Card
+                    className={`relative mb-4 w-11/12 h-2/6 flex flex-col items-center justify-center bg-WPIRed text-white shadow-lg transition ring-2
+                      ${selectedEntity === tree.id ? "border-4 border-black scale-105" : "border-2 border-transparent"}
+                    `}
+                    onClick={() =>
+                      setSelectedEntity(selectedEntity === tree.id ? null : tree.id)
+                    }
+                    onContextMenu={e => {
+                      e.preventDefault();
+                      setModalInfo({
+                        id: tree.id,
+                        level: "entity",
+                        numChildren: tree.actions.length,
+                      });
+                    }}
+                    title="Left click to select, right click for details"
+                  >
+                    <CardTitle className="text-lg text-center">{tree.name}</CardTitle>
+                    <div className="mt-2 text-xs text-white/90 text-center">
+                      <div><span className="font-semibold">ID:</span> {tree.id}</div>
+                      <div><span className="font-semibold">Level:</span> entity</div>
+                      <div><span className="font-semibold">Number of children:</span> {tree.actions.length}</div>
+                    </div>
+                    {tree.isAnomaly && Exclamation(tree.anomalyReasons)}
+                  </Card>
+                </div>
               </div>
             </CarouselItem>
           ))}
@@ -266,25 +345,28 @@ export default function VisualizeTreeHorizontal() {
                 {selectedTree.actions.map((action) => (
                   <CarouselItem key={action.id} className="basis-1/10 px-2 py-5">
                     <div className="flex flex-col items-center">
-                      <Card
-                        className={`w-32 h-16 flex items-center justify-center bg-amber-200 text-amber-900 shadow cursor-pointer transition ring-2
-                          ${selectedActionId === action.id ? "border-2 border-black scale-105" : "border-2 border-transparent"}
-                        `}
-                        onClick={() =>
-                          setSelectedActionId(selectedActionId === action.id ? null : action.id)
-                        }
-                        onContextMenu={e => {
-                          e.preventDefault();
-                          setModalInfo({
-                            id: action.id,
-                            level: "action",
-                            numChildren: action.statuses.length,
-                          });
-                        }}
-                        title="Left click to show statuses, right click for details"
-                      >
-                        <CardContent className="text-xs text-center">{action.name}</CardContent>
-                      </Card>
+                      <div className="relative w-full">
+                        <Card
+                          className={`relative w-32 h-16 flex items-center justify-center bg-amber-200 text-amber-900 shadow cursor-pointer transition ring-2
+                            ${selectedActionId === action.id ? "border-2 border-black scale-105" : "border-2 border-transparent"}
+                          `}
+                          onClick={() =>
+                            setSelectedActionId(selectedActionId === action.id ? null : action.id)
+                          }
+                          onContextMenu={e => {
+                            e.preventDefault();
+                            setModalInfo({
+                              id: action.id,
+                              level: "action",
+                              numChildren: action.statuses.length,
+                            });
+                          }}
+                          title="Left click to show statuses, right click for details"
+                        >
+                          <CardContent className="text-xs text-center">{action.name}</CardContent>
+                          {action.isAnomaly && Exclamation(action.anomalyReasons)}
+                        </Card>
+                      </div>
                     </div>
                   </CarouselItem>
                 ))}
@@ -296,25 +378,28 @@ export default function VisualizeTreeHorizontal() {
             <div className="flex flex-row gap-4 justify-center mb-4">
               {selectedTree.actions.map((action) => (
                 <div key={action.id} className="flex flex-col items-center">
-                  <Card
-                    className={`w-32 h-16 flex items-center justify-center bg-amber-200 text-amber-900 shadow cursor-pointer transition ring-2 ${
-                      selectedActionId === action.id ? "border-2 border-black scale-105" : "ring-transparent"
-                    }`}
-                    onClick={() =>
-                      setSelectedActionId(selectedActionId === action.id ? null : action.id)
-                    }
-                    onContextMenu={e => {
-                      e.preventDefault();
-                      setModalInfo({
-                        id: action.id,
-                        level: "action",
-                        numChildren: action.statuses.length,
-                      });
-                    }}
-                    title="Left click to show statuses, right click for details"
-                  >
-                    <CardContent className="text-xs text-center">{action.name}</CardContent>
-                  </Card>
+                  <div className="relative w-full">
+                    <Card
+                      className={`w-32 h-16 flex items-center justify-center bg-amber-200 text-amber-900 shadow cursor-pointer transition ring-2 ${
+                        selectedActionId === action.id ? "border-2 border-black scale-105" : "border-2 border-transparent"
+                      }`}
+                      onClick={() =>
+                        setSelectedActionId(selectedActionId === action.id ? null : action.id)
+                      }
+                      onContextMenu={e => {
+                        e.preventDefault();
+                        setModalInfo({
+                          id: action.id,
+                          level: "action",
+                          numChildren: action.statuses.length,
+                        });
+                      }}
+                      title="Left click to show statuses, right click for details"
+                    >
+                      <CardContent className="text-xs text-center">{action.name}</CardContent>
+                      {action.isAnomaly && Exclamation(action.anomalyReasons)}
+                    </Card>
+                  </div>
                 </div>
               ))}
             </div>
@@ -332,20 +417,26 @@ export default function VisualizeTreeHorizontal() {
                     <CarouselContent>
                       {action.statuses.map((status) => (
                         <CarouselItem key={status.id} className="basis-1/10 px-2 py-5">
-                          <Card
-                            className="w-24 h-12 flex items-center justify-center bg-gray-100 text-gray-700 shadow cursor-pointer"
-                            onContextMenu={e => {
-                              e.preventDefault();
-                              setModalInfo({
-                                id: status.id,
-                                level: "status",
-                                numChildren: 0,
-                              });
-                            }}
-                            title="Right click for details"
-                          >
-                            <CardContent className="text-xs text-center">{status.name}</CardContent>
-                          </Card>
+                          <div className="relative w-full">
+                            <Card
+                              className={`w-24 h-12 flex items-center justify-center bg-gray-100 text-gray-700 shadow cursor-pointer
+                                ${selectedStatusId === status.id ? "border-4 border-black" : "border-2 border-transparent"}
+                              `}
+                              onClick={() => setSelectedStatusId(selectedStatusId === status.id ? null : status.id)}
+                              onContextMenu={e => {
+                                e.preventDefault();
+                                setModalInfo({
+                                  id: status.id,
+                                  level: "status",
+                                  numChildren: 0,
+                                });
+                              }}
+                              title="Left click to select, right click for details"
+                            >
+                              <CardContent className="text-xs text-center">{status.name}</CardContent>
+                              {status.isAnomaly && Exclamation(status.anomalyReasons)}
+                            </Card>
+                          </div>
                         </CarouselItem>
                       ))}
                     </CarouselContent>
@@ -355,21 +446,26 @@ export default function VisualizeTreeHorizontal() {
                 ) : (
                   <div className="flex flex-row gap-2 justify-center">
                     {action.statuses.map((status) => (
-                      <Card
-                        key={status.id}
-                        className="w-24 h-12 flex items-center justify-center bg-gray-100 text-gray-700 shadow cursor-pointer"
-                        onContextMenu={e => {
-                          e.preventDefault();
-                          setModalInfo({
-                            id: status.id,
-                            level: "status",
-                            numChildren: 0,
-                          });
-                        }}
-                        title="Right click for details"
-                      >
-                        <CardContent className="text-xs text-center">{status.name}</CardContent>
-                      </Card>
+                      <div key={status.id} className="relative w-full">
+                        <Card
+                          className={`w-24 h-12 flex items-center justify-center bg-gray-100 text-gray-700 shadow cursor-pointer
+                            ${selectedStatusId === status.id ? "border-4 border-black" : "border-2 border-transparent"}
+                          `}
+                          onClick={() => setSelectedStatusId(selectedStatusId === status.id ? null : status.id)}
+                          onContextMenu={e => {
+                            e.preventDefault();
+                            setModalInfo({
+                              id: status.id,
+                              level: "status",
+                              numChildren: 0,
+                            });
+                          }}
+                          title="Left click to select, right click for details"
+                        >
+                          <CardContent className="text-xs text-center">{status.name}</CardContent>
+                          {status.isAnomaly && Exclamation(status.anomalyReasons)}
+                        </Card>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -389,6 +485,59 @@ export default function VisualizeTreeHorizontal() {
           </div>
         )}
       </Modal>
+
+      {anomalyPopover && (() => {
+        // Calculate position
+        const anchorRect = anomalyPopover.anchor?.getBoundingClientRect();
+        const popoverWidth = 320;
+        const popoverHeight = 300;
+        let left = anchorRect ? anchorRect.left + window.scrollX : 100;
+        let top = anchorRect ? anchorRect.bottom + window.scrollY + 8 : 100;
+
+        // Prevent right overflow
+        if (left + popoverWidth > window.innerWidth - 8) {
+          left = window.innerWidth - popoverWidth - 8;
+        }
+        // Prevent left overflow
+        if (left < 8) left = 8;
+        // Prevent bottom overflow
+        if (top + popoverHeight > window.innerHeight + window.scrollY - 8) {
+          top = window.innerHeight + window.scrollY - popoverHeight - 8;
+        }
+        // Prevent top overflow
+        if (top < 8) top = 8;
+
+        return (
+          <div
+            className="fixed z-50 bg-white border border-red-400 rounded shadow-lg p-4"
+            style={{
+              left,
+              top,
+              minWidth: 240,
+              maxWidth: popoverWidth,
+              maxHeight: popoverHeight,
+              overflowY: "auto",
+              wordBreak: "break-word",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="font-bold text-red-700 mb-2">
+              Anomaly Reason{anomalyPopover.reasons.length > 1 ? "s" : ""}:
+            </div>
+            <ul className="list-disc pl-5 text-sm text-gray-800">
+              {anomalyPopover.reasons.map((reason, idx) => (
+                <li key={idx}>{reason}</li>
+              ))}
+            </ul>
+            <button
+              className="mt-3 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+              onClick={() => setAnomalyPopover(null)}
+            >
+              Close
+            </button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
