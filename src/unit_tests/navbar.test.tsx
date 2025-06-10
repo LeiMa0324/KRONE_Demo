@@ -2,6 +2,7 @@ import { render, screen} from "@testing-library/react";
 import { NavBar } from "@/components/navbar";
 import { BrowserRouter } from "react-router-dom";
 
+//Navbar Unit Testing - Should load appropriate homepage, file upload, tree, log table, and about links correctly
 describe("Navbar Component", () => {
   it("renders navbar with logo and links", () => {
     render(
