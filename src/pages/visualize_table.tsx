@@ -77,7 +77,7 @@ export const VisualizeTable = () => {
                         </select>
                         <button
                             className="font-WPIfont bg-WPIRed text-white px-4 py-1 rounded hover:bg-WPIRed/85 transition"
-                            onClick={handleRunOption}
+                            aria-label="run button" onClick={handleRunOption}
                         >
                             Run Option
                         </button>
@@ -86,6 +86,7 @@ export const VisualizeTable = () => {
                         <b className="font-WPIfont">Prediction:</b>{" "}
                         <span
                             id="prediction"
+                            aria-label="prediction"
                             className={
                                 prediction === "Abnormal"
                                     ? "px-2 py-1 rounded font-WPIfont font-semibold bg-WPIRed/20 text-WPIRed"
