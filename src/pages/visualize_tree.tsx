@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { hierarchy, tree } from "d3-hierarchy";
+import type { HierarchyNode } from "d3-hierarchy";
 import { select } from "d3-selection";
 import { linkHorizontal } from "d3-shape";
 import { csv } from "d3-fetch";
@@ -96,13 +97,11 @@ export const VisualizeTree: React.FC = () => {
     if (!svgRef.current || !treeData) return;
 
     const width = 928;
-    const dx = 16;
+    // const dx = 16;
 
-    // Deep clone treeData to avoid mutating state directly
     const clonedTree = JSON.parse(JSON.stringify(treeData));
     const root = hierarchy<TreeNode>(clonedTree, (d) => d.children) as d3.HierarchyNode<TreeNode> & { _children?: TreeNode[] };
 
-    // Collapse/expand based on switches
     if (collapseEntities) collapseAtDepth(root, 0);
     else expandAtDepth(root, 1);
 
@@ -112,100 +111,121 @@ export const VisualizeTree: React.FC = () => {
     if (collapseStatuses) collapseAtDepth(root, 2);
     else expandAtDepth(root, 3);
 
-    const dy = width / (root.height + 1);
-    const treeLayout = tree<TreeNode>().nodeSize([dx, dy]);
-    const svg = select(svgRef.current);
+    const baseFont = 30;
+const minFont = 15;
+const fontStep = 5;
 
-    const linkColor = (d: { source: { depth: number } }) => {
-      switch (d.source.depth) {
-        case 0: return "#B31B1B";
-        case 1: return "#FFD100";
-        case 2: return "#888B8D";
-        default: return "#000000";
-      }
-    };
+const getFontSize = (depth: number) => Math.max(baseFont - depth * fontStep, minFont);
 
-    const render = () => {
-      treeLayout(root);
+const getSeparation = (a: HierarchyNode<TreeNode>, b: HierarchyNode<TreeNode>) => {
+  const fontA = getFontSize(a.depth);
+  const fontB = getFontSize(b.depth);
+  return (Math.max(fontA, fontB) + 8) / 16;
+};
 
-      let x0 = Infinity;
-      let x1 = -Infinity;
-      root.each((d) => {
-        if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
-        if ((d.x ?? 0) < x0) x0 = d.x ?? 0;
-      });
+const dy = width / (root.height + 1);
+const treeLayout = tree<TreeNode>()
+  .nodeSize([16, dy])
+  .separation(getSeparation);
 
-      const height = x1 - x0 + dx * 2;
+const svg = select(svgRef.current);
 
-      svg.selectAll("*").remove();
-      svg
-        .attr("width", width)
-        .attr("height", height)
-        .attr("viewBox", `${-dy / 3} ${x0 - dx} ${width} ${height}`)
-        .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+const linkColor = (d: { source: { depth: number } }) => {
+  switch (d.source.depth) {
+    case 0: return "#B31B1B";
+    case 1: return "#FFD100";
+    case 2: return "#888B8D";
+    default: return "#000000";
+  }
+};
 
-      // Links
-      svg
-        .append("g")
-        .attr("fill", "none")
-        .attr("stroke-opacity", 0.4)
-        .attr("stroke-width", 1.5)
-        .selectAll("path")
-        .data(root.links() as d3.HierarchyPointLink<TreeNode>[])
-        .join("path")
-        .attr("d", (d: d3.HierarchyPointLink<TreeNode>) =>
-          linkHorizontal()({
-            source: [d.source.y, d.source.x],
-            target: [d.target.y, d.target.x],
-          })
-        )
-        .attr("stroke", linkColor);
+const render = () => {
+  treeLayout(root);
 
-      // Nodes
-      const node = svg
-        .append("g")
-        .attr("stroke-linejoin", "round")
-        .attr("stroke-width", 3)
-        .selectAll("g")
-        .data(root.descendants())
-        .join("g")
-        .attr("transform", (d) => `translate(${d.y},${d.x})`)
-        .on("click", function (_, d) {
-          if (d.children) {
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  root.each((d) => {
+    if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
+    if ((d.x ?? 0) < x0) x0 = d.x ?? 0;
+  });
+
+  const height = x1 - x0 + baseFont * 2;
+
+  svg.selectAll("*").remove();
+  svg
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", `${-dy / 3} ${x0 - baseFont} ${width} ${height}`)
+    .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+
+  // Links
+  svg
+    .append("g")
+    .attr("fill", "none")
+    .attr("stroke-opacity", 0.4)
+    .attr("stroke-width", 1.5)
+    .selectAll("path")
+    .data(root.links() as d3.HierarchyPointLink<TreeNode>[])
+    .join("path")
+    .attr("d", (d: d3.HierarchyPointLink<TreeNode>) =>
+      linkHorizontal()({
+        source: [d.source.y, d.source.x],
+        target: [d.target.y, d.target.x],
+      })
+    )
+    .attr("stroke", linkColor);
+
+  // Nodes
+  const node = svg
+    .append("g")
+    .attr("stroke-linejoin", "round")
+    .attr("stroke-width", 3)
+    .selectAll("g")
+    .data(root.descendants())
+    .join("g")
+    .attr("transform", (d) => `translate(${d.y},${d.x})`)
+    .on("click", function (_, d) {
+      if (d.children) {
             d._children = d.children;
             d.children = undefined;
           } else if (d._children) {
-            d.data.children = d._children;
+            d.children = d._children;
             d._children = undefined;
           }
           render();
-        });
+    });
 
-      node
-        .append("circle")
-        .attr("fill", (d) => (d._children ? "#555" : "#999"))
-        .attr("r", 2.5);
+  node
+    .append("circle")
+    .attr("fill", (d) => (d._children ? "#555" : "#999"))
+    .attr("r", 2.5);
 
-      node
-        .append("text")
-        .attr("dy", "0.31em")
-        .attr("x", (d) => (d.children || d._children ? -6 : 6))
-        .attr("text-anchor", (d) => (d.children || d._children ? "end" : "start"))
-        .text((d) => d.data.name)
-        .attr("fill", "#fff")
-        .each(function (this: SVGTextElement, d) {
-          const nodeGroup = select(this.parentNode as Element);
-          const bbox = this.getBBox();
-          nodeGroup
-            .insert("rect", "text")
-            .attr("x", bbox.x - 4)
-            .attr("y", bbox.y - 2)
-            .attr("width", bbox.width + 8)
-            .attr("height", bbox.height + 4)
-            .attr("fill", () => linkColor({ source: { depth: d.depth - 1 } }))
-            .attr("rx", 2);
-        });
-    };
+  node
+    .append("text")
+    .attr("dy", "0.31em")
+    .attr("x", (d) => (d.children || d._children ? -6 : 6))
+    .attr("text-anchor", (d) => (d.children || d._children ? "end" : "start"))
+    .text((d) => d.data.name)
+    .attr("fill", "#fff")
+    .attr("font-size", (d) => {
+      const base = 30;
+      const min = 15;
+      return Math.max(base - d.depth * 5, min);
+    })
+    .each(function (this: SVGTextElement, d) {
+      const nodeGroup = select(this.parentNode as Element);
+      const bbox = this.getBBox();
+      nodeGroup
+        .insert("rect", "text")
+        .attr("x", bbox.x - 4)
+        .attr("y", bbox.y - 2)
+        .attr("width", bbox.width + 8)
+        .attr("height", bbox.height + 4)
+        .attr("fill", () => linkColor({ source: { depth: d.depth - 1 } }))
+        .attr("rx", 4)
+        .attr("ry", 4);
+    });
+};
 
     render();
   }, [treeData, collapseEntities, collapseActions, collapseStatuses]);
@@ -218,7 +238,7 @@ export const VisualizeTree: React.FC = () => {
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
-        paddingTop: "65px",  //navbar
+        paddingTop: "65px",
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginRight: "2rem", marginTop: "2rem" }}>
