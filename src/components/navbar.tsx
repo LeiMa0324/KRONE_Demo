@@ -8,13 +8,11 @@ export const NavBar = () => {
     const location = useLocation();
     const isHeroPage = location.pathname === "/";
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
     return (
         <nav className={`fixed w-full z-40 bg-WPIRed ${isHeroPage ? "animate-slide-in-top" : ""}`}>
-
-            <div className="container flex w-full justify-between items-center px-4 py-3">
+            <div className="flex w-full justify-between items-center px-4 py-3">
                 {/* Logo Section */}
                 <div className="flex items-center gap-4">
                     <Link to="/">
@@ -24,7 +22,7 @@ export const NavBar = () => {
                         </Avatar>
                     </Link>
                     <Link to="/">
-                        <span className="font-bold text-3xl text-gray-100">KRONE</span>
+                        <span className="font-WPIfont font-bold text-3xl text-gray-100">KRONE</span>
                     </Link>
                 </div>
 
@@ -33,6 +31,7 @@ export const NavBar = () => {
                     <Button
                         className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0"
                         onClick={toggleMenu}
+                        aria-label={isMenuOpen ? "Close menu" : "Open menu"} // Add accessible name
                     >
                         {isMenuOpen ? <X className="text-gray-100 w-6 h-6" /> : <Menu className="text-gray-100 w-6 h-6" />}
                     </Button>
@@ -45,22 +44,22 @@ export const NavBar = () => {
                     }`}
                 >
                     <Link to="/file-upload">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             File Upload
                         </Button>
                     </Link>
                     <Link to="/visualize-tree">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             Visualize Tree
                         </Button>
                     </Link>
                     <Link to="/log-table">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             Log Table
                         </Button>
                     </Link>
                     <Link to="/about">
-                        <Button className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             About
                         </Button>
                     </Link>
