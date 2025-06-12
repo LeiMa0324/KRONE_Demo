@@ -4,6 +4,7 @@ import { FileProvider } from "../FileContext";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 
+//Unit testing for FileUpload Component: proper rendering, csv handling, and non-csv rejection
 describe("FileUpload Component", () => {
     it("renders the file upload text", () => {
         render(
