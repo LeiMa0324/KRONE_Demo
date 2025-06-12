@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 type TreeNode = {
   name: string;
   children?: TreeNode[];
-  _children?: TreeNode[]; // collapsed nodes
+  _children?: TreeNode[];
 };
 
 type CsvRow = {
@@ -183,22 +183,25 @@ const render = () => {
     .selectAll("g")
     .data(root.descendants())
     .join("g")
-    .attr("transform", (d) => `translate(${d.y},${d.x})`)
-    .on("click", function (_, d) {
-      if (d.children) {
-            d._children = d.children;
-            d.children = undefined;
-          } else if (d._children) {
-            d.children = d._children;
-            d._children = undefined;
-          }
-          render();
-    });
+    .attr("transform", (d) => `translate(${d.y},${d.x})`);
+
+  // handler for toggling collapse/expand
+  function handleNodeClick(_, d) {
+    if (d.children) {
+      d._children = d.children;
+      d.children = undefined;
+    } else if (d._children) {
+      d.children = d._children;
+      d._children = undefined;
+    }
+    render();
+  }
 
   node
     .append("circle")
     .attr("fill", (d) => (d._children ? "#555" : "#999"))
-    .attr("r", 2.5);
+    .attr("r", 0)
+    .on("click", handleNodeClick); 
 
   node
     .append("text")
@@ -212,6 +215,7 @@ const render = () => {
       const min = 15;
       return Math.max(base - d.depth * 5, min);
     })
+    .on("click", handleNodeClick) 
     .each(function (this: SVGTextElement, d) {
       const nodeGroup = select(this.parentNode as Element);
       const bbox = this.getBBox();
