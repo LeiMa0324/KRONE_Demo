@@ -112,7 +112,7 @@ function buildEntityTrees(rows: CsvRow[]): EntityTree[] {
   return Object.values(entityMap);
 }
 
-const ACTIONS_PER_VIEW = 10;
+const ACTIONS_PER_VIEW = 12;
 
 export default function VisualizeTreeVertical() {
   const [entityTrees, setEntityTrees] = useState<EntityTree[]>([]);
