@@ -61,8 +61,8 @@ export function MinimapCarousel({
     }
   }, [carouselIdx]);
 
-  // Sizing for each CarouselItem
-  const basisClass = `basis-1/${visibleCount}`;
+  // Calculate width for each CarouselItem so that visibleCount items fill the width
+  const itemWidthPercent = 100 / visibleCount;
 
   return (
     <div className={`w-full flex flex-col items-center ${className}`}>
@@ -157,15 +157,19 @@ export function MinimapCarousel({
         setApi={api => (carouselApiRef.current = api)}
         opts={{ align: "start" }}
       >
-        <CarouselContent className="">
+        <CarouselContent className="flex">
           {items.map((item, idx) => (
             <CarouselItem
               key={item.id}
-              className={`${basisClass} px-2 py-5`}
+              // Use inline style to ensure exactly visibleCount items fit in one row
+              style={{
+                flex: `0 0 ${itemWidthPercent}%`,
+                maxWidth: `${itemWidthPercent}%`,
+                minWidth: `${itemWidthPercent}%`,
+              }}
+              className="px-2 py-5"
             >
-              <div
-                className={`flex flex-col items-center w-full`}
-              >
+              <div className="flex flex-col items-center w-full">
                 {children(item, idx)}
               </div>
             </CarouselItem>

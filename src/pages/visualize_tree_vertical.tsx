@@ -230,7 +230,7 @@ export default function VisualizeTreeVertical() {
           <div className="flex flex-col items-center w-full">
             <div className="relative w-full">
               <Card
-                className={`relative mb-4 w-11/12 h-2/6 flex flex-col items-center justify-center bg-WPIRed text-white shadow-lg transition ring-2
+                className={`relative mb-4 h-2/6 flex flex-col items-center justify-center bg-WPIRed text-white shadow-lg transition ring-2
                   ${selectedEntity === tree.id ? "border-4 border-black scale-105" : "border-2 border-transparent"}
                 `}
                 onClick={() =>
@@ -319,7 +319,7 @@ export default function VisualizeTreeVertical() {
                 <div key={action.id} className="flex flex-col items-center">
                   <div className="relative w-full">
                     <Card
-                      className={`relative w-32 h-16 flex items-center justify-center bg-amber-200 text-amber-900 shadow cursor-pointer transition ring-2 ${
+                      className={`relative h-16 flex items-center justify-center bg-amber-200 text-amber-900 shadow cursor-pointer transition ring-2 ${
                         selectedActionId === action.id ? "border-2 border-black scale-105" : "border-2 border-transparent"
                       }`}
                       onClick={() =>
