@@ -1,4 +1,5 @@
 import { useFile } from "@/FileContext";
+import { useState } from "react";
 import Papa from "papaparse";
 import { Upload } from "lucide-react";
 import { Footer } from "@/components/footer";
