@@ -12,6 +12,8 @@ type TreeNode = {
   _children?: TreeNode[];
 };
 
+type HierarchyTreeNode = HierarchyNode<TreeNode> & { _children?: HierarchyTreeNode[] };
+
 type CsvRow = {
   entity?: string;
   action?: string;
@@ -181,12 +183,12 @@ const render = () => {
     .attr("stroke-linejoin", "round")
     .attr("stroke-width", 3)
     .selectAll("g")
-    .data(root.descendants())
+    .data(root.descendants() as HierarchyTreeNode[])
     .join("g")
     .attr("transform", (d) => `translate(${d.y},${d.x})`);
 
   // handler for toggling collapse/expand
-  function handleNodeClick(_, d) {
+  function handleNodeClick(_: unknown, d: HierarchyNode<TreeNode> & { _children?: HierarchyNode<TreeNode>[] }) {
     if (d.children) {
       d._children = d.children;
       d.children = undefined;
