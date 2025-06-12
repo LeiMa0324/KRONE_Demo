@@ -63,7 +63,7 @@ export const NavBar = () => {
                             About
                         </Button>
                     </Link>
-                    <Link to="/visualze-tree-horizontal">
+                    <Link to="/visualize-tree-horizontal">
                         <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             Visualize Tree Horizontal
                         </Button>
