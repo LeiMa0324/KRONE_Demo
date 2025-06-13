@@ -6,8 +6,6 @@ import { linkHorizontal } from "d3-shape";
 import { csv } from "d3-fetch";
 import { Switch } from "@/components/ui/switch"
 
-
-// TODO: scale based on text length (entity + action, status complete)
 // TODO: hover for anomaly explanation
 type TreeNode = {
   name: string;
@@ -137,7 +135,36 @@ const getSeparation = (a: HierarchyNode<TreeNode>, b: HierarchyNode<TreeNode>) =
   return (Math.max(fontA, fontB) + 8) / depthSpacing;
 };
 
-const dy = width / (root.height + 1);
+
+const getCss = (name: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const textFont = getCss('--font-WPIfont');
+let widestEntity = 0;
+let widestAction = 0;
+
+const tempSvg = select(document.body)
+  .append("svg")
+  .attr("style", "position: absolute; visibility: hidden;")
+  .attr("font-family", textFont);
+
+root.descendants().forEach((node) => {
+  const fontSize = getFontSize(node.depth);
+  const tempText = tempSvg.append("text")
+    .attr("font-size", fontSize)
+    .attr("font-family", textFont)
+    .text(node.data.name);
+  const bbox = (tempText.node() as SVGTextElement).getBBox();
+  const labelWidth = bbox.width + getPadding(fontSize) * 2;
+
+  if (node.depth === 1 && labelWidth > widestEntity) widestEntity = labelWidth;
+  if (node.depth === 2 && labelWidth > widestAction) widestAction = labelWidth;
+
+  tempText.remove();
+});
+tempSvg.remove();
+
+// const dy = width / (root.height + 1);
+const dy = widestAction + 40
 const treeLayout = tree<TreeNode>()
   .nodeSize([siblingSpacing + 4, dy])
   .separation(getSeparation);
@@ -164,6 +191,16 @@ const linkColor = (d: { source: { depth: number } }) => {
 const render = () => {
   treeLayout(root);
 
+  const statusDy = 150; 
+  root.each(node => {
+    if (node.depth === 2) {
+    } else if (node.depth === 3) {
+      if (node.parent && typeof node.parent.y === "number") {
+        node.y = node.parent.y + statusDy;
+      }
+    }
+  });
+
   let x0 = Infinity, x1 = -Infinity;
   let y0 = Infinity, y1 = -Infinity;
   root.each((d) => {
@@ -183,26 +220,28 @@ const render = () => {
     .attr("font-family", font);
 
   root.descendants().forEach((node) => {
-    const fontSize = getFontSize(node.depth);
-    const tempText = tempSvg.append("text")
-      .attr("font-size", fontSize)
-      .attr("font-family", font)
-      .text(node.data.name);
-    const bbox = (tempText.node() as SVGTextElement).getBBox();
-    let labelWidth = bbox.width + getPadding(fontSize) * 2;
+    if (node.depth === 3) { // Only consider status nodes
+      const fontSize = getFontSize(node.depth);
+      const tempText = tempSvg.append("text")
+        .attr("font-size", fontSize)
+        .attr("font-family", font)
+        .text(node.data.name);
+      const bbox = (tempText.node() as SVGTextElement).getBBox();
+      let labelWidth = bbox.width + getPadding(fontSize) * 2;
 
-    if (!node.children && !node._children && node.data.is_anomaly) {
-      labelWidth += fontSize * 1.2;
+      if (!node.children && !node._children && node.data.is_anomaly) {
+        labelWidth += fontSize * 1.2;
+      }
+
+      if (labelWidth > widestLabel) widestLabel = labelWidth;
+      if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
+      tempText.remove();
     }
-
-    if (labelWidth > widestLabel) widestLabel = labelWidth;
-    if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
-    tempText.remove();
   });
   tempSvg.remove();
 
-  const tempPadding = 80 // account for anomaly label and styling differences
-  const width = maxY + widestLabel + tempPadding;
+  // const tempPadding = 150 // account for anomaly label and styling differences
+  const width = maxY + widestAction + widestLabel;
 
   const height = x1 - x0 + baseFont * 2;
 
