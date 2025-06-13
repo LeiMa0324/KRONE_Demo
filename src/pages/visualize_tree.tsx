@@ -18,6 +18,8 @@ type CustomHierarchyNode = HierarchyNode<TreeNode> & {
   _children?: CustomHierarchyNode[];
 };
 
+type HierarchyTreeNode = HierarchyNode<TreeNode> & { _children?: HierarchyTreeNode[] };
+
 type CsvRow = {
   entity?: string;
   action?: string;
@@ -276,7 +278,7 @@ const render = () => {
     .attr("stroke-linejoin", "round")
     .attr("stroke-width", 3)
     .selectAll("g")
-    .data(root.descendants())
+    .data(root.descendants() as HierarchyTreeNode[])
     .join("g")
     .attr("transform", (d) => `translate(${d.y},${d.x})`);
 
