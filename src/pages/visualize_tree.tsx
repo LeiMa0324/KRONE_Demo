@@ -103,7 +103,7 @@ export const VisualizeTree: React.FC = () => {
   useEffect(() => {
     if (!svgRef.current || !treeData) return;
 
-    const width = 928;
+    // const width = 928;
 
     const clonedTree = JSON.parse(JSON.stringify(treeData));
     const root = hierarchy<TreeNode>(clonedTree, (d) => d.children) as d3.HierarchyNode<TreeNode> & { _children?: TreeNode[] };
@@ -193,8 +193,7 @@ const render = () => {
 
   const statusDy = 150; 
   root.each(node => {
-    if (node.depth === 2) {
-    } else if (node.depth === 3) {
+    if (node.depth === 3) {
       if (node.parent && typeof node.parent.y === "number") {
         node.y = node.parent.y + statusDy;
       }
