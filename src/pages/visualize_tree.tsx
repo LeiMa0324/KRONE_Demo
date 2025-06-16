@@ -12,7 +12,7 @@ type TreeNode = {
   children?: TreeNode[];
   _children?: TreeNode[];
   is_anomaly?: boolean;
-  anomaly_explanation?: string; // <-- Add this
+  anomaly_explanation?: string;
 };
 
 type CustomHierarchyNode = HierarchyNode<TreeNode> & {
