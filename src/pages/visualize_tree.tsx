@@ -176,7 +176,11 @@ root.descendants().forEach((node) => {
 tempSvg.remove();
 
 // const dy = width / (root.height + 1);
-const dy = widestAction + 40
+// const dy = widestAction + 40
+const dy =
+  collapseActions || root.height <= 1
+    ? widestEntity + 40
+    : widestAction + 40;
 const treeLayout = tree<TreeNode>()
   .nodeSize([siblingSpacing + 4, dy])
   .separation(getSeparation);
@@ -221,7 +225,6 @@ const render = () => {
     if ((d.y ?? 0) < y0) y0 = d.y ?? 0;
   });
 
- 
   let maxY = 0;
   let widestLabel = 0;
 
@@ -231,7 +234,7 @@ const render = () => {
     .attr("font-family", font);
 
   root.descendants().forEach((node) => {
-    if (node.depth === 3) { 
+    // if (!node.parent || (node.parent.children && node.parent.children.includes(node))) {
       const fontSize = getFontSize(node.depth);
       const tempText = tempSvg.append("text")
         .attr("font-size", fontSize)
@@ -247,18 +250,24 @@ const render = () => {
       if (labelWidth > widestLabel) widestLabel = labelWidth;
       if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
       tempText.remove();
-    }
+    // }
   });
   tempSvg.remove();
 
-  const width = maxY + widestAction + widestLabel;
+  const width = maxY + widestLabel + 60; // paddin for styling differences
+
+  const minRootWidth = 400;
+  const visibleNodes = root.descendants().length;
+  const adjustedWidth =
+    visibleNodes === 1 ? minRootWidth : width;
+
 
   const height = x1 - x0 + baseFont * 2;
 
 
   svg.selectAll("*").remove();
   svg
-    .attr("width", width)
+    .attr("width", adjustedWidth)
     .attr("height", height)
     .attr("viewBox", `${-dy / 3} ${x0 - baseFont} ${width} ${height}`)
     .attr("style", "max-width: 100%; height: auto; font: 10px;")
