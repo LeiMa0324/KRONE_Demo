@@ -25,6 +25,9 @@ type CsvRow = {
   entity?: string;
   action?: string;
   status?: string;
+  // entity_node_id?: string;
+  // action_node_id?: string;
+  // status_node_id?: string;
   is_anomaly?: string;
   is_anomaly_reason?: string;
   [key: string]: string | undefined;
@@ -38,6 +41,9 @@ function buildTree(rows: CsvRow[]): TreeNode {
     const entity = row.entity || "Unknown";
     const action = row.action || "Unknown";
     const status = row.status || "Unknown";
+    // const entity = row.entity_node_id || "Unknown";
+    // const action = row.action_node_id || "Unknown";
+    // const status = row.status_node_id || "Unknown";
     const is_anomaly = row.is_anomaly === "True";
     const anomaly_explanation = row.is_anomaly_reason || "";
 
@@ -173,10 +179,7 @@ root.descendants().forEach((node) => {
 });
 tempSvg.remove();
 
-const dy =
-  collapseActions || root.height <= 1
-    ? widestEntity + 40
-    : widestAction + 40;
+const dy = Math.max(widestEntity + 20, widestAction + 40);
 const treeLayout = tree<TreeNode>()
   .nodeSize([siblingSpacing + 4, dy])
   .separation(getSeparation);
@@ -203,8 +206,25 @@ const linkColor = (d: { source: { depth: number } }) => {
 const render = () => {
   treeLayout(root);
 
-  const statusDy = 150; 
+  const statusDy = 150;
+  if (collapseStatuses) {
+    root.each(node => {
+      if (node.depth === 3 && node.parent && typeof node.parent.y === "number") {
+        node.y = node.parent ? node.parent.y + statusDy : 0;
+      }
+    });
+  } else {
+    root.each(node => {
+      if (node.depth === 3 && node.parent && typeof node.parent.y === "number") {
+        node.y = node.parent.y + statusDy;
+      }
+    });
+  }
+  const entityOffset = 80;
   root.each(node => {
+    if (node.depth > 0) {
+      node.y = (typeof node.y === "number" ? node.y : 0) + entityOffset;
+    }
     if (node.depth === 3) {
       if (node.parent && typeof node.parent.y === "number") {
         node.y = node.parent.y + statusDy;
@@ -248,21 +268,20 @@ const render = () => {
   });
   tempSvg.remove();
 
-  const width = maxY + widestLabel + 60; // paddin for styling differences
+  const width = maxY + widestLabel + 60;
 
   const minRootWidth = 400;
   const visibleNodes = root.descendants().length;
   const adjustedWidth =
     visibleNodes === 1 ? minRootWidth : width;
 
-
   const height = x1 - x0 + baseFont * 2;
 
   svg.selectAll("*").remove();
   svg
-    .attr("width", adjustedWidth)
+    .attr("width", adjustedWidth + entityOffset)
     .attr("height", height)
-    .attr("viewBox", `${-dy / 3} ${x0 - baseFont} ${width} ${height}`)
+    .attr("viewBox", `${-entityOffset} ${x0 - baseFont} ${width + entityOffset} ${height}`)
     .attr("style", "max-width: 100%; height: auto; font: 10px;")
     .attr("font-family", font);
 
