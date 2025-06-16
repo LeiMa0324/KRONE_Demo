@@ -9,6 +9,7 @@ export const FileUpload = () => {
     const [csvData, setCsvData] = useState<string[][] | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Parse the CSV file and update the state
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
@@ -38,6 +39,7 @@ export const FileUpload = () => {
             <div className="pt-[4.5rem]"></div>
             <div className="flex-grow flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-gray-300 to-gray-400 animate-fade-in-fast">
                 <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center gap-6">
+                    {/* Title and icon for the upload section */}
                     <Upload className="w-12 h-12 text-WPIRed mb-2 animate-bounce" />
                     <div className="text-4xl font-WPIfont font-bold text-WPIRed">Upload a File</div>
                     <label className="cursor-pointer px-8 py-3 text-WPIRed rounded-lg shadow shadow-gray-400 hover:bg-WPIRed hover:text-white transition flex items-center gap-2 text-lg font-medium focus:ring-4 focus:ring-amber-300">
@@ -52,12 +54,14 @@ export const FileUpload = () => {
                         />
                     </label>
 
+                    {/* Display error if there is one when uploading a file */}
                     {error && (
                         <div className="text-base text-red-700 bg-red-50 rounded p-3 w-full">
                             <span className="font-WPIfont font-semibold">Error:</span> {error}
                         </div>
                     )}
 
+                    {/* Display file metadata if a file is selected */}
                     {file && (
                         <div className="text-base text-green-700 bg-green-50 rounded p-3 w-full">
                             <div><span className="font-WPIfont font-semibold">Selected file:</span> {file.name}</div>
@@ -67,6 +71,7 @@ export const FileUpload = () => {
                         </div>
                     )}
 
+                    {/* Display CSV data if available as a table */}
                     {csvData && csvData.length > 0 && (
                         <div className="overflow-auto max-h-96 w-full">
                             <table className="min-w-full border border-gray-300 mt-4 rounded-lg overflow-hidden">
