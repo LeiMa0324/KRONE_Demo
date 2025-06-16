@@ -3,7 +3,35 @@ import { useFile } from "@/FileContext";
 import Papa from "papaparse";
 import { Upload } from "lucide-react";
 import { Footer } from "@/components/footer";
+import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
+function SelectDemo() {
+    return (
+        <Select>
+            <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select a Dataset" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectGroup>
+                    <SelectLabel> DataSet </SelectLabel>
+                    <SelectItem value="HDFS"> HDFS </SelectItem>
+                    <SelectItem value="BGL"> BGL </SelectItem>
+                    <SelectItem value="ThunderBird"> ThunderBird </SelectItem>
+                    <SelectItem value="IaaS"> IaaS (Industry) </SelectItem>
+                </SelectGroup>
+            </SelectContent>
+        </Select>
+    )
+}
 export const FileUpload = () => {
     const { file, setFile } = useFile();
     const [csvData, setCsvData] = useState<string[][] | null>(null);
@@ -37,21 +65,36 @@ export const FileUpload = () => {
         <div className="flex flex-col min-h-screen">
             <div className="pt-[4.5rem]"></div>
             <div className="flex-grow flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-gray-300 to-gray-400 animate-fade-in-fast">
-                <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col items-center gap-6">
-                    <Upload className="w-12 h-12 text-WPIRed mb-2 animate-bounce" />
-                    <div className="text-4xl font-WPIfont font-bold text-WPIRed">Upload a File</div>
-                    <label className="cursor-pointer px-8 py-3 text-WPIRed rounded-lg shadow shadow-gray-400 hover:bg-WPIRed hover:text-white transition flex items-center gap-2 text-lg font-medium focus:ring-4 focus:ring-amber-300">
-                        <Upload className="w-5 h-5 font-WPIfont" />
-                        Choose File
-                        <input
-                            type="file"
-                            accept=".csv,text/csv"
-                            onChange={handleChange}
-                            className="hidden"
-                            data-testid="file-input"
-                        />
-                    </label>
+                <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col gap-8">
+                    <div className="flex flex-row gap-8">
+                        {/* Left side: current content */}
+                        <div className="flex flex-col items-center gap-6 flex-1">
+                            <Upload className="w-12 h-12 text-WPIRed mb-2 animate-bounce" />
+                            <div className="text-4xl font-WPIfont font-bold text-WPIRed">Upload a File</div>
+                            <label className="cursor-pointer px-8 py-3 text-WPIRed rounded-lg shadow shadow-gray-400 hover:bg-WPIRed hover:text-white transition flex items-center gap-2 text-lg font-medium focus:ring-4 focus:ring-amber-300">
+                                <Upload className="w-5 h-5 font-WPIfont" />
+                                Choose File
+                                <input
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    onChange={handleChange}
+                                    className="hidden"
+                                    data-testid="file-input"
+                                />
+                            </label>
+                        </div>
 
+                        {/* Right side: placeholder for future content */}
+                        <div className="flex-1 flex flex-col items-center justify-center gap-8">
+                            {/* Add your future content here */}
+                            <div className="text-4xl font-WPIfont font-bold text-WPIRed px-8"> Or Choose From One Of Ours </div>
+                            <form /*onSubmit={handleChange} */ className="flex gap-8">
+                                <SelectDemo></SelectDemo>
+                                <Button type='submit'> Load Dataset </Button>
+                            </form>
+                        </div>
+                    </div>
+                    
                     {error && (
                         <div className="text-base text-red-700 bg-red-50 rounded p-3 w-full">
                             <span className="font-WPIfont font-semibold">Error:</span> {error}
@@ -67,6 +110,7 @@ export const FileUpload = () => {
                         </div>
                     )}
 
+                    { /* File Display */ }
                     {csvData && csvData.length > 0 && (
                         <div className="overflow-auto max-h-96 w-full">
                             <table className="min-w-full border border-gray-300 mt-4 rounded-lg overflow-hidden">
