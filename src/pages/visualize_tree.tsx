@@ -4,14 +4,15 @@ import type { HierarchyNode } from "d3-hierarchy";
 import { select } from "d3-selection";
 import { linkHorizontal } from "d3-shape";
 import { csv } from "d3-fetch";
-import { Switch } from "@/components/ui/switch"
+import { Switch } from "@/components/ui/switch";
 
-// TODO: hover for anomaly explanation
+// TODO set proper x and y for anomaly hover
 type TreeNode = {
   name: string;
   children?: TreeNode[];
   _children?: TreeNode[];
   is_anomaly?: boolean;
+  anomaly_explanation?: string;
 };
 
 type CustomHierarchyNode = HierarchyNode<TreeNode> & {
@@ -24,6 +25,8 @@ type CsvRow = {
   entity?: string;
   action?: string;
   status?: string;
+  is_anomaly?: string;
+  is_anomaly_reason?: string;
   [key: string]: string | undefined;
 };
 
@@ -35,7 +38,8 @@ function buildTree(rows: CsvRow[]): TreeNode {
     const entity = row.entity || "Unknown";
     const action = row.action || "Unknown";
     const status = row.status || "Unknown";
-    const is_anomaly = row.is_anomaly === "True"; 
+    const is_anomaly = row.is_anomaly === "True";
+    const anomaly_explanation = row.is_anomaly_reason || "";
 
     // Entity node
     if (!entityMap[entity]) {
@@ -53,7 +57,7 @@ function buildTree(rows: CsvRow[]): TreeNode {
 
     // Status node
     if (!actionNode.children!.find((child) => child.name === status)) {
-      actionNode.children!.push({ name: status, is_anomaly });
+      actionNode.children!.push({ name: status, is_anomaly, anomaly_explanation });
     }
   });
 
@@ -67,6 +71,12 @@ export const VisualizeTree: React.FC = () => {
   const [collapseEntities, setCollapseEntities] = useState(false);
   const [collapseActions, setCollapseActions] = useState(false);
   const [collapseStatuses, setCollapseStatuses] = useState(false);
+
+  const [hoveredAnomaly, setHoveredAnomaly] = useState<{
+    explanation: string;
+    x: number;
+    y: number;
+  } | null>(null);
 
   function collapseAtDepth(node: TreeNode, targetDepth: number, currentDepth = 0) {
     if (!node.children) return;
@@ -221,7 +231,7 @@ const render = () => {
     .attr("font-family", font);
 
   root.descendants().forEach((node) => {
-    if (node.depth === 3) { // Only consider status nodes
+    if (node.depth === 3) { 
       const fontSize = getFontSize(node.depth);
       const tempText = tempSvg.append("text")
         .attr("font-size", fontSize)
@@ -241,7 +251,6 @@ const render = () => {
   });
   tempSvg.remove();
 
-  // const tempPadding = 150 // account for anomaly label and styling differences
   const width = maxY + widestAction + widestLabel;
 
   const height = x1 - x0 + baseFont * 2;
@@ -282,8 +291,8 @@ const render = () => {
     .join("g")
     .attr("transform", (d) => `translate(${d.y},${d.x})`);
 
-  // handler for toggling collapse/expand
-  function handleNodeClick(_event: unknown, d: CustomHierarchyNode) {
+    function handleNodeClick(_event: unknown, d: CustomHierarchyNode) {
+    if (d.depth === 0) return;
     if (d.children) {
       d._children = d.children as CustomHierarchyNode[];
       d.children = undefined;
@@ -318,8 +327,8 @@ const render = () => {
           .attr("fill", isRelated ? "#B3D8FF" : linkColor({ source: { depth: n.depth - 1 } })); // light blue
       });
 
-    // Highlight links (edges) if source or target is related
-    svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
+      // highlight related nodes
+      svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
       .attr("stroke", lnk =>
         related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
           ? "#B3D8FF" // light blue
@@ -361,8 +370,25 @@ const render = () => {
     .on("click", function (_event, d) {
       handleNodeClick(_event, d as CustomHierarchyNode);
     })
-    .on("mouseover", highlightText)
-    .on("mouseout", unhighlightText)
+    .on("mouseover", function (event, d) {
+      highlightText.call(this, event, d);
+      if (
+        d.depth === 3 &&
+        d.data.is_anomaly &&
+        d.data.anomaly_explanation
+      ) {
+        // const svgRect = svgRef.current!.getBoundingClientRect();
+        setHoveredAnomaly({
+          explanation: d.data.anomaly_explanation,
+          x: event.clientX,
+          y: event.clientY,
+});
+      }
+    })
+    .on("mouseout", function (event, d) {
+      unhighlightText.call(this, event, d);
+      setHoveredAnomaly(null);
+    })
     .each(function (this: SVGTextElement, d) {
       const fontSize = getFontSize(d.depth);
       const padding = getPadding(fontSize);
@@ -405,6 +431,7 @@ const render = () => {
         alignItems: "flex-start",
         justifyContent: "center",
         paddingTop: "65px",
+        position: "relative",
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginRight: "2rem", marginTop: "2rem" }}>
@@ -425,6 +452,27 @@ const render = () => {
       <svg
         ref={svgRef}
       />
+      {hoveredAnomaly && (
+        <div
+          style={{
+            position: "fixed",
+            left: hoveredAnomaly.x + 30,
+            top: hoveredAnomaly.y,
+            background: "white",
+            color: "#222",
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            padding: "1rem",
+            zIndex: 100,
+            maxWidth: 400,
+            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+            pointerEvents: "none",
+          }}
+        >
+          <strong>Anomaly Explanation</strong>
+          <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
+        </div>
+      )}
     </div>
   );
 };
