@@ -7,7 +7,7 @@ import { csv } from "d3-fetch";
 import { Switch } from "@/components/ui/switch";
 
 // TODO set proper x and y for anomaly hover
-type TreeNode = {
+export type TreeNode = {
   name: string;
   children?: TreeNode[];
   _children?: TreeNode[];
@@ -15,13 +15,13 @@ type TreeNode = {
   anomaly_explanation?: string;
 };
 
-type CustomHierarchyNode = HierarchyNode<TreeNode> & {
+export type CustomHierarchyNode = HierarchyNode<TreeNode> & {
   _children?: CustomHierarchyNode[];
 };
 
 type HierarchyTreeNode = HierarchyNode<TreeNode> & { _children?: HierarchyTreeNode[] };
 
-type CsvRow = {
+export type CsvRow = {
   entity?: string;
   action?: string;
   status?: string;

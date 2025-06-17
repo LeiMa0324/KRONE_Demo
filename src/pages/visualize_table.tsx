@@ -4,6 +4,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
 import { Footer } from "@/components/footer";
+import { SequenceTree } from "@/components/sequence_tree";
 
 type CsvRow = {
     id: string;
@@ -14,8 +15,25 @@ type CsvRow = {
     anomaly_level: string;
 };
 
+type KroneDecompRow = {
+    seq_id: string;
+    entity_nodes_for_logkeys: string[];
+    action_nodes_for_logkeys: string[];
+    status_nodes_for_logkeys: string[];
+}
+
+type KroneDetectRow = {
+    seq_id: string;
+    seq: string[];
+    anomaly_seg: string[];
+    anomaly_level: "entity" | "action" | "status";
+    anomaly_reason: string;
+}
+
 export const VisualizeTable = () => {
     const [data, setData] = useState<CsvRow[]>([]);
+    const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
+    const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [dropdownOptions, setDropdownOptions] = useState<CsvRow[]>([]);
     const [selectedOption, setSelectedOption] = useState<string>("");
@@ -40,6 +58,34 @@ export const VisualizeTable = () => {
                             setDisplayedOption(rows[0].id);
                         }
                         setLoading(false);
+                    },
+                });
+            });
+        fetch("/krone_decompose_res.csv")
+            .then((response) => response.text())
+            .then((csvText) => {
+                Papa.parse<KroneDecompRow>(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const rows = results.data as KroneDecompRow[];
+                        setKroneDecompData(rows);
+                        // Process or store the Krone decomposition data if needed
+                        console.log("Krone Decomposition Data:", rows);
+                    },
+                });
+            });
+        fetch("/krone_detection_res.csv")
+            .then((response) => response.text())
+            .then((csvText) => {
+                Papa.parse<KroneDetectRow>(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const rows = results.data as KroneDetectRow[];
+                        setKroneDetectData(rows);
+                        // Process or store the Krone detection data if needed
+                        console.log("Krone Detection Data:", rows);
                     },
                 });
             });
@@ -220,6 +266,7 @@ export const VisualizeTable = () => {
                     </div>
                 )}
             </div>
+            <SequenceTree />
             <Footer />
         </div>
     );
