@@ -1,48 +1,48 @@
-event_id,log_template,entity_node_id,action_node_id,status_node_id
-8,<*>:50010 Served block blk_<*> to /<*>,/_0,serving_0,none_0
-13,BLOCK* ask <*>:50010 to replicate blk_<*> to datanode(s) <*>:50010,BLOCK*_1,replicate_1,none_1
-20,BLOCK* ask <*>:50010 to replicate blk_<*> to datanode(s) <*>:50010 <*>:50010,BLOCK*_1,write_2,none_2
-2,BLOCK* NameSystem.addStoredBlock: blockMap updated: <*>:50010 is added to blk_<*> size <*>,NameSystem_2,add_3,updated_3
-7,BLOCK* NameSystem.allocateBlock: <*> blk_<*>,NameSystem_2,allocate_4,none_4
-41,PacketResponder blk_<*> 1 Exception java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[closed]. <*> millis timeout left.,PacketResponder_3,none_5,exception_5
-46,PacketResponder blk_<*> 1 Exception java.io.IOException: The stream is closed,PacketResponder_3,none_6,exception_6
-27,PendingReplicationMonitor timed out block blk_<*>,blk_4,timed out_7,none_7
-29,PacketResponder blk_<*> <*> Exception java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010]. <*> millis timeout left.,blk_4,none_8,exception_10
-30,PacketResponder blk_<*> <*> Exception <*>,blk_4,none_9,exception_11
-31,PacketResponder blk_<*> <*> Exception java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010],blk_4,none_10,exception_12
-32,Exception in receiveBlock for block blk_<*> java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[connected <*> <*> <*> millis timeout left.,blk_4,none_11,exception_13
-33,writeBlock blk_<*> received exception java.io.IOException: <*> <*>,blk_4,write_12,exception_14
-34,writeBlock blk_<*> received exception java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for <*> ch : java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010],blk_4,write_12,exception_15
-24,writeBlock blk_<*> received exception <*>,blk_4,write_12,exception_16
-37,"writeBlock blk_<*> received exception java.io.IOException: Block blk_<*> is valid, and cannot be written to.",blk_4,write_12,exception_17
-38,<*>:50010:Failed to transfer blk_<*> to <*>:50010 got java.io.IOException: Connection reset by peer,blk_4,transfer_13,failed_20
-39,writeBlock blk_<*> received exception java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[connected <*> <*> <*> millis timeout left.,blk_4,write_12,exception_18
-40,PacketResponder blk_<*> <*> Exception java.io.IOException: Broken pipe,blk_4,none_14,exception_22
-42,Exception in receiveBlock for block blk_<*> java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for write. ch : java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010],blk_4,none_15,exception_23
-43,Reopen Block blk_<*>,blk_4,reopen_16,none_24
-44,BLOCK* Removing block blk_<*> from neededReplications as it does not belong to any file.,blk_4,receiving_17,none_25
-45,Exception in receiveBlock for block blk_<*> java.io.IOException: Broken pipe,blk_4,none_18,exception_26
-35,PacketResponder blk_<*> <*> Exception java.io.IOException: Connection reset by peer,blk_4,none_19,exception_27
-26,Exception in receiveBlock for block blk_<*> <*>,blk_4,none_20,exception_28
-47,writeBlock blk_<*> received exception java.net.NoRouteToHostException: No route to host,blk_4,receive_21,exception_29
-23,writeBlock blk_<*> received exception java.io.IOException: Connection reset by peer,blk_4,write_12,exception_19
-3,PacketResponder <*> for block blk_<*> <*>,blk_4,none_22,none_31
-22,Exception in receiveBlock for block blk_<*> java.io.IOException: Connection reset by peer,blk_4,timed out_7,exception_8
-4,Received block blk_<*> of size <*> from /<*>,blk_4,writing_23,none_32
-19,BLOCK* NameSystem.addStoredBlock: Redundant addStoredBlock request received for blk_<*> on <*>:50010 size <*>,blk_4,timed out_7,redundant_9
-18,BLOCK* NameSystem.addStoredBlock: addStoredBlock request received for blk_<*> on <*>:50010 size <*> But it does not belong to any file.,blk_4,receive_21,error_30
-6,BLOCK* NameSystem.delete: blk_<*> is added to invalidSet of <*>:50010,blk_4,delete_24,invalid_34
-16,writeBlock blk_<*> received exception java.io.IOException: Could not read from stream,blk_4,writing_23,exception_33
-9,<*>:50010:Got exception while serving blk_<*> to /<*>:,blk_4,transfer_13,exception_21
-10,Verification succeeded for blk_<*>,blk_4,verification_25,successful_35
-14,<*>:50010 Starting thread to transfer block blk_<*> to <*>:50010,block_5,transferring_26,none_36
-12,<*>:50010:Transmitted block blk_<*> to /<*>:50010,block blk_6,transmitted_27,none_37
-11,Received block blk_<*> src: <*> dest: /<*>:50010 of size <*>,block blk_6,receiving_28,none_38
-36,Adding an already existing block blk_<*>,block blk_6,writing_29,already existing_41
-15,Unexpected error trying to delete block blk_<*>. BlockInfo not found in volumeMap.,block blk_6,deleting_30,error_42
-17,Receiving empty packet for block blk_<*>,block blk_6,receive_31,empty_43
-21,"<*>:50010 Starting thread to transfer block blk_<*> to <*>:50010, <*>:50010",block blk_6,transferring_32,none_44
-28,<*>:50010:Exception writing block blk_<*> to mirror <*>:50010,block blk_6,writing_33,exception_45
-25,Changing block file offset of block blk_<*> from 0 to <*> meta file offset to <*>,block blk_6,receiving_28,none_39
-1,Receiving block blk_<*> src: <*> dest: /<*>:50010,block blk_6,receiving_28,none_40
-5,Deleting block blk_<*> file <*><*>,block blk file_7,deleting_34,none_46
+event_id,log_template,entity_node_id,action_node_id,status_node_id,is_anomaly,is_anomaly_reason
+8,<*>:50010 Served block blk_<*> to /<*>,/_0,serving_0,none_0,False,The log message indicates a typical block receiving process from source to destination.
+13,BLOCK* ask <*>:50010 to replicate blk_<*> to datanode(s) <*>:50010,BLOCK*_1,replicate_1,none_1,False,"The log message indicates a block being added to the block map, which is a normal execution process in a NameSystem."
+20,BLOCK* ask <*>:50010 to replicate blk_<*> to datanode(s) <*>:50010 <*>:50010,BLOCK*_1,write_2,none_2,True,"The log message indicates an error in handling a packet responder for a specific block, which is abnormal and may require further investigation."
+2,BLOCK* NameSystem.addStoredBlock: blockMap updated: <*>:50010 is added to blk_<*> size <*>,NameSystem_2,add_3,updated_3,False,This log message seems to be a standard message indicating the receipt of a block
+7,BLOCK* NameSystem.allocateBlock: <*> blk_<*>,NameSystem_2,allocate_4,none_4,False,"This log message indicates a routine process of deleting a block file, which is a common operation in many systems."
+41,PacketResponder blk_<*> 1 Exception java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[closed]. <*> millis timeout left.,PacketResponder_3,none_5,exception_5,True,"The log message indicates that a block deletion operation failed and the block was added to the invalidSet, which is not a normal execution process."
+46,PacketResponder blk_<*> 1 Exception java.io.IOException: The stream is closed,PacketResponder_3,none_6,exception_6,False,The log message indicates a normal block allocation process in the NameSystem.
+27,PendingReplicationMonitor timed out block blk_<*>,blk_4,timed out_7,none_7,True,"The log message indicates serving a block, which is a normal process in execution. However, the specific block and destination may raise concerns for further investigation."
+29,PacketResponder blk_<*> <*> Exception java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010]. <*> millis timeout left.,blk_4,none_8,exception_10,True,"The log message indicates an exception occurred while serving a block to a client, which is not a normal execution process."
+30,PacketResponder blk_<*> <*> Exception <*>,blk_4,none_9,exception_11,False,The log message indicates a successful verification process for a block.
+31,PacketResponder blk_<*> <*> Exception java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for read. ch : java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010],blk_4,none_10,exception_12,False,This log message indicates a normal block received during execution.
+32,Exception in receiveBlock for block blk_<*> java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[connected <*> <*> <*> millis timeout left.,blk_4,none_11,exception_13,False,"The log message indicates a block being transmitted, which is a normal execution process."
+33,writeBlock blk_<*> received exception java.io.IOException: <*> <*>,blk_4,write_12,exception_14,False,"The log message indicates a block replication request, which is a common process in a distributed file system like Hadoop. It does not indicate any abnormalities."
+34,writeBlock blk_<*> received exception java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for <*> ch : java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010],blk_4,write_12,exception_15,False,The log message indicates a normal execution process of starting a thread to transfer a block.
+24,writeBlock blk_<*> received exception <*>,blk_4,write_12,exception_16,True,"The log message indicates an unexpected error while trying to delete a block, suggesting an abnormal execution process."
+37,"writeBlock blk_<*> received exception java.io.IOException: Block blk_<*> is valid, and cannot be written to.",blk_4,write_12,exception_17,True,"The log message indicates an exception occurred while trying to read from a stream, which is not a normal execution process."
+38,<*>:50010:Failed to transfer blk_<*> to <*>:50010 got java.io.IOException: Connection reset by peer,blk_4,transfer_13,failed_20,True,Receiving an empty packet for a block can indicate a potential issue with data transmission or data corruption.
+39,writeBlock blk_<*> received exception java.io.InterruptedIOException: Interruped while waiting for IO on channel java.nio.channels.SocketChannel[connected <*> <*> <*> millis timeout left.,blk_4,write_12,exception_18,True,"The log message indicates that a block request was received for a block that does not belong to any file, which is not a normal execution process."
+40,PacketResponder blk_<*> <*> Exception java.io.IOException: Broken pipe,blk_4,none_14,exception_22,True,Redundant addStoredBlock request received
+42,Exception in receiveBlock for block blk_<*> java.net.SocketTimeoutException: <*> millis timeout while waiting for channel to be ready for write. ch : java.nio.channels.SocketChannel[connected <*> remote=/<*>:50010],blk_4,none_15,exception_23,False,"The log message is a typical block replication request, which is a normal execution process."
+43,Reopen Block blk_<*>,blk_4,reopen_16,none_24,False,The log message indicates a normal execution process of starting a thread to transfer a block.
+44,BLOCK* Removing block blk_<*> from neededReplications as it does not belong to any file.,blk_4,receiving_17,none_25,True,"The log message indicates an exception in receiving a block, which suggests an abnormal execution process."
+45,Exception in receiveBlock for block blk_<*> java.io.IOException: Broken pipe,blk_4,none_18,exception_26,True,"The log message indicates an exception java.io.IOException: Connection reset by peer, which suggests an abnormal execution process."
+35,PacketResponder blk_<*> <*> Exception java.io.IOException: Connection reset by peer,blk_4,none_19,exception_27,True,"The log message indicates that an exception was received during the writeBlock process, which is abnormal behavior."
+26,Exception in receiveBlock for block blk_<*> <*>,blk_4,none_20,exception_28,False,"This log message seems to indicate a routine operation of changing block file offset and meta file offset, which is commonly seen in normal execution processes."
+47,writeBlock blk_<*> received exception java.net.NoRouteToHostException: No route to host,blk_4,receive_21,exception_29,True,"The log message indicates an exception in receiving a block, which is not a normal execution process."
+23,writeBlock blk_<*> received exception java.io.IOException: Connection reset by peer,blk_4,write_12,exception_19,True,"The log message indicates a timeout in the replication process, which is abnormal behavior."
+3,PacketResponder <*> for block blk_<*> <*>,blk_4,none_22,none_31,True,"The log message indicates an exception occurred while writing a block to a mirror, which is not a normal execution process."
+22,Exception in receiveBlock for block blk_<*> java.io.IOException: Connection reset by peer,blk_4,timed out_7,exception_8,True,The log message indicates an exception of InterruptedIOException which suggests an abnormal execution process
+4,Received block blk_<*> of size <*> from /<*>,blk_4,writing_23,none_32,True,"The log message indicates an exception occurred in the PacketResponder process, which is not normal behavior."
+19,BLOCK* NameSystem.addStoredBlock: Redundant addStoredBlock request received for blk_<*> on <*>:50010 size <*>,blk_4,timed out_7,redundant_9,True,"The log message indicates a SocketTimeoutException, which is an abnormal condition indicating a timeout while waiting for a channel to be ready for read."
+18,BLOCK* NameSystem.addStoredBlock: addStoredBlock request received for blk_<*> on <*>:50010 size <*> But it does not belong to any file.,blk_4,receive_21,error_30,True,"The log message indicates an InterruptedIOException which suggests a problem with IO operations, likely due to a timeout or interruption."
+6,BLOCK* NameSystem.delete: blk_<*> is added to invalidSet of <*>:50010,blk_4,delete_24,invalid_34,True,"The log message indicates an exception being received during the writeBlock operation, which is abnormal behavior."
+16,writeBlock blk_<*> received exception java.io.IOException: Could not read from stream,blk_4,writing_23,exception_33,True,"The log message indicates an exception due to a socket timeout while waiting for a channel to be ready, which is not a normal execution process."
+9,<*>:50010:Got exception while serving blk_<*> to /<*>:,blk_4,transfer_13,exception_21,True,"The log message indicates an IOException due to connection reset by peer, which is an abnormal execution process."
+10,Verification succeeded for blk_<*>,blk_4,verification_25,successful_35,True,Adding an already existing block is not a normal execution process and indicates a potential issue or error.
+14,<*>:50010 Starting thread to transfer block blk_<*> to <*>:50010,block_5,transferring_26,none_36,True,"The log message indicates an exception being thrown during a write operation, which is abnormal behavior."
+12,<*>:50010:Transmitted block blk_<*> to /<*>:50010,block blk_6,transmitted_27,none_37,True,Failed to transfer block due to java.io.IOException: Connection reset by peer
+11,Received block blk_<*> src: <*> dest: /<*>:50010 of size <*>,block blk_6,receiving_28,none_38,True,The log message indicates an interrupted IO exception which is an abnormal execution process.
+36,Adding an already existing block blk_<*>,block blk_6,writing_29,already existing_41,True,"The log message indicates an exception java.io.IOException: Broken pipe, which suggests an abnormal execution process."
+15,Unexpected error trying to delete block blk_<*>. BlockInfo not found in volumeMap.,block blk_6,deleting_30,error_42,True,"The log message indicates an InterruptedIOException, which suggests an abnormal execution process due to interruption while waiting for IO on a channel."
+17,Receiving empty packet for block blk_<*>,block blk_6,receive_31,empty_43,True,"The log message indicates a SocketTimeoutException which suggests a timeout while waiting for a channel to be ready for write, which is abnormal behavior."
+21,"<*>:50010 Starting thread to transfer block blk_<*> to <*>:50010, <*>:50010",block blk_6,transferring_32,none_44,False,"The log message indicates a common action of reopening a block, which is a normal execution process."
+28,<*>:50010:Exception writing block blk_<*> to mirror <*>:50010,block blk_6,writing_33,exception_45,False,This log message indicates a normal process of removing a block that does not belong to any file.
+25,Changing block file offset of block blk_<*> from 0 to <*> meta file offset to <*>,block blk_6,receiving_28,none_39,True,"The log message indicates an exception in receiving a block due to a broken pipe, which is abnormal behavior."
+1,Receiving block blk_<*> src: <*> dest: /<*>:50010,block blk_6,receiving_28,none_40,True,"The log message indicates an IOException due to a closed stream, which is abnormal behavior in the execution process."
+5,Deleting block blk_<*> file <*><*>,block blk file_7,deleting_34,none_46,True,"The log message indicates an exception related to a NoRouteToHostException, which suggests a network connectivity issue or a problem with the host, indicating abnormal execution process."
