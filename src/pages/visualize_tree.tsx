@@ -153,30 +153,43 @@ const getSeparation = (a: HierarchyNode<TreeNode>, b: HierarchyNode<TreeNode>) =
 
 const getCss = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const textFont = getCss('--font-WPIfont');
+const textFont = getCss('--font-WPIfont');
 
+// Helper to get widest label at each depth from the fully expanded tree
+function getWidestLabels(tree: TreeNode, getFontSize: (depth: number) => number, getPadding: (fontSize: number) => number, textFont: string) {
   let widestEntity = 0;
   let widestAction = 0;
+
+  // Use d3.hierarchy to traverse all nodes
+  const root = hierarchy(tree, d => d.children || d._children);
+
+  // Create a hidden SVG for measuring
   const tempSvg = select(document.body)
     .append("svg")
     .attr("style", "position: absolute; visibility: hidden;")
     .attr("font-family", textFont);
 
   root.descendants().forEach((node) => {
-  const fontSize = getFontSize(node.depth);
-  const tempText = tempSvg.append("text")
-    .attr("font-size", fontSize)
-    .attr("font-family", textFont)
-    .text(node.data.name);
-  const bbox = (tempText.node() as SVGTextElement).getBBox();
-  const labelWidth = bbox.width + getPadding(fontSize) * 2;
+    const fontSize = getFontSize(node.depth);
+    const tempText = tempSvg.append("text")
+      .attr("font-size", fontSize)
+      .attr("font-family", textFont)
+      .text(node.data.name);
+    const bbox = (tempText.node() as SVGTextElement).getBBox();
+    const labelWidth = bbox.width + getPadding(fontSize) * 2;
 
-  if (node.depth === 1 && labelWidth > widestEntity) widestEntity = labelWidth;
-  if (node.depth === 2 && labelWidth > widestAction) widestAction = labelWidth;
+    if (node.depth === 1 && labelWidth > widestEntity) widestEntity = labelWidth;
+    if (node.depth === 2 && labelWidth > widestAction) widestAction = labelWidth;
 
-  tempText.remove();
-});
-tempSvg.remove();
+    tempText.remove();
+  });
+  tempSvg.remove();
+
+  return { widestEntity, widestAction };
+}
+
+// Use the original, fully expanded treeData for width calculation
+const { widestEntity, widestAction } = getWidestLabels(treeData, getFontSize, getPadding, textFont);
 
 const dyRootToEntity = widestEntity + 60;
 const dyEntityToAction = widestAction + 60;
