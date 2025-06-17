@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { csv } from "d3-fetch";
 import { Switch } from "@/components/ui/switch";
 
-// TODO set proper x and y for anomaly hover
+// TODO fix status toggle
+// TODO fix svg size for entity collapse (when just root is displayed))
 type TreeNode = {
   name: string;
   children?: TreeNode[];
@@ -23,9 +24,6 @@ type CustomHierarchyNode = HierarchyNode<TreeNode> & {
 type HierarchyTreeNode = HierarchyNode<TreeNode> & { _children?: HierarchyTreeNode[] };
 
 type CsvRow = {
-  // entity?: string;
-  // action?: string;
-  // status?: string;
   entity_node_id?: string;
   action_node_id?: string;
   status_node_id?: string;
@@ -39,9 +37,6 @@ function buildTree(rows: CsvRow[]): TreeNode {
   const entityMap: Record<string, TreeNode> = {};
 
   rows.forEach((row) => {
-    // const entity = row.entity || "Unknown";
-    // const action = row.action || "Unknown";
-    // const status = row.status || "Unknown";
     const entity = row.entity_node_id || "Unknown";
     const action = row.action_node_id || "Unknown";
     const status = row.status_node_id || "Unknown";
@@ -79,8 +74,6 @@ export const VisualizeTree: React.FC = () => {
   const [collapseActions, setCollapseActions] = useState(false);
   const [collapseStatuses, setCollapseStatuses] = useState(false);
 
-  // Remove hoveredAnomaly state
-  // Add hoveredNode state
   const [hoveredNode, setHoveredNode] = useState<HierarchyNode<TreeNode> | null>(null);
 
   function collapseAtDepth(node: TreeNode, targetDepth: number, currentDepth = 0) {
@@ -134,20 +127,20 @@ export const VisualizeTree: React.FC = () => {
 
     const baseFont = 28;
     const minFont = 15;
-const fontStep = 5;
-const basePadding = 0.25;
-const baseRadius = 0.25; 
-const depthSpacing = 14;
-const siblingSpacing = 13;
+  const fontStep = 5;
+  const basePadding = 0.25;
+  const baseRadius = 0.25; 
+  const depthSpacing = 14;
+  const siblingSpacing = 13;
 
-const getFontSize = (depth: number) => Math.max(baseFont - depth * fontStep, minFont);
-const getPadding = (fontSize: number) => fontSize * basePadding;
-const getRadius = (fontSize: number) => fontSize * baseRadius;
+  const getFontSize = (depth: number) => Math.max(baseFont - depth * fontStep, minFont);
+  const getPadding = (fontSize: number) => fontSize * basePadding;
+  const getRadius = (fontSize: number) => fontSize * baseRadius;
 
-const getSeparation = (a: HierarchyNode<TreeNode>, b: HierarchyNode<TreeNode>) => {
-  const fontA = getFontSize(a.depth);
-  const fontB = getFontSize(b.depth);
-  return (Math.max(fontA, fontB) + 8) / depthSpacing;
+  const getSeparation = (a: HierarchyNode<TreeNode>, b: HierarchyNode<TreeNode>) => {
+    const fontA = getFontSize(a.depth);
+    const fontB = getFontSize(b.depth);
+    return (Math.max(fontA, fontB) + 8) / depthSpacing;
 };
 
 
@@ -155,15 +148,12 @@ const getCss = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const textFont = getCss('--font-WPIfont');
 
-// Helper to get widest label at each depth from the fully expanded tree
 function getWidestLabels(tree: TreeNode, getFontSize: (depth: number) => number, getPadding: (fontSize: number) => number, textFont: string) {
   let widestEntity = 0;
   let widestAction = 0;
 
-  // Use d3.hierarchy to traverse all nodes
   const root = hierarchy(tree, d => d.children || d._children);
 
-  // Create a hidden SVG for measuring
   const tempSvg = select(document.body)
     .append("svg")
     .attr("style", "position: absolute; visibility: hidden;")
@@ -188,14 +178,12 @@ function getWidestLabels(tree: TreeNode, getFontSize: (depth: number) => number,
   return { widestEntity, widestAction };
 }
 
-// Use the original, fully expanded treeData for width calculation
 const { widestEntity, widestAction } = getWidestLabels(treeData, getFontSize, getPadding, textFont);
 
 const dyRootToEntity = widestEntity + 60;
 const dyEntityToAction = widestAction + 60;
 const dyActionToStatus = 150;
 
-// Assign y positions based on depth
 function getYByDepth(depth: number) {
   if (depth === 0) return 0;
   if (depth === 1) return dyRootToEntity;
@@ -204,18 +192,15 @@ function getYByDepth(depth: number) {
   return 0;
 }
 
-// Use d3.tree for vertical (x) sibling spacing
 tree<TreeNode>()
   .nodeSize([40, 0])
   .separation(() => 1)
   (root);
 
-// Now assign y based on depth
 root.each((node) => {
   node.y = getYByDepth(node.depth);
 });
 
-  // Calculate SVG bounds
   let x0 = Infinity, x1 = -Infinity;
   root.each((d) => {
     if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
@@ -253,15 +238,14 @@ const linkColor = (d: { source: { depth: number } }) => {
 
       const leftMargin = 80;
 
-      // Set y for all nodes, including root
       root.each((node) => {
         node.y = getYByDepth(node.depth) + leftMargin;
       });
 
-      // Calculate bounds and label widths
       let x0 = Infinity, x1 = -Infinity;
       let maxY = 0;
       let widestLabel = 0;
+      let widestStatus = 0;
 
       const tempSvg = select(document.body)
         .append("svg")
@@ -281,6 +265,8 @@ const linkColor = (d: { source: { depth: number } }) => {
           labelWidth += fontSize * 1.2;
         }
 
+        if (node.depth === 3 && labelWidth > widestStatus) widestStatus = labelWidth;
+
         if (labelWidth > widestLabel) widestLabel = labelWidth;
         if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
         tempText.remove();
@@ -290,7 +276,8 @@ const linkColor = (d: { source: { depth: number } }) => {
       });
       tempSvg.remove();
 
-      const width = maxY + widestLabel + leftMargin + 60;
+      const rightPadding = 20;
+      const width = maxY + widestStatus + rightPadding;
       const minRootWidth = 400;
       const visibleNodes = root.descendants().length;
       const adjustedWidth = visibleNodes === 1 ? minRootWidth : width;
@@ -300,7 +287,7 @@ const linkColor = (d: { source: { depth: number } }) => {
       svg
         .attr("width", adjustedWidth)
         .attr("height", height)
-        .attr("viewBox", `0 ${x0 - baseFont} ${width} ${height}`)
+        .attr("viewBox", `0 ${x0 - baseFont} ${adjustedWidth} ${height}`)
         .attr("style", "max-width: 100%; height: auto; font: 10px;")
         .attr("font-family", font);
 
@@ -314,15 +301,6 @@ const linkColor = (d: { source: { depth: number } }) => {
         .data(root.links() as d3.HierarchyPointLink<TreeNode>[])
         .join("path")
 
-        // Flowing Nodes
-        // .attr("d", (d: d3.HierarchyPointLink<TreeNode>) =>
-        //   linkHorizontal()({
-        //     source: [d.source.y, d.source.x],
-        //     target: [d.target.y, d.target.x],
-        //   })
-        // )
-
-        // Right Angle Nodes
         .attr("d", (d: d3.HierarchyPointLink<TreeNode>) => {
           const gap = 18;
           const sourceStubY = d.source.y + gap;
@@ -467,60 +445,93 @@ const linkColor = (d: { source: { depth: number } }) => {
 
   return (
     <div
+  style={{
+    width: "100vw",
+    height: "100vh",
+    display: "flex",
+    alignItems: "flex-start",
+    paddingTop: "65px",
+    position: "relative",
+  }}
+>
+  {/* Left toggle panel */}
+  <div
+    style={{
+      position: "fixed",
+      top: "90px",
+      left: "32px",
+      display: "flex",
+      flexDirection: "column",
+      gap: "1rem",
+      padding: "1rem",
+      background: "#fff",
+      borderRadius: 8,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+      zIndex: 10,
+      minWidth: 180,
+    }}
+  >
+    {/* Toggles */}
+    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
+      Collapse Entities
+    </label>
+    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
+      Collapse Actions
+    </label>
+    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
+      Collapse Statuses
+    </label>
+  </div>
+
+  {/* Center: SVG scrollable wrapper */}
+  <div
+    style={{
+      flex: 1,
+      marginLeft: 240, // accounts for fixed toggle box
+      marginRight: 280, // accounts for fixed textarea box
+      height: "100%",
+      overflowX: "auto",
+      overflowY: "auto",
+    }}
+  >
+    <svg ref={svgRef} width={2000} height={500} />
+  </div>
+
+  {/* Right info panel */}
+  <div
+    style={{
+      position: "fixed",
+      top: "90px",
+      right: "32px",
+      minWidth: 200,
+      minHeight: 60,
+      borderRadius: 8,
+      padding: "1rem",
+      fontSize: 18,
+      color: "#222",
+      background: "#fff",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+      zIndex: 10,
+    }}
+  >
+    <strong>Node Info</strong>
+    <Textarea
+      readOnly
+      value={hoveredNode ? hoveredNode.data.name : "Hover over a node"}
       style={{
-        width: "100vw",
-        height: "100vh",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        paddingTop: "65px",
-        position: "relative",
+        marginTop: 8,
+        fontSize: 16,
+        background: "#fff",
+        border: "1px solid #ccc",
+        borderRadius: 6,
+        minHeight: 40,
+        resize: "none",
       }}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginRight: "2rem", marginTop: "2rem" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
-          Collapse Entities
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
-          Collapse Actions
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
-          Collapse Statuses
-        </label>
-      </div>
-      {/* Tree SVG */} 
-      <svg ref={svgRef} />
-      {/* Info section for hovered node */}
-      <div
-        style={{
-          minWidth: 200,
-          minHeight: 60,
-          borderRadius: 8,
-          padding: "1rem",
-          marginLeft: "2rem",
-          marginTop: "2rem",
-          fontSize: 18,
-          color: "#222",
-        }}
-      >
-        <strong>Node Info</strong>
-        <Textarea
-          readOnly
-          value={hoveredNode ? hoveredNode.data.name : "Hover over a node"}
-          style={{
-            marginTop: 8,
-            fontSize: 16,
-            background: "#fff",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            minHeight: 40,
-            resize: "none",
-          }}
-        />
-      </div>
-    </div>
+    />
+  </div>
+</div>
   );
 };
