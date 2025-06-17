@@ -2,19 +2,20 @@ import React, { useEffect, useRef, useState } from "react";
 import { hierarchy, tree } from "d3-hierarchy";
 import type { HierarchyNode } from "d3-hierarchy";
 import { select } from "d3-selection";
-import { Textarea } from "@/components/ui/textarea"
-// import { linkHorizontal } from "d3-shape";
 import { csv } from "d3-fetch";
 import { Switch } from "@/components/ui/switch";
 
-// TODO fix status toggle
-// TODO fix svg size for entity collapse (when just root is displayed))
+// TODO fix status toggle (toggle action + status, expand entity, then untoggle status)
+// TODO center tree
+// TODO add log key for status nodes from 
+// TODO when hovering on a node, then collapse and it moves, hover box doesn't clear
 type TreeNode = {
   name: string;
   children?: TreeNode[];
   _children?: TreeNode[];
   is_anomaly?: boolean;
   anomaly_explanation?: string;
+  log_template?: string;
 };
 
 type CustomHierarchyNode = HierarchyNode<TreeNode> & {
@@ -29,6 +30,7 @@ type CsvRow = {
   status_node_id?: string;
   is_anomaly?: string;
   is_anomaly_reason?: string;
+  log_template?: string;
   [key: string]: string | undefined;
 };
 
@@ -42,6 +44,7 @@ function buildTree(rows: CsvRow[]): TreeNode {
     const status = row.status_node_id || "Unknown";
     const is_anomaly = row.is_anomaly === "True";
     const anomaly_explanation = row.is_anomaly_reason || "";
+    const log_template = row.log_template || "";
 
     // Entity node
     if (!entityMap[entity]) {
@@ -59,7 +62,12 @@ function buildTree(rows: CsvRow[]): TreeNode {
 
     // Status node
     if (!actionNode.children!.find((child) => child.name === status)) {
-      actionNode.children!.push({ name: status, is_anomaly, anomaly_explanation });
+      actionNode.children!.push({
+        name: status,
+        is_anomaly,
+        anomaly_explanation,
+        log_template,
+      });
     }
   });
 
@@ -192,10 +200,11 @@ function getYByDepth(depth: number) {
   return 0;
 }
 
+(
 tree<TreeNode>()
   .nodeSize([40, 0])
   .separation(() => 1)
-  (root);
+)(root);
 
 root.each((node) => {
   node.y = getYByDepth(node.depth);
@@ -404,11 +413,11 @@ const linkColor = (d: { source: { depth: number } }) => {
     })
     .on("mouseover", function (event, d) {
       highlightText.call(this, event, d);
-      setHoveredNode(d); // Set hovered node here
+      setHoveredNode(d); 
     })
     .on("mouseout", function (event, d) {
       unhighlightText.call(this, event, d);
-      setHoveredNode(null); // Clear hovered node
+      setHoveredNode(null);
     })
     .each(function (this: SVGTextElement, d) {
       const fontSize = getFontSize(d.depth);
@@ -443,95 +452,154 @@ const linkColor = (d: { source: { depth: number } }) => {
     render();
   }, [treeData, collapseEntities, collapseActions, collapseStatuses]);
 
+function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
+  if (!node) {
+    return {
+      title: "",
+      content: `<div style="color:#888; text-align:center; padding:16px 0;">Hover on a node to see more details.</div>`
+    };
+  }
+  if (node.depth === 1) {
+    const actions = node.children || (node as unknown as HierarchyTreeNode)._children || [];
+    const numActions = actions.length;
+    let numStatuses = 0;
+    actions.forEach(action => {
+      const statuses = (action as HierarchyTreeNode).children || (action as HierarchyTreeNode)._children || [];
+      numStatuses += statuses.length;
+    });
+    return {
+      title: `Entity: ${node.data.name}`,
+      content: `<div>
+        <div style="margin-bottom:2px;"><b># of Actions:</b> ${numActions}</div>
+        <div><b># of Statuses:</b> ${numStatuses}</div>
+      </div>`
+    };
+  }
+  if (node.depth === 2) {
+    const n = node as HierarchyTreeNode;
+    const statusCount =
+      (n.children?.length || 0) + (n._children?.length || 0);
+    return {
+      title: `Action: ${node.data.name}`,
+      content: `<div><b># of Statuses:</b> ${statusCount}</div>`
+    };
+  }
+  if (node.depth === 3) {
+    return {
+      title: `Status: ${node.data.name}`,
+      content: `<div>
+        <div style="margin-bottom: 2px;"><b>Log Template:</b> ${node.data.log_template || "N/A"}</div>
+        <div><b>Anomaly explanation:</b> ${
+          node.data.is_anomaly
+            ? (node.data.anomaly_explanation || "No explanation")
+            : "Normal"
+        }</div>
+      </div>`
+    };
+  }
+  return { title: node.data.name, content: "" };
+}
+
   return (
     <div
-  style={{
-    width: "100vw",
-    height: "100vh",
-    display: "flex",
-    alignItems: "flex-start",
-    paddingTop: "65px",
-    position: "relative",
-  }}
->
-  {/* Left toggle panel */}
-  <div
-    style={{
-      position: "fixed",
-      top: "90px",
-      left: "32px",
-      display: "flex",
-      flexDirection: "column",
-      gap: "1rem",
-      padding: "1rem",
-      background: "#fff",
-      borderRadius: 8,
-      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-      zIndex: 10,
-      minWidth: 180,
-    }}
-  >
-    {/* Toggles */}
-    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
-      Collapse Entities
-    </label>
-    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
-      Collapse Actions
-    </label>
-    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
-      Collapse Statuses
-    </label>
-  </div>
-
-  {/* Center: SVG scrollable wrapper */}
-  <div
-    style={{
-      flex: 1,
-      marginLeft: 240, // accounts for fixed toggle box
-      marginRight: 280, // accounts for fixed textarea box
-      height: "100%",
-      overflowX: "auto",
-      overflowY: "auto",
-    }}
-  >
-    <svg ref={svgRef} width={2000} height={500} />
-  </div>
-
-  {/* Right info panel */}
-  <div
-    style={{
-      position: "fixed",
-      top: "90px",
-      right: "32px",
-      minWidth: 200,
-      minHeight: 60,
-      borderRadius: 8,
-      padding: "1rem",
-      fontSize: 18,
-      color: "#222",
-      background: "#fff",
-      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-      zIndex: 10,
-    }}
-  >
-    <strong>Node Info</strong>
-    <Textarea
-      readOnly
-      value={hoveredNode ? hoveredNode.data.name : "Hover over a node"}
       style={{
-        marginTop: 8,
-        fontSize: 16,
-        background: "#fff",
-        border: "1px solid #ccc",
-        borderRadius: 6,
-        minHeight: 40,
-        resize: "none",
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        alignItems: "flex-start",
+        paddingTop: "65px",
+        position: "relative",
       }}
-    />
-  </div>
-</div>
+    >
+      {/* Left toggle panel */}
+      <div
+        style={{
+          position: "fixed",
+          top: "90px",
+          left: "32px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+          padding: "1rem",
+          background: "#fff",
+          borderRadius: 8,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          zIndex: 10,
+          minWidth: 180,
+        }}
+      >
+        {/* Toggles */}
+        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
+          Collapse Entities
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
+          Collapse Actions
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
+          Collapse Statuses
+        </label>
+      </div>
+
+      {/* Center: SVG scrollable wrapper */}
+      <div
+        style={{
+          flex: 1,
+          marginLeft: 240,
+          marginRight: 450,
+          height: "100%",
+          overflowX: "auto",
+          overflowY: "auto",
+        }}
+      >
+        <svg ref={svgRef} width={2000} height={500} />
+      </div>
+
+      {/* Right info panel */}
+      <div
+        style={{
+          position: "fixed",
+          top: "90px",
+          right: "32px",
+          minWidth: 340,
+          width: 380,
+          minHeight: 100,
+          borderRadius: 8,
+          padding: "1rem",
+          fontSize: 18,
+          color: "#222",
+          background: "#fff",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          zIndex: 10,
+          wordBreak: "break-word",
+          boxSizing: "border-box",
+        }}
+      >
+        {getNodeInfo(hoveredNode).title && (
+          <div style={{ fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
+            {getNodeInfo(hoveredNode).title}
+          </div>
+        )}
+        <div
+          style={{
+            fontSize: 16,
+            background: "#fff",
+            border: "1px solid #ccc",
+            borderRadius: 6,
+            minHeight: 80,
+            width: "100%",
+            padding: 8,
+            whiteSpace: "pre-line",
+            wordBreak: "break-word",
+            overflowWrap: "break-word",
+            boxSizing: "border-box",
+            textAlign: "left",
+          }}
+          dangerouslySetInnerHTML={{ __html: getNodeInfo(hoveredNode).content }}
+        />
+      </div>
+    </div>
   );
 };
