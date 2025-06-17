@@ -153,16 +153,16 @@ const getSeparation = (a: HierarchyNode<TreeNode>, b: HierarchyNode<TreeNode>) =
 
 const getCss = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const textFont = getCss('--font-WPIfont');
-let widestEntity = 0;
-let widestAction = 0;
+  const textFont = getCss('--font-WPIfont');
 
-const tempSvg = select(document.body)
-  .append("svg")
-  .attr("style", "position: absolute; visibility: hidden;")
-  .attr("font-family", textFont);
+  let widestEntity = 0;
+  let widestAction = 0;
+  const tempSvg = select(document.body)
+    .append("svg")
+    .attr("style", "position: absolute; visibility: hidden;")
+    .attr("font-family", textFont);
 
-root.descendants().forEach((node) => {
+  root.descendants().forEach((node) => {
   const fontSize = getFontSize(node.depth);
   const tempText = tempSvg.append("text")
     .attr("font-size", fontSize)
@@ -177,6 +177,39 @@ root.descendants().forEach((node) => {
   tempText.remove();
 });
 tempSvg.remove();
+
+const dyRootToEntity = widestEntity + 60;
+const dyEntityToAction = widestAction + 60;
+const dyActionToStatus = 150;
+
+// Assign y positions based on depth
+function getYByDepth(depth: number) {
+  if (depth === 0) return 0;
+  if (depth === 1) return dyRootToEntity;
+  if (depth === 2) return dyRootToEntity + dyEntityToAction;
+  if (depth === 3) return dyRootToEntity + dyEntityToAction + dyActionToStatus;
+  return 0;
+}
+
+// Use d3.tree for vertical (x) sibling spacing
+tree<TreeNode>()
+  .nodeSize([40, 0])
+  .separation(() => 1)
+  (root);
+
+// Now assign y based on depth
+root.each((node) => {
+  node.y = getYByDepth(node.depth);
+});
+
+  // Calculate SVG bounds
+  let x0 = Infinity, x1 = -Infinity;
+  root.each((d) => {
+    if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
+    if ((d.x ?? 0) < x0) x0 = d.x ?? 0;
+  });
+
+
 
 const dy = Math.max(widestEntity + 20, widestAction + 40);
 const treeLayout = tree<TreeNode>()
@@ -205,41 +238,15 @@ const linkColor = (d: { source: { depth: number } }) => {
     const render = () => {
       treeLayout(root);
 
-      const statusDy = 150;
-      if (collapseStatuses) {
-        root.each(node => {
-          if (node.depth === 3 && node.parent && typeof node.parent.y === "number") {
-            node.y = node.parent ? node.parent.y + statusDy : 0;
-          }
-        });
-      } else {
-        root.each(node => {
-          if (node.depth === 3 && node.parent && typeof node.parent.y === "number") {
-            node.y = node.parent.y + statusDy;
-          }
-        });
-      }
-      const entityOffset = 80;
-      root.each(node => {
-        if (node.depth > 0) {
-          node.y = (typeof node.y === "number" ? node.y : 0) + entityOffset;
-        }
-        if (node.depth === 3) {
-          if (node.parent && typeof node.parent.y === "number") {
-            node.y = node.parent.y + statusDy;
-          }
-        }
+      const leftMargin = 80;
+
+      // Set y for all nodes, including root
+      root.each((node) => {
+        node.y = getYByDepth(node.depth) + leftMargin;
       });
 
+      // Calculate bounds and label widths
       let x0 = Infinity, x1 = -Infinity;
-      let y0 = Infinity, y1 = -Infinity;
-      root.each((d) => {
-        if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
-        if ((d.x ?? 0) < x0) x0 = d.x ?? 0;
-        if ((d.y ?? 0) > y1) y1 = d.y ?? 0;
-        if ((d.y ?? 0) < y0) y0 = d.y ?? 0;
-      });
-
       let maxY = 0;
       let widestLabel = 0;
 
@@ -264,23 +271,23 @@ const linkColor = (d: { source: { depth: number } }) => {
         if (labelWidth > widestLabel) widestLabel = labelWidth;
         if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
         tempText.remove();
+
+        if ((node.x ?? 0) > x1) x1 = node.x ?? 0;
+        if ((node.x ?? 0) < x0) x0 = node.x ?? 0;
       });
       tempSvg.remove();
 
-      const width = maxY + widestLabel + 60;
-
+      const width = maxY + widestLabel + leftMargin + 60;
       const minRootWidth = 400;
       const visibleNodes = root.descendants().length;
-      const adjustedWidth =
-        visibleNodes === 1 ? minRootWidth : width;
-
+      const adjustedWidth = visibleNodes === 1 ? minRootWidth : width;
       const height = x1 - x0 + baseFont * 2;
 
       svg.selectAll("*").remove();
       svg
-        .attr("width", adjustedWidth + entityOffset)
+        .attr("width", adjustedWidth)
         .attr("height", height)
-        .attr("viewBox", `${-entityOffset} ${x0 - baseFont} ${width + entityOffset} ${height}`)
+        .attr("viewBox", `0 ${x0 - baseFont} ${width} ${height}`)
         .attr("style", "max-width: 100%; height: auto; font: 10px;")
         .attr("font-family", font);
 
