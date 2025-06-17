@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { hierarchy, tree } from "d3-hierarchy";
 import type { HierarchyNode } from "d3-hierarchy";
 import { select } from "d3-selection";
-import { linkHorizontal } from "d3-shape";
+// import { linkHorizontal } from "d3-shape";
 import { csv } from "d3-fetch";
 import { Switch } from "@/components/ui/switch";
 
@@ -25,6 +25,9 @@ type CsvRow = {
   entity?: string;
   action?: string;
   status?: string;
+  // entity_node_id?: string;
+  // action_node_id?: string;
+  // status_node_id?: string;
   is_anomaly?: string;
   is_anomaly_reason?: string;
   [key: string]: string | undefined;
@@ -38,6 +41,9 @@ function buildTree(rows: CsvRow[]): TreeNode {
     const entity = row.entity || "Unknown";
     const action = row.action || "Unknown";
     const status = row.status || "Unknown";
+    // const entity = row.entity_node_id || "Unknown";
+    // const action = row.action_node_id || "Unknown";
+    // const status = row.status_node_id || "Unknown";
     const is_anomaly = row.is_anomaly === "True";
     const anomaly_explanation = row.is_anomaly_reason || "";
 
@@ -115,8 +121,6 @@ export const VisualizeTree: React.FC = () => {
   useEffect(() => {
     if (!svgRef.current || !treeData) return;
 
-    // const width = 928;
-
     const clonedTree = JSON.parse(JSON.stringify(treeData));
     const root = hierarchy<TreeNode>(clonedTree, (d) => d.children) as d3.HierarchyNode<TreeNode> & { _children?: TreeNode[] };
 
@@ -175,12 +179,7 @@ root.descendants().forEach((node) => {
 });
 tempSvg.remove();
 
-// const dy = width / (root.height + 1);
-// const dy = widestAction + 40
-const dy =
-  collapseActions || root.height <= 1
-    ? widestEntity + 40
-    : widestAction + 40;
+const dy = Math.max(widestEntity + 20, widestAction + 40);
 const treeLayout = tree<TreeNode>()
   .nodeSize([siblingSpacing + 4, dy])
   .separation(getSeparation);
@@ -207,8 +206,25 @@ const linkColor = (d: { source: { depth: number } }) => {
 const render = () => {
   treeLayout(root);
 
-  const statusDy = 150; 
+  const statusDy = 150;
+  if (collapseStatuses) {
+    root.each(node => {
+      if (node.depth === 3 && node.parent && typeof node.parent.y === "number") {
+        node.y = node.parent ? node.parent.y + statusDy : 0;
+      }
+    });
+  } else {
+    root.each(node => {
+      if (node.depth === 3 && node.parent && typeof node.parent.y === "number") {
+        node.y = node.parent.y + statusDy;
+      }
+    });
+  }
+  const entityOffset = 80;
   root.each(node => {
+    if (node.depth > 0) {
+      node.y = (typeof node.y === "number" ? node.y : 0) + entityOffset;
+    }
     if (node.depth === 3) {
       if (node.parent && typeof node.parent.y === "number") {
         node.y = node.parent.y + statusDy;
@@ -234,42 +250,38 @@ const render = () => {
     .attr("font-family", font);
 
   root.descendants().forEach((node) => {
-    // if (!node.parent || (node.parent.children && node.parent.children.includes(node))) {
-      const fontSize = getFontSize(node.depth);
-      const tempText = tempSvg.append("text")
-        .attr("font-size", fontSize)
-        .attr("font-family", font)
-        .text(node.data.name);
-      const bbox = (tempText.node() as SVGTextElement).getBBox();
-      let labelWidth = bbox.width + getPadding(fontSize) * 2;
+    const fontSize = getFontSize(node.depth);
+    const tempText = tempSvg.append("text")
+      .attr("font-size", fontSize)
+      .attr("font-family", font)
+      .text(node.data.name);
+    const bbox = (tempText.node() as SVGTextElement).getBBox();
+    let labelWidth = bbox.width + getPadding(fontSize) * 2;
 
-      if (!node.children && !node._children && node.data.is_anomaly) {
-        labelWidth += fontSize * 1.2;
-      }
+    if (!node.children && !node._children && node.data.is_anomaly) {
+      labelWidth += fontSize * 1.2;
+    }
 
-      if (labelWidth > widestLabel) widestLabel = labelWidth;
-      if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
-      tempText.remove();
-    // }
+    if (labelWidth > widestLabel) widestLabel = labelWidth;
+    if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
+    tempText.remove();
   });
   tempSvg.remove();
 
-  const width = maxY + widestLabel + 60; // paddin for styling differences
+  const width = maxY + widestLabel + 60;
 
   const minRootWidth = 400;
   const visibleNodes = root.descendants().length;
   const adjustedWidth =
     visibleNodes === 1 ? minRootWidth : width;
 
-
   const height = x1 - x0 + baseFont * 2;
-
 
   svg.selectAll("*").remove();
   svg
-    .attr("width", adjustedWidth)
+    .attr("width", adjustedWidth + entityOffset)
     .attr("height", height)
-    .attr("viewBox", `${-dy / 3} ${x0 - baseFont} ${width} ${height}`)
+    .attr("viewBox", `${-entityOffset} ${x0 - baseFont} ${width + entityOffset} ${height}`)
     .attr("style", "max-width: 100%; height: auto; font: 10px;")
     .attr("font-family", font);
 
@@ -282,12 +294,26 @@ const render = () => {
     .selectAll("path")
     .data(root.links() as d3.HierarchyPointLink<TreeNode>[])
     .join("path")
-    .attr("d", (d: d3.HierarchyPointLink<TreeNode>) =>
-      linkHorizontal()({
-        source: [d.source.y, d.source.x],
-        target: [d.target.y, d.target.x],
-      })
-    )
+
+    // Flowing Nodes
+    // .attr("d", (d: d3.HierarchyPointLink<TreeNode>) =>
+    //   linkHorizontal()({
+    //     source: [d.source.y, d.source.x],
+    //     target: [d.target.y, d.target.x],
+    //   })
+    // )
+
+    // Right Angle Nodes
+    .attr("d", (d: d3.HierarchyPointLink<TreeNode>) => {
+      const gap = 18;
+      const sourceStubY = d.source.y + gap;
+      return [
+        `M${d.source.y},${d.source.x}`,           
+        `H${sourceStubY}`,                        
+        `V${d.target.x}`,                         
+        `H${d.target.y}`                          
+      ].join(" ");
+    })
     .attr("stroke", linkColor);
 
   // Nodes
@@ -386,7 +412,6 @@ const render = () => {
         d.data.is_anomaly &&
         d.data.anomaly_explanation
       ) {
-        // const svgRect = svgRef.current!.getBoundingClientRect();
         setHoveredAnomaly({
           explanation: d.data.anomaly_explanation,
           x: event.clientX,
@@ -463,10 +488,24 @@ const render = () => {
       />
       {hoveredAnomaly && (
         <div
+          ref={el => {
+            if (el) {
+              const { innerWidth, innerHeight } = window;
+              const rect = el.getBoundingClientRect();
+              let left = hoveredAnomaly.x + 30;
+              let top = hoveredAnomaly.y;
+              if (left + rect.width > innerWidth) {
+                left = innerWidth - rect.width - 16;
+              }
+              if (top + rect.height > innerHeight) {
+                top = innerHeight - rect.height - 16;
+              }
+              el.style.left = `${left}px`;
+              el.style.top = `${top}px`;
+            }
+          }}
           style={{
             position: "fixed",
-            left: hoveredAnomaly.x + 30,
-            top: hoveredAnomaly.y,
             background: "white",
             color: "#222",
             border: "1px solid #ccc",
