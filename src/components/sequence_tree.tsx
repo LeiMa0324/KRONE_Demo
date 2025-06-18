@@ -111,6 +111,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
+    const [selectedIndex, setSelectedIndex] = useState(0);
 
     function buildSequenceTreeData(decomp: KroneDecompRow): SequenceTreeData {
         const entities: EntityNode[] = [];
@@ -175,13 +176,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     }
 
     useEffect(() => {
-        if (kroneDecompData.length > 0) {
-            const treeStruct = buildSequenceTreeData(kroneDecompData[0]);
+        if (kroneDecompData.length > 0 && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
+            const treeStruct = buildSequenceTreeData(kroneDecompData[selectedIndex]);
             const treeNode = toTreeNode(treeStruct);
             addIndexPath(treeNode);
             setTreeData(treeNode);
         }
-    }, [kroneDecompData]);
+    }, [kroneDecompData, selectedIndex]);
 
     useEffect(() => {
         if (!treeData || !svgRef.current) return;
@@ -210,13 +211,25 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const wpigold = getCssVar('--color-WPIGold') || "#ffd100";
         const wpigrey = getCssVar('--color-WPIGrey') || "#888";
         const font = getCssVar('--font-WPIfont') || "sans-serif";
+        const redBG = "#fde2e5";
+        const yellowBG = "#fff8e8";
+        const greyBG = "#ededed";
 
-        const linkColor = (d: { source: { depth: number } }) => {
+        const linkBorderColor = (d: { source: { depth: number } }) => {
             switch (d.source.depth) {
                 case 0: return wpired;
                 case 1: return wpigold;
                 case 2: return wpigrey;
                 default: return "#000000";
+            }
+        };
+
+        const linkFillColor = (d: { source: { depth: number } }) => {
+            switch (d.source.depth) {
+                case 0: return redBG;
+                case 1: return yellowBG;
+                case 2: return greyBG;
+                default: return "#ffffff";
             }
         };
 
@@ -334,7 +347,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     `H${d.target.y}`
                 ].join(" ");
             })
-            .attr("stroke", linkColor);
+            .attr("stroke", linkBorderColor);
 
         // Nodes
         const node = svg
@@ -366,16 +379,16 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .each(function (n) {
                     const isRelated = related.has(n);
                     select(this)
-                        .attr("fill", isRelated ? "#003366" : "#fff");
+                        .attr("fill", isRelated ? "#003366" : "#222");
                     select(this.parentNode as Element).select("rect")
-                        .attr("fill", isRelated ? "#B3D8FF" : linkColor({ source: { depth: n.depth - 1 } }));
+                        .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }));
                 });
 
             svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
                 .attr("stroke", lnk =>
                     related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
                         ? "#B3D8FF"
-                        : linkColor(lnk)
+                        : linkFillColor(lnk)
                 )
                 .attr("stroke-opacity", lnk =>
                     related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
@@ -386,13 +399,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         function unhighlightText(this: SVGTextElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
-                .attr("fill", "#fff")
+                .attr("fill", "#222")
                 .attr("font-weight", null);
             svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
                 .select("rect")
-                .attr("fill", n => linkColor({ source: { depth: n.depth - 1 } }));
+                .attr("fill", n => linkFillColor({ source: { depth: n.depth - 1 } }));
             svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
-                .attr("stroke", linkColor)
+                .attr("stroke", linkBorderColor)
                 .attr("stroke-opacity", 0.4);
         }
 
@@ -406,7 +419,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             })
             .attr("text-anchor", (d) => (d.children || d.data._children ? "end" : "start"))
             .text((d) => d.data.name)
-            .attr("fill", "#fff")
+            .attr("fill", "#222")
             .attr("font-size", (d) => getFontSize(d.depth))
             .on("mouseover", function (event, d) {
                 highlightText.call(this, event, d);
@@ -442,7 +455,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("y", bbox.y - padding / 2)
                     .attr("width", bbox.width + 2 * padding)
                     .attr("height", bbox.height + padding)
-                    .attr("fill", () => linkColor({ source: { depth: d.depth - 1 } }))
+                    .attr("fill", () => linkFillColor({ source: { depth: d.depth - 1 } }))
+                    .attr("stroke", () => linkBorderColor({ source: { depth: d.depth - 1 } }))
                     .attr("rx", radius)
                     .attr("ry", radius);
 
@@ -464,6 +478,28 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         <div style={{ width: "100%", display: "flex", justifyContent: "center", position: "relative" }}>
             <div className="sequence-tree h-max">
                 <h2>Sequence Tree</h2>
+                <div style={{ marginBottom: 12 }}>
+                    <label>
+                        Row index:&nbsp;
+                        <input
+                            type="number"
+                            min={0}
+                            max={kroneDecompData.length - 1}
+                            value={selectedIndex}
+                            onChange={e => {
+                                let idx = parseInt(e.target.value, 10);
+                                if (isNaN(idx)) idx = 0;
+                                if (idx < 0) idx = 0;
+                                if (idx >= kroneDecompData.length) idx = kroneDecompData.length - 1;
+                                setSelectedIndex(idx);
+                            }}
+                            style={{ width: 60 }}
+                        />
+                        <span style={{ marginLeft: 8, color: "#888" }}>
+                            (0 to {kroneDecompData.length - 1})
+                        </span>
+                    </label>
+                </div>
                 <svg ref={svgRef} />
                 {hoveredAnomaly && (
                     <div
