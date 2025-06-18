@@ -21,7 +21,7 @@ export type CustomHierarchyNode = HierarchyNode<TreeNode> & {
 
 type HierarchyTreeNode = HierarchyNode<TreeNode> & { _children?: HierarchyTreeNode[] };
 
-export type CsvRow = {
+type CsvRow = {
   entity?: string;
   action?: string;
   status?: string;

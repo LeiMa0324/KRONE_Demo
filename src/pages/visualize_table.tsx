@@ -15,14 +15,15 @@ type CsvRow = {
     anomaly_level: string;
 };
 
-type KroneDecompRow = {
+export type KroneDecompRow = {
     seq_id: string;
+    seq: string[];
     entity_nodes_for_logkeys: string[];
     action_nodes_for_logkeys: string[];
     status_nodes_for_logkeys: string[];
 }
 
-type KroneDetectRow = {
+export type KroneDetectRow = {
     seq_id: string;
     seq: string[];
     anomaly_seg: string[];
@@ -68,10 +69,17 @@ export const VisualizeTable = () => {
                     header: true,
                     skipEmptyLines: true,
                     complete: (results) => {
-                        const rows = results.data as KroneDecompRow[];
+                        const rows: KroneDecompRow[] = results.data.map((row: unknown) => {
+                            const r = row as Record<string, unknown>;
+                            return {
+                                seq_id: String(r.seq_id ?? ""),
+                                seq: parseArray(String(r.seq ?? "")),
+                                entity_nodes_for_logkeys: parseArray(String(r.entity_nodes_for_logkeys ?? "")),
+                                action_nodes_for_logkeys: parseArray(String(r.action_nodes_for_logkeys ?? "")),
+                                status_nodes_for_logkeys: parseArray(String(r.status_nodes_for_logkeys ?? "")),
+                            };
+                        });
                         setKroneDecompData(rows);
-                        // Process or store the Krone decomposition data if needed
-                        console.log("Krone Decomposition Data:", rows);
                     },
                 });
             });
@@ -82,10 +90,17 @@ export const VisualizeTable = () => {
                     header: true,
                     skipEmptyLines: true,
                     complete: (results) => {
-                        const rows = results.data as KroneDetectRow[];
+                        const rows: KroneDetectRow[] = results.data.map((row: unknown) => {
+                            const r = row as Record<string, unknown>;
+                            return {
+                                seq_id: String(r.seq_id ?? ""),
+                                seq: parseArray(String(r.seq ?? "")),
+                                anomaly_seg: parseArray(String(r.anomaly_seg ?? "")),
+                                anomaly_level: r.anomaly_level as "entity" | "action" | "status",
+                                anomaly_reason: String(r.anomaly_reason ?? ""),
+                            };
+                        });
                         setKroneDetectData(rows);
-                        // Process or store the Krone detection data if needed
-                        console.log("Krone Detection Data:", rows);
                     },
                 });
             });
@@ -101,6 +116,19 @@ export const VisualizeTable = () => {
         }
         setPrediction(row.prediction === "1" ? "Abnormal" : "Normal");
     };
+
+    const parseArray = (str: string): string[] => {
+        if (!str) return [];
+        try {
+            // Remove brackets and spaces, then split
+            return str
+                .replace(/[\[\]'"\s]/g, "")
+                .split(",")
+                .filter(Boolean);
+        } catch {
+            return [];
+    }
+}
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -266,7 +294,7 @@ export const VisualizeTable = () => {
                     </div>
                 )}
             </div>
-            <SequenceTree />
+            <SequenceTree kroneDecompData={kroneDecompData} kroneDetectData={kroneDetectData} />
             <Footer />
         </div>
     );
