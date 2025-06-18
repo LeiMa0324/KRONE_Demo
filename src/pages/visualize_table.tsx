@@ -120,15 +120,16 @@ export const VisualizeTable = () => {
     const parseArray = (str: string): string[] => {
         if (!str) return [];
         try {
-            // Remove brackets and spaces, then split
+            // Remove brackets and quotes, but keep spaces, then split
             return str
-                .replace(/[\[\]'"\s]/g, "")
+                .replace(/[\[\]'""]/g, "")
                 .split(",")
+                .map(s => s.trim())
                 .filter(Boolean);
         } catch {
             return [];
+        }
     }
-}
 
     return (
         <div className="flex flex-col min-h-screen">

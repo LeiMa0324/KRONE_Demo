@@ -41,7 +41,7 @@ type TreeNode = {
     _children?: TreeNode[];
     isAnomaly?: boolean;
     anomalyReason?: string;
-    indexPath?: number[]; // For unique identification
+    indexPath?: number[];
 };
 
 // Helper to add index path to each node
@@ -58,17 +58,13 @@ function addIndexPath(node: TreeNode, path: number[] = []): void {
 // Helper to toggle children by index path
 function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
     if (path.length === 0) return node;
-
     const [head, ...rest] = path;
     const childrenArr = node.children ?? node._children;
     if (!childrenArr || !childrenArr[head]) return node;
-
     const newChildren = [...childrenArr];
-
     if (rest.length === 0) {
         const target = newChildren[head];
         const isExpanded = !!target.children;
-
         newChildren[head] = {
             ...target,
             children: isExpanded ? undefined : target._children,
@@ -77,7 +73,6 @@ function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
     } else {
         newChildren[head] = toggleNodeByIndexPath(newChildren[head], rest);
     }
-
     return {
         ...node,
         children: node.children ? newChildren : undefined,
@@ -106,12 +101,65 @@ function toTreeNode(data: SequenceTreeData): TreeNode {
     };
 }
 
+// Annotate anomalies in the SequenceTreeData structure
+function annotateAnomalies(
+    tree: SequenceTreeData,
+    decomp: KroneDecompRow,
+    detect: KroneDetectRow[]
+) {
+    // Find all anomaly rows for this seq_id
+    const anomalies = detect.filter(d => d.seq_id === decomp.seq_id);
+
+    for (const anomaly of anomalies) {
+        const anomalySeg = anomaly.anomaly_seg;
+        const anomalyLevel = anomaly.anomaly_level;
+        const anomalyReason = anomaly.anomaly_reason;
+
+        if (!anomalySeg || anomalySeg.length === 0) continue;
+
+        if (anomalyLevel === "status") {
+            // Mark status nodes whose logTemplate is in anomaly_seg
+            for (const entity of tree.entities) {
+                for (const action of entity.actions) {
+                    for (const status of action.statuses) {
+                        if (anomalySeg.includes(status.logTemplate)) {
+                            status.isAnomaly = true;
+                            status.anomalyReason = anomalyReason;
+                        }
+                    }
+                }
+            }
+        } else if (anomalyLevel === "action") {
+            // Mark actions whose statuses contain any logTemplate in anomaly_seg
+            for (const entity of tree.entities) {
+                for (const action of entity.actions) {
+                    if (action.statuses.some(status => anomalySeg.includes(status.logTemplate))) {
+                        action.isAnomaly = true;
+                        action.anomalyReason = anomalyReason;
+                    }
+                }
+            }
+        } else if (anomalyLevel === "entity") {
+            // Mark entities whose actions/statuses contain any logTemplate in anomaly_seg
+            for (const entity of tree.entities) {
+                if (entity.actions.some(action =>
+                    action.statuses.some(status => anomalySeg.includes(status.logTemplate))
+                )) {
+                    entity.isAnomaly = true;
+                    entity.anomalyReason = anomalyReason;
+                }
+            }
+        }
+    }
+}
+
 export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [eventIdToLogTemplate, setEventIdToLogTemplate] = useState<Record<string, string>>({});
+    const [loading, setLoading] = useState(true);
 
     function buildSequenceTreeData(decomp: KroneDecompRow): SequenceTreeData {
         const entities: EntityNode[] = [];
@@ -197,13 +245,21 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     }, []);
 
     useEffect(() => {
-        if (kroneDecompData.length > 0 && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
-            const treeStruct = buildSequenceTreeData(kroneDecompData[selectedIndex]);
+        if (
+            kroneDecompData.length > 0 &&
+            selectedIndex >= 0 &&
+            selectedIndex < kroneDecompData.length
+        ) {
+            setLoading(true);
+            const decomp = kroneDecompData[selectedIndex];
+            const treeStruct = buildSequenceTreeData(decomp);
+            annotateAnomalies(treeStruct, decomp, kroneDetectData);
             const treeNode = toTreeNode(treeStruct);
             addIndexPath(treeNode);
             setTreeData(treeNode);
+            setLoading(false);
         }
-    }, [kroneDecompData, selectedIndex]);
+    }, [kroneDecompData, kroneDetectData, selectedIndex]);
 
     useEffect(() => {
         if (!treeData || !svgRef.current) return;
@@ -362,9 +418,9 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         // --- Use maxLogTemplateRight for SVG width if it's larger ---
         const rightmost = Math.max(
-            y1 + widestLabel + 500,
-            maxStatusLabelRight + 500,
-            maxLogTemplateRight + 500
+            y1 + widestLabel + 600,
+            maxStatusLabelRight + 600,
+            maxLogTemplateRight + 600
         );
         const minRootWidth = 400;
         const visibleNodes = root.descendants().length;
@@ -374,7 +430,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const svg = select(svgRef.current);
         svg.selectAll("*").remove();
         svg
-            .attr("width", adjustedWidth + 120) // add extra padding
+            .attr("width", adjustedWidth + 120)
             .attr("height", height)
             .attr("viewBox", `${-80} ${x0 - baseFont} ${adjustedWidth + 120} ${height}`)
             .attr("style", "max-width: 100%; height: auto; font: 10px;")
@@ -432,7 +488,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .each(function (n) {
                     const isRelated = related.has(n);
                     select(this)
-                        .attr("fill", isRelated ? "#003366" : "#222");
+                        .attr("fill", isRelated ? "#003366" : (n.data.isAnomaly ? "#c8102e" : "#222"));
                     select(this.parentNode as Element).select("rect")
                         .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }));
                 });
@@ -452,7 +508,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         function unhighlightText(this: SVGTextElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
-                .attr("fill", "#222")
+                .attr("fill", (d) => d.data.isAnomaly ? "#c8102e" : "#222")
                 .attr("font-weight", null);
             svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
                 .select("rect")
@@ -472,7 +528,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             })
             .attr("text-anchor", (d) => (d.children || d.data._children ? "end" : "start"))
             .text((d) => d.data.name)
-            .attr("fill", "#222")
+            .attr("fill", (d) => d.data.isAnomaly ? "#c8102e" : "#222")
             .attr("font-size", (d) => getFontSize(d.depth))
             .on("mouseover", function (event, d) {
                 highlightText.call(this, event, d);
@@ -555,61 +611,67 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 <h2>Sequence Tree</h2>
                 <div style={{ marginBottom: 12 }}>
                     <label>
-                        Row index:&nbsp;
-                        <input
-                            type="number"
-                            min={0}
-                            max={kroneDecompData.length - 1}
-                            value={selectedIndex}
+                        Sequence:&nbsp;
+                        <select
+                            value={kroneDecompData[selectedIndex]?.seq_id ?? ""}
                             onChange={e => {
-                                let idx = parseInt(e.target.value, 10);
-                                if (isNaN(idx)) idx = 0;
-                                if (idx < 0) idx = 0;
-                                if (idx >= kroneDecompData.length) idx = kroneDecompData.length - 1;
-                                setSelectedIndex(idx);
+                                const idx = kroneDecompData.findIndex(row => row.seq_id === e.target.value);
+                                if (idx !== -1) setSelectedIndex(idx);
                             }}
-                            style={{ width: 60 }}
-                        />
-                        <span style={{ marginLeft: 8, color: "#888" }}>
-                            (0 to {kroneDecompData.length - 1})
-                        </span>
+                            style={{ minWidth: 120 }}
+                        >
+                            {kroneDecompData.map((row, idx) => (
+                                <option key={row.seq_id} value={row.seq_id}>
+                                    {row.seq_id}
+                                </option>
+                            ))}
+                        </select>
                     </label>
                 </div>
-                <svg ref={svgRef} />
-                {hoveredAnomaly && (
-                    <div
-                        ref={el => {
-                            if (el) {
-                                const { innerWidth, innerHeight } = window;
-                                const rect = el.getBoundingClientRect();
-                                let left = hoveredAnomaly.x + 30;
-                                let top = hoveredAnomaly.y;
-                                if (left + rect.width > innerWidth) {
-                                    left = innerWidth - rect.width - 16;
-                                }
-                                if (top + rect.height > innerHeight) {
-                                    top = innerHeight - rect.height - 16;
-                                }
-                                el.style.left = `${left}px`;
-                                el.style.top = `${top}px`;
-                            }
-                        }}
-                        style={{
-                            position: "fixed",
-                            background: "white",
-                            color: "#222",
-                            border: "1px solid #ccc",
-                            borderRadius: 8,
-                            padding: "1rem",
-                            zIndex: 100,
-                            maxWidth: 400,
-                            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-                            pointerEvents: "none",
-                        }}
-                    >
-                        <strong>Anomaly Explanation</strong>
-                        <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
+                {loading ? (
+                    <div style={{ textAlign: "center", padding: "2rem" }}>
+                        <span className="animate-spin inline-block mr-2" style={{ fontSize: 24 }}>⏳</span>
+                        Loading sequence tree...
                     </div>
+                ) : (
+                    <>
+                        <svg ref={svgRef} />
+                        {hoveredAnomaly && (
+                            <div
+                                ref={el => {
+                                    if (el) {
+                                        const { innerWidth, innerHeight } = window;
+                                        const rect = el.getBoundingClientRect();
+                                        let left = hoveredAnomaly.x + 30;
+                                        let top = hoveredAnomaly.y;
+                                        if (left + rect.width > innerWidth) {
+                                            left = innerWidth - rect.width - 16;
+                                        }
+                                        if (top + rect.height > innerHeight) {
+                                            top = innerHeight - rect.height - 16;
+                                        }
+                                        el.style.left = `${left}px`;
+                                        el.style.top = `${top}px`;
+                                    }
+                                }}
+                                style={{
+                                    position: "fixed",
+                                    background: "white",
+                                    color: "#222",
+                                    border: "1px solid #ccc",
+                                    borderRadius: 8,
+                                    padding: "1rem",
+                                    zIndex: 100,
+                                    maxWidth: 400,
+                                    boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                                    pointerEvents: "none",
+                                }}
+                            >
+                                <strong>Anomaly Explanation</strong>
+                                <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
