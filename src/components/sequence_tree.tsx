@@ -40,7 +40,51 @@ type TreeNode = {
     _children?: TreeNode[];
     isAnomaly?: boolean;
     anomalyReason?: string;
+    indexPath?: number[]; // For unique identification
 };
+
+// Helper to add index path to each node
+function addIndexPath(node: TreeNode, path: number[] = []): void {
+    node.indexPath = path;
+    if (node.children) {
+        node.children.forEach((child, i) => addIndexPath(child, [...path, i]));
+    }
+    if (node._children) {
+        node._children.forEach((child, i) => addIndexPath(child, [...path, i]));
+    }
+}
+
+// Helper to toggle children by index path
+function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
+    if (path.length === 0) return node;
+
+    const [head, ...rest] = path;
+    const childrenArr = node.children ?? node._children;
+    if (!childrenArr || !childrenArr[head]) return node;
+
+    const newChildren = [...childrenArr];
+
+    if (rest.length === 0) {
+        const target = newChildren[head];
+        const isExpanded = !!target.children;
+
+        newChildren[head] = {
+            ...target,
+            children: isExpanded ? undefined : target._children,
+            _children: isExpanded ? target.children : undefined
+        };
+    } else {
+        newChildren[head] = toggleNodeByIndexPath(newChildren[head], rest);
+    }
+
+    // Here's the fix: Determine whether this node should store those children in `children` or `_children`
+    return {
+        ...node,
+        children: node.children ? newChildren : undefined,
+        _children: node._children ? newChildren : undefined
+    };
+}
+
 
 function toTreeNode(data: SequenceTreeData): TreeNode {
     return {
@@ -63,7 +107,7 @@ function toTreeNode(data: SequenceTreeData): TreeNode {
     };
 }
 
-export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) => {
+export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
@@ -118,17 +162,33 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) =
         return { entities };
     }
 
+    // Toggle children on click (updates React state tree, not D3 hierarchy)
+    function handleNodeClick(d: HierarchyNode<TreeNode>) {
+        const indexPath = d.data.indexPath;
+        if (!indexPath) return;
+        setTreeData(prev => {
+            if (!prev) return null;
+            const updated = toggleNodeByIndexPath(prev, indexPath);
+            addIndexPath(updated);  
+            return updated;
+        });
+    }
+
     useEffect(() => {
         if (kroneDecompData.length > 0) {
             const treeStruct = buildSequenceTreeData(kroneDecompData[0]);
-            setTreeData(toTreeNode(treeStruct));
+            const treeNode = toTreeNode(treeStruct);
+            addIndexPath(treeNode);
+            setTreeData(treeNode);
         }
     }, [kroneDecompData]);
 
     useEffect(() => {
         if (!treeData || !svgRef.current) return;
+        addIndexPath(treeData);
 
-        const root = hierarchy<TreeNode>(treeData, d => d.children);
+        // Use children or _children for expansion state
+        const root = hierarchy<TreeNode>(treeData, d => d.children); 
 
         // Responsive font and spacing
         const baseFont = 28;
@@ -229,7 +289,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) =
             const bbox = (tempText.node() as SVGTextElement).getBBox();
             let labelWidth = bbox.width + getPadding(fontSize) * 2;
 
-            if (!node.children && !node._children && node.data.isAnomaly) {
+            if (!node.children && !node.data._children && node.data.isAnomaly) {
                 labelWidth += fontSize * 1.2;
             }
 
@@ -263,11 +323,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) =
             .selectAll("path")
             .data(root.links())
             .join("path")
-            .attr("d", (d: any) => {
+            .attr("d", (d: { source: HierarchyNode<TreeNode>; target: HierarchyNode<TreeNode> }) => {
                 const gap = 18;
-                const sourceStubY = d.source.y + gap;
+                const sourceY = typeof d.source.y === "number" ? d.source.y : 0;
+                const sourceStubY = sourceY + gap;
                 return [
-                    `M${d.source.y},${d.source.x}`,
+                    `M${sourceY},${d.source.x}`,
                     `H${sourceStubY}`,
                     `V${d.target.x}`,
                     `H${d.target.y}`
@@ -310,7 +371,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) =
                         .attr("fill", isRelated ? "#B3D8FF" : linkColor({ source: { depth: n.depth - 1 } }));
                 });
 
-            svg.selectAll<SVGPathElement, any>("path")
+            svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
                 .attr("stroke", lnk =>
                     related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
                         ? "#B3D8FF"
@@ -323,14 +384,14 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) =
                 );
         }
 
-        function unhighlightText(this: SVGTextElement, _event: MouseEvent, _d: HierarchyNode<TreeNode>) {
+        function unhighlightText(this: SVGTextElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
                 .attr("fill", "#fff")
                 .attr("font-weight", null);
             svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
                 .select("rect")
                 .attr("fill", n => linkColor({ source: { depth: n.depth - 1 } }));
-            svg.selectAll<SVGPathElement, any>("path")
+            svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
                 .attr("stroke", linkColor)
                 .attr("stroke-opacity", 0.4);
         }
@@ -361,9 +422,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData }) =
                     });
                 }
             })
-            .on("mouseout", function (event, d) {
-                unhighlightText.call(this, event, d);
+            .on("mouseout", function () {
+                unhighlightText.call(this);
                 setHoveredAnomaly(null);
+            })
+            .on("click", function (event, d) {
+                event.stopPropagation();
+                handleNodeClick(d);
             })
             .each(function (this: SVGTextElement, d) {
                 const fontSize = getFontSize(d.depth);
