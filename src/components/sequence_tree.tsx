@@ -3,6 +3,7 @@ import type { KroneDecompRow, KroneDetectRow } from '@/pages/visualize_table';
 import { hierarchy, tree } from 'd3-hierarchy';
 import type { HierarchyNode } from 'd3-hierarchy';
 import { select } from 'd3-selection';
+import Papa from 'papaparse';
 
 type SequenceTreeProps = {
     kroneDecompData: KroneDecompRow[];
@@ -77,14 +78,12 @@ function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
         newChildren[head] = toggleNodeByIndexPath(newChildren[head], rest);
     }
 
-    // Here's the fix: Determine whether this node should store those children in `children` or `_children`
     return {
         ...node,
         children: node.children ? newChildren : undefined,
         _children: node._children ? newChildren : undefined
     };
 }
-
 
 function toTreeNode(data: SequenceTreeData): TreeNode {
     return {
@@ -112,6 +111,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [eventIdToLogTemplate, setEventIdToLogTemplate] = useState<Record<string, string>>({});
 
     function buildSequenceTreeData(decomp: KroneDecompRow): SequenceTreeData {
         const entities: EntityNode[] = [];
@@ -174,6 +174,27 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             return updated;
         });
     }
+
+    // Load event_id -> log_template mapping
+    useEffect(() => {
+        fetch("/structured_processes.csv")
+            .then(res => res.text())
+            .then(csvText => {
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const mapping: Record<string, string> = {};
+                        for (const row of results.data as any[]) {
+                            if (row.event_id && row.log_template) {
+                                mapping[String(row.event_id)] = String(row.log_template);
+                            }
+                        }
+                        setEventIdToLogTemplate(mapping);
+                    }
+                });
+            });
+    }, []);
 
     useEffect(() => {
         if (kroneDecompData.length > 0 && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
@@ -288,6 +309,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         let maxY = 0;
         let widestLabel = 0;
+        let maxStatusLabelRight = 0;
+        let maxLogTemplateRight = 0;
         const tempSvg2 = select(document.body)
             .append("svg")
             .attr("style", "position: absolute; visibility: hidden;")
@@ -308,22 +331,52 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
             if (labelWidth > widestLabel) widestLabel = labelWidth;
             if (typeof node.y === "number" && node.y > maxY) maxY = node.y;
+
+            // For left-aligning log template text for status nodes
+            if (node.depth === 3) {
+                const rightEdge = bbox.x + bbox.width + getPadding(fontSize);
+                if (rightEdge > maxStatusLabelRight) maxStatusLabelRight = rightEdge;
+
+                // --- Measure log template text width and update maxLogTemplateRight ---
+                let eventId = "";
+                const match = /\(([^)]+)\)$/.exec(node.data.name);
+                if (match) {
+                    eventId = match[1];
+                }
+                const logTemplate = eventIdToLogTemplate[eventId] || "";
+                if (logTemplate) {
+                    const tempLogText = tempSvg2.append("text")
+                        .attr("font-size", Math.max(fontSize * 0.8, 14))
+                        .attr("font-family", font)
+                        .text(logTemplate);
+                    const logBBox = (tempLogText.node() as SVGTextElement).getBBox();
+                    const logRight = rightEdge + getPadding(fontSize) * 2 + logBBox.width;
+                    if (logRight > maxLogTemplateRight) maxLogTemplateRight = logRight;
+                    tempLogText.remove();
+                }
+            }
+
             tempText.remove();
         });
         tempSvg2.remove();
 
-        const width = maxY + widestLabel + 60;
+        // --- Use maxLogTemplateRight for SVG width if it's larger ---
+        const rightmost = Math.max(
+            y1 + widestLabel + 500,
+            maxStatusLabelRight + 500,
+            maxLogTemplateRight + 500
+        );
         const minRootWidth = 400;
         const visibleNodes = root.descendants().length;
-        const adjustedWidth = visibleNodes === 1 ? minRootWidth : width;
+        const adjustedWidth = visibleNodes === 1 ? minRootWidth : rightmost;
         const height = x1 - x0 + baseFont * 2;
 
         const svg = select(svgRef.current);
         svg.selectAll("*").remove();
         svg
-            .attr("width", adjustedWidth + 80)
+            .attr("width", adjustedWidth + 120) // add extra padding
             .attr("height", height)
-            .attr("viewBox", `${-80} ${x0 - baseFont} ${width + 80} ${height}`)
+            .attr("viewBox", `${-80} ${x0 - baseFont} ${adjustedWidth + 120} ${height}`)
             .attr("style", "max-width: 100%; height: auto; font: 10px;")
             .attr("font-family", font);
 
@@ -388,7 +441,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("stroke", lnk =>
                     related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
                         ? "#B3D8FF"
-                        : linkFillColor(lnk)
+                        : linkBorderColor(lnk)
                 )
                 .attr("stroke-opacity", lnk =>
                     related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
@@ -460,6 +513,28 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("rx", radius)
                     .attr("ry", radius);
 
+                // Left-align log template text for all status nodes
+                if (d.depth === 3) {
+                    let eventId = "";
+                    const match = /\(([^)]+)\)$/.exec(d.data.name);
+                    if (match) {
+                        eventId = match[1];
+                    }
+                    const logTemplate = eventIdToLogTemplate[eventId] || "";
+                    if (logTemplate) {
+                        nodeGroup
+                            .append("text")
+                            .attr("class", "log-template-text")
+                            .attr("x", maxStatusLabelRight + getPadding(fontSize) * 2)
+                            .attr("y", bbox.y + bbox.height / 2 + 2)
+                            .attr("alignment-baseline", "middle")
+                            .attr("font-size", Math.max(fontSize * 0.8, 14))
+                            .attr("fill", "#444")
+                            .attr("text-anchor", "start")
+                            .text(logTemplate);
+                    }
+                }
+
                 if (!d.children && !d.data._children && d.data.isAnomaly) {
                     nodeGroup
                         .append("text")
@@ -472,7 +547,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .text("⚠️");
                 }
             });
-    }, [treeData]);
+    }, [treeData, eventIdToLogTemplate]);
 
     return (
         <div style={{ width: "100%", display: "flex", justifyContent: "center", position: "relative" }}>
