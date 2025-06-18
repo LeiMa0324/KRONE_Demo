@@ -22,12 +22,12 @@ export type CustomHierarchyNode = HierarchyNode<TreeNode> & {
 type HierarchyTreeNode = HierarchyNode<TreeNode> & { _children?: HierarchyTreeNode[] };
 
 type CsvRow = {
-  entity?: string;
-  action?: string;
-  status?: string;
-  // entity_node_id?: string;
-  // action_node_id?: string;
-  // status_node_id?: string;
+  // entity?: string;
+  // action?: string;
+  // status?: string;
+  entity_node_id?: string;
+  action_node_id?: string;
+  status_node_id?: string;
   is_anomaly?: string;
   is_anomaly_reason?: string;
   [key: string]: string | undefined;
@@ -38,12 +38,12 @@ function buildTree(rows: CsvRow[]): TreeNode {
   const entityMap: Record<string, TreeNode> = {};
 
   rows.forEach((row) => {
-    const entity = row.entity || "Unknown";
-    const action = row.action || "Unknown";
-    const status = row.status || "Unknown";
-    // const entity = row.entity_node_id || "Unknown";
-    // const action = row.action_node_id || "Unknown";
-    // const status = row.status_node_id || "Unknown";
+    // const entity = row.entity || "Unknown";
+    // const action = row.action || "Unknown";
+    // const status = row.status || "Unknown";
+    const entity = row.entity_node_id || "Unknown";
+    const action = row.action_node_id || "Unknown";
+    const status = row.status_node_id || "Unknown";
     const is_anomaly = row.is_anomaly === "True";
     const anomaly_explanation = row.is_anomaly_reason || "";
 
@@ -113,7 +113,7 @@ export const VisualizeTree: React.FC = () => {
   }
 
   useEffect(() => {
-    csv("/structured_processes.csv").then((rows) => {
+    csv("/Krone_Tree.csv").then((rows) => {
       setTreeData(buildTree(rows));
     });
   }, []);
