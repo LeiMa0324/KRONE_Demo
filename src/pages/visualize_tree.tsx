@@ -301,7 +301,6 @@ export const VisualizeTree: React.FC = () => {
       svg
         .append("g")
         .attr("fill", "none")
-        .attr("stroke-opacity", 0.4)
         .attr("stroke-width", 1.5)
         .selectAll("path")
         .data(root.links() as d3.HierarchyPointLink<TreeNode>[])
@@ -341,43 +340,51 @@ export const VisualizeTree: React.FC = () => {
         render();
       }
 
-      // collected related nodes that need to be highlighted
-      function collectRelatedNodes(d: HierarchyNode<TreeNode>) {
-        const related = new Set<HierarchyNode<TreeNode>>();
-        related.add(d);
-        let ancestor = d.parent;
-        while (ancestor) {
-          related.add(ancestor);
-          ancestor = ancestor.parent;
-        }
-        d.descendants().forEach(desc => related.add(desc));
-        return related;
-      }
-
       // highlight nodes and edges for hovered node
       function highlightText(this: SVGTextElement, _event: React.MouseEvent<SVGTextElement, MouseEvent>, d: HierarchyNode<TreeNode>) {
-        const related = collectRelatedNodes(d);
+        const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+        let current: HierarchyNode<TreeNode> | null = d;
+        while (current) {
+          ancestorNodes.add(current);
+          current = current.parent;
+        }
+        const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+        function collectDescendants(node: HierarchyNode<TreeNode>) {
+          descendantNodes.add(node);
+          if (node.children) node.children.forEach(collectDescendants);
+          if ((node as any)._children) (node as any)._children.forEach(collectDescendants);
+        }
+        collectDescendants(d);
 
         svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
           .each(function(n) {
-            const isRelated = related.has(n);
+            const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
             select(this)
-              .attr("fill", isRelated ? "#003366" : "#fff"); // dark blue
+              .attr("fill", isRelated ? "#003366" : "#fff");
             select(this.parentNode as Element).select("rect")
-              .attr("fill", isRelated ? "#B3D8FF" : linkColor({ source: { depth: n.depth - 1 } })); // light blue
+              .attr("fill", isRelated ? "#B3D8FF" : linkColor({ source: { depth: n.depth - 1 } }))
+              .attr("stroke-width", isRelated ? 5 : 1.5);
           });
 
         svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
-          .attr("stroke", lnk =>
-            related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
-              ? "#B3D8FF"
-              : linkColor(lnk)
-          )
-          .attr("stroke-opacity", lnk =>
-            related.has(lnk.source as HierarchyNode<TreeNode>) || related.has(lnk.target as HierarchyNode<TreeNode>)
-              ? 1
-              : 0.4
-          );
+          .attr("stroke", lnk => {
+            const isAncestorPath =
+              ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            const isDescendantPath =
+              descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkColor(lnk);
+          })
+          .attr("stroke-width", lnk => {
+            const isAncestorPath =
+              ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            const isDescendantPath =
+              descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
+          });
       }
 
       // remove highlight 
@@ -390,7 +397,7 @@ export const VisualizeTree: React.FC = () => {
           .attr("fill", n => linkColor({ source: { depth: n.depth - 1 } }));
         svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
           .attr("stroke", linkColor)
-          .attr("stroke-opacity", 0.4);
+          .attr("stroke-width", 1.5);
       }
 
       // draw node labels and backgrounds
