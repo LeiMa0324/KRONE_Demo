@@ -7,8 +7,8 @@ import { Switch } from "@/components/ui/switch";
 
 // TODO fix status toggle (toggle action + status, expand entity, then untoggle status)
 // TODO center tree
-// TODO add log key for status nodes from 
 // TODO when hovering on a node, then collapse and it moves, hover box doesn't clear
+// TODO root node hover
 type TreeNode = {
   name: string;
   children?: TreeNode[];
@@ -16,6 +16,7 @@ type TreeNode = {
   is_anomaly?: boolean;
   anomaly_explanation?: string;
   log_template?: string;
+  event_id?: string;
 };
 
 type CustomHierarchyNode = HierarchyNode<TreeNode> & {
@@ -31,6 +32,7 @@ type CsvRow = {
   is_anomaly?: string;
   is_anomaly_reason?: string;
   log_template?: string;
+  event_id?: string; 
   [key: string]: string | undefined;
 };
 
@@ -46,6 +48,7 @@ function buildTree(rows: CsvRow[]): TreeNode {
     const is_anomaly = row.is_anomaly === "True";
     const anomaly_explanation = row.is_anomaly_reason || "";
     const log_template = row.log_template || "";
+    const event_id = row.event_id || "";
 
     // entity node
     if (!entityMap[entity]) {
@@ -68,6 +71,7 @@ function buildTree(rows: CsvRow[]): TreeNode {
         is_anomaly,
         anomaly_explanation,
         log_template,
+        event_id, 
       });
     }
   });
@@ -486,6 +490,7 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
     return {
       title: `Status: ${node.data.name}`,
       content: `<div>
+        <div style="margin-bottom: 2px;"><b>Log Key:</b> ${node.data.event_id || "N/A"}</div>
         <div style="margin-bottom: 2px;"><b>Log Template:</b> ${node.data.log_template || "N/A"}</div>
         <div><b>Anomaly explanation:</b> ${
           node.data.is_anomaly
