@@ -8,7 +8,6 @@ import { Switch } from "@/components/ui/switch";
 // TODO fix status toggle (toggle action + status, expand entity, then untoggle status)
 // TODO center tree
 // TODO when hovering on a node, then collapse and it moves, hover box doesn't clear
-// TODO root node hover
 type TreeNode = {
   name: string;
   children?: TreeNode[];
@@ -459,6 +458,28 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
     return {
       title: "",
       content: `<div style="color:#888; text-align:center; padding:16px 0;">Hover on a node to see more details.</div>`
+    };
+  }
+  if (node.depth === 0) {
+    const entities = node.children || (node as unknown as HierarchyTreeNode)._children || [];
+    const numEntities = entities.length;
+    let numActions = 0;
+    let numStatuses = 0;
+    entities.forEach(entity => {
+      const actions = (entity as HierarchyTreeNode).children || (entity as HierarchyTreeNode)._children || [];
+      numActions += actions.length;
+      actions.forEach(action => {
+        const statuses = (action as HierarchyTreeNode).children || (action as HierarchyTreeNode)._children || [];
+        numStatuses += statuses.length;
+      });
+    });
+    return {
+      title: "Root",
+      content: `<div>
+        <div style="margin-bottom:2px;"><b># of Entities:</b> ${numEntities}</div>
+        <div style="margin-bottom:2px;"><b># of Actions:</b> ${numActions}</div>
+        <div><b># of Statuses:</b> ${numStatuses}</div>
+      </div>`
     };
   }
   if (node.depth === 1) {
