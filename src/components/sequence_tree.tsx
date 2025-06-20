@@ -319,7 +319,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         setCollapseAtDepth(cloned, 2, actionsCollapsed);
         addIndexPath(cloned);
         setTreeData(cloned);
-    }, [entitiesCollapsed, actionsCollapsed, treeData]);
+    }, [entitiesCollapsed, actionsCollapsed]);
 
     useEffect(() => {
         if (!treeData || !svgRef.current) return;
