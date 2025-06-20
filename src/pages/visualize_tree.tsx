@@ -4,6 +4,7 @@ import type { HierarchyNode } from "d3-hierarchy";
 import { select } from "d3-selection";
 import { csv } from "d3-fetch";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 
 // TODO fix status toggle (toggle action + status, expand entity, then untoggle status)
 // TODO center tree
@@ -90,6 +91,29 @@ export const VisualizeTree: React.FC = () => {
   // track hovered node for info panel
   const [hoveredNode, setHoveredNode] = useState<HierarchyNode<TreeNode> | null>(null);
 
+  // search statue
+  const [searchValue, setSearchValue] = useState("");
+  const [matchedNodeId, setMatchedNodeId] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState(""); // <-- new: controlled input
+
+  // matched node for search
+  const [matchedNodeObj, setMatchedNodeObj] = useState<HierarchyNode<TreeNode> | null>(null);
+
+  function handleSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSearchValue(searchInput.trim());
+    if (!searchInput.trim()) {
+      setHoveredNode(null);
+  }
+}
+
+  function handleClearSearch() {
+    setSearchInput("");
+    setSearchValue("");
+    setMatchedNodeId(null);
+    setMatchedNodeObj(null);
+  }
+
   function collapseAtDepth(node: TreeNode, targetDepth: number, currentDepth = 0) {
     if (!node.children) return;
     if (currentDepth === targetDepth) {
@@ -124,6 +148,48 @@ export const VisualizeTree: React.FC = () => {
       setTreeData(buildTree(rows));
     });
   }, []);
+
+  useEffect(() => {
+    if (!treeData || !searchValue) {
+      setMatchedNodeId(null);
+      return;
+    }
+    function findStatusNode(node: TreeNode): string | null {
+      if (node.event_id && node.event_id === searchValue) {
+        return node.event_id;
+      }
+      if (node.children) {
+        for (const child of node.children) {
+          const found = findStatusNode(child);
+          if (found) return found;
+        }
+      }
+      if (node._children) {
+        for (const child of node._children) {
+          const found = findStatusNode(child);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+    const foundId = findStatusNode(treeData);
+    setMatchedNodeId(foundId);
+  }, [searchValue, treeData]);
+
+  useEffect(() => {
+    if (!treeData || !matchedNodeId) {
+      setMatchedNodeObj(null);
+      return;
+    }
+    const root = hierarchy<TreeNode>(treeData, d => d.children || d._children);
+    let found: HierarchyNode<TreeNode> | null = null;
+    root.each(node => {
+      if (node.depth === 3 && node.data.event_id === matchedNodeId) {
+        found = node;
+      }
+    });
+    setMatchedNodeObj(found);
+  }, [treeData, matchedNodeId]);
 
   // tree visualization
   useEffect(() => {
@@ -417,12 +483,16 @@ export const VisualizeTree: React.FC = () => {
           handleNodeClick(_event, d as CustomHierarchyNode);
         })
         .on("mouseover", function (event, d) {
-          highlightText.call(this, event, d);
-          setHoveredNode(d);
+          if (!searchValue) {
+            highlightText.call(this, event, d);
+            setHoveredNode(d);
+          }
         })
         .on("mouseout", function (event, d) {
-          unhighlightText.call(this, event, d);
-          setHoveredNode(null);
+          if (!searchValue) {
+            unhighlightText.call(this, event, d);
+            setHoveredNode(null);
+          }
         })
         .each(function (this: SVGTextElement, d) {
           // draw background rectangle behind text
@@ -454,10 +524,65 @@ export const VisualizeTree: React.FC = () => {
               .text("⚠️");
           }
         });
+
+      if (matchedNodeId) {
+        // find the matched node
+        const matched = root.descendants().find(
+          d => d.depth === 3 && d.data.event_id === matchedNodeId
+        );
+        if (matched) {
+          // collect ancestors and descendants
+          const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+          let current: HierarchyNode<TreeNode> | null = matched;
+          while (current) {
+            ancestorNodes.add(current);
+            current = current.parent;
+          }
+          const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+          function collectDescendants(node: HierarchyNode<TreeNode>) {
+            descendantNodes.add(node);
+            if (node.children) node.children.forEach(collectDescendants);
+            if ((node as any)._children) (node as any)._children.forEach(collectDescendants);
+          }
+          collectDescendants(matched);
+
+          // highlight text and backgrounds
+          svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
+            .each(function(n) {
+              const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+              select(this)
+                .attr("fill", isRelated ? "#003366" : "#fff");
+              select(this.parentNode as Element).select("rect")
+                .attr("fill", isRelated ? "#B3D8FF" : linkColor({ source: { depth: n.depth - 1 } }))
+                .attr("stroke-width", isRelated ? 5 : 1.5);
+            });
+
+          // highlight links
+          svg.selectAll<SVGPathElement, d3.HierarchyPointLink<TreeNode>>("path")
+            .attr("stroke", lnk => {
+              const isAncestorPath =
+                ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+              const isDescendantPath =
+                descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+              return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkColor(lnk);
+            })
+            .attr("stroke-width", lnk => {
+              const isAncestorPath =
+                ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+              const isDescendantPath =
+                descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+              return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
+            });
+        }
+      }
     };
 
     render();
-  }, [treeData, collapseEntities, collapseActions, collapseStatuses]);
+  }, [treeData, collapseEntities, collapseActions, collapseStatuses, matchedNodeId]);
 
 // retrieve info for the hovered node
 function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
@@ -556,7 +681,8 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
           borderRadius: 8,
           boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           zIndex: 10,
-          minWidth: 180,
+          minWidth: 140,
+          width: 270,
         }}
       >
         {/* Toggles */}
@@ -572,13 +698,56 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
           <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
           Collapse Statuses
         </label>
+        {/* --- Search bar --- */}
+        <div style={{ marginTop: "1rem" }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: 4 }}>
+            <input
+              type="text"
+              placeholder="Search Log Key"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "6px 10px",
+                fontSize: 16,
+                borderRadius: 4,
+                border: "1px solid #ccc",
+                outline: "none",
+                flex: 1,
+                height: 38,
+              }}
+              onKeyDown={e => {
+                if (e.key === "Escape") handleClearSearch();
+              }}
+            />
+            <Button
+              type="submit"
+            >
+              Enter
+            </Button>
+            {searchValue && (
+              <Button
+                type="button"
+                onClick={handleClearSearch}
+        
+              >
+                Clear
+              </Button>
+            )}
+          </form>
+          {searchValue && !matchedNodeId && (
+            <div style={{ color: "#c00", fontSize: 13, marginTop: 2 }}>
+              No status node found.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Center: SVG scrollable wrapper */}
       <div
         style={{
           flex: 1,
-          marginLeft: 240,
+          marginLeft: 300,
           marginRight: 450,
           height: "100%",
           overflowX: "auto",
@@ -608,9 +777,17 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
           boxSizing: "border-box",
         }}
       >
-        {getNodeInfo(hoveredNode).title && (
+        {getNodeInfo(
+          searchValue && matchedNodeObj
+            ? matchedNodeObj
+            : hoveredNode
+        ).title && (
           <div style={{ fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
-            {getNodeInfo(hoveredNode).title}
+            {getNodeInfo(
+              searchValue && matchedNodeObj
+                ? matchedNodeObj
+                : hoveredNode
+            ).title}
           </div>
         )}
         <div
@@ -628,7 +805,13 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
             boxSizing: "border-box",
             textAlign: "left",
           }}
-          dangerouslySetInnerHTML={{ __html: getNodeInfo(hoveredNode).content }}
+          dangerouslySetInnerHTML={{
+            __html: getNodeInfo(
+              searchValue && matchedNodeObj
+                ? matchedNodeObj
+                : hoveredNode
+            ).content
+          }}
         />
       </div>
     </div>
