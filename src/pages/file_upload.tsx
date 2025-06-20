@@ -39,6 +39,7 @@ export const FileUpload = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedDataset, setSelectedDataset] = useState<string>("");
 
+    // Parse the CSV file and update the state
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];

@@ -4,6 +4,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
 import { Footer } from "@/components/footer";
+import { SequenceTree } from "@/components/sequence_tree";
 
 type CsvRow = {
     id: string;
@@ -14,8 +15,26 @@ type CsvRow = {
     anomaly_level: string;
 };
 
+export type KroneDecompRow = {
+    seq_id: string;
+    seq: string[];
+    entity_nodes_for_logkeys: string[];
+    action_nodes_for_logkeys: string[];
+    status_nodes_for_logkeys: string[];
+}
+
+export type KroneDetectRow = {
+    seq_id: string;
+    seq: string[];
+    anomaly_seg: string[];
+    anomaly_level: "entity" | "action" | "status";
+    anomaly_reason: string;
+}
+
 export const VisualizeTable = () => {
     const [data, setData] = useState<CsvRow[]>([]);
+    const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
+    const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [dropdownOptions, setDropdownOptions] = useState<CsvRow[]>([]);
     const [selectedOption, setSelectedOption] = useState<string>("");
@@ -43,6 +62,48 @@ export const VisualizeTable = () => {
                     },
                 });
             });
+        fetch("/krone_decompose_res.csv")
+            .then((response) => response.text())
+            .then((csvText) => {
+                Papa.parse<KroneDecompRow>(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const rows: KroneDecompRow[] = results.data.map((row: unknown) => {
+                            const r = row as Record<string, unknown>;
+                            return {
+                                seq_id: String(r.seq_id ?? ""),
+                                seq: parseArray(String(r.seq ?? "")),
+                                entity_nodes_for_logkeys: parseArray(String(r.entity_nodes_for_logkeys ?? "")),
+                                action_nodes_for_logkeys: parseArray(String(r.action_nodes_for_logkeys ?? "")),
+                                status_nodes_for_logkeys: parseArray(String(r.status_nodes_for_logkeys ?? "")),
+                            };
+                        });
+                        setKroneDecompData(rows);
+                    },
+                });
+            });
+        fetch("/krone_detection_res.csv")
+            .then((response) => response.text())
+            .then((csvText) => {
+                Papa.parse<KroneDetectRow>(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        const rows: KroneDetectRow[] = results.data.map((row: unknown) => {
+                            const r = row as Record<string, unknown>;
+                            return {
+                                seq_id: String(r.seq_id ?? ""),
+                                seq: parseArray(String(r.seq ?? "")),
+                                anomaly_seg: parseArray(String(r.anomaly_seg ?? "")),
+                                anomaly_level: r.anomaly_level as "entity" | "action" | "status",
+                                anomaly_reason: String(r.anomaly_reason ?? ""),
+                            };
+                        });
+                        setKroneDetectData(rows);
+                    },
+                });
+            });
     }, []);
 
     const handleRunOption = () => {
@@ -55,6 +116,20 @@ export const VisualizeTable = () => {
         }
         setPrediction(row.prediction === "1" ? "Abnormal" : "Normal");
     };
+
+    const parseArray = (str: string): string[] => {
+        if (!str) return [];
+        try {
+            // Remove brackets and quotes, but keep spaces, then split
+            return str
+                .replace(/[\[\]'""]/g, "")
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean);
+        } catch {
+            return [];
+        }
+    }
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -220,6 +295,7 @@ export const VisualizeTable = () => {
                     </div>
                 )}
             </div>
+            <SequenceTree kroneDecompData={kroneDecompData} kroneDetectData={kroneDetectData} />
             <Footer />
         </div>
     );

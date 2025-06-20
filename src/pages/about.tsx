@@ -40,6 +40,7 @@ function CarouselSpacing() {
     return (
         <Carousel className="w-full max-w-5xl justify-self-center bg-WPIRed">
             <CarouselContent className="-ml-2">
+                {/* Create carousel items including each person's name, description, and image */}
                 {names.map((name, index) => (
                     <CarouselItem
                         key={index}
