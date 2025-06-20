@@ -15,6 +15,7 @@ type StatusNode = {
     logTemplate: string;
     isAnomaly: boolean;
     anomalyReason?: string;
+    lineNumber?: number;
 };
 
 type ActionNode = {
@@ -42,6 +43,7 @@ type TreeNode = {
     isAnomaly?: boolean;
     anomalyReason?: string;
     indexPath?: number[];
+    lineNumber?: number;
 };
 
 // Helper to add index path to each node
@@ -90,7 +92,8 @@ function toTreeNode(data: SequenceTreeData): TreeNode {
                 children: action.statuses.map(status => ({
                     name: `${status.name} (${status.logTemplate})`,
                     isAnomaly: status.isAnomaly,
-                    anomalyReason: status.anomalyReason
+                    anomalyReason: status.anomalyReason,
+                    lineNumber: status.lineNumber
                 })),
                 isAnomaly: action.isAnomaly,
                 anomalyReason: action.anomalyReason
@@ -99,6 +102,30 @@ function toTreeNode(data: SequenceTreeData): TreeNode {
             anomalyReason: entity.anomalyReason
         }))
     };
+}
+
+// Recursively mark parent and children as anomalies
+function markParentAndChildrenAnomaly(
+    node: any,
+    anomalyReason: string
+) {
+    node.isAnomaly = true;
+    node.anomalyReason = anomalyReason;
+    if (node.actions) {
+        for (const action of node.actions) {
+            markParentAndChildrenAnomaly(action, anomalyReason);
+        }
+    }
+    if (node.statuses) {
+        for (const status of node.statuses) {
+            markParentAndChildrenAnomaly(status, anomalyReason);
+        }
+    }
+    if (node.children) {
+        for (const child of node.children) {
+            markParentAndChildrenAnomaly(child, anomalyReason);
+        }
+    }
 }
 
 // Annotate anomalies in the SequenceTreeData structure
@@ -118,38 +145,98 @@ function annotateAnomalies(
         if (!anomalySeg || anomalySeg.length === 0) continue;
 
         if (anomalyLevel === "status") {
-            // Mark status nodes whose logTemplate is in anomaly_seg
             for (const entity of tree.entities) {
                 for (const action of entity.actions) {
                     for (const status of action.statuses) {
                         if (anomalySeg.includes(status.logTemplate)) {
                             status.isAnomaly = true;
                             status.anomalyReason = anomalyReason;
+                            action.isAnomaly = true;
+                            action.anomalyReason = anomalyReason;
+                            entity.isAnomaly = true;
+                            entity.anomalyReason = anomalyReason;
                         }
                     }
                 }
             }
-        } else if (anomalyLevel === "action") {
-            // Mark actions whose statuses contain any logTemplate in anomaly_seg
+        } else if (anomalyLevel === "action" || anomalyLevel === "entity") {
+            // Flatten all status logTemplates in order
+            const allStatuses: StatusNode[] = [];
             for (const entity of tree.entities) {
                 for (const action of entity.actions) {
-                    if (action.statuses.some(status => anomalySeg.includes(status.logTemplate))) {
-                        action.isAnomaly = true;
-                        action.anomalyReason = anomalyReason;
+                    for (const status of action.statuses) {
+                        allStatuses.push(status);
                     }
                 }
             }
-        } else if (anomalyLevel === "entity") {
-            // Mark entities whose actions/statuses contain any logTemplate in anomaly_seg
+            // Sliding window to match contiguous subsequence
+            for (let i = 0; i <= allStatuses.length - anomalySeg.length; i++) {
+                let match = true;
+                for (let j = 0; j < anomalySeg.length; j++) {
+                    if (allStatuses[i + j].logTemplate !== anomalySeg[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    for (let j = 0; j < anomalySeg.length; j++) {
+                        const status = allStatuses[i + j];
+                        status.isAnomaly = true;
+                        status.anomalyReason = anomalyReason;
+                    }
+                }
+            }
+            // After marking statuses, mark parent actions/entities if any of their children are anomalies
             for (const entity of tree.entities) {
-                if (entity.actions.some(action =>
-                    action.statuses.some(status => anomalySeg.includes(status.logTemplate))
-                )) {
+                let entityHasAnomaly = false;
+                for (const action of entity.actions) {
+                    let actionHasAnomaly = false;
+                    for (const status of action.statuses) {
+                        if (status.isAnomaly) {
+                            actionHasAnomaly = true;
+                        }
+                    }
+                    if (actionHasAnomaly) {
+                        action.isAnomaly = true;
+                        action.anomalyReason = anomalyReason;
+                        entityHasAnomaly = true;
+                    }
+                }
+                if (entityHasAnomaly) {
                     entity.isAnomaly = true;
                     entity.anomalyReason = anomalyReason;
                 }
             }
         }
+    }
+}
+
+// Collapse/expand helpers for entities (depth 1) and actions (depth 2)
+function collapseAtDepth(node: TreeNode, targetDepth: number, currentDepth = 0) {
+    if (!node.children) return;
+    if (currentDepth === targetDepth) {
+        node._children = node.children;
+        node.children = undefined;
+    } else {
+        node.children.forEach((child) =>
+            collapseAtDepth(child, targetDepth, currentDepth + 1)
+        );
+    }
+}
+function expandAtDepth(node: TreeNode, targetDepth: number, currentDepth = 0) {
+    if (currentDepth === targetDepth && node._children) {
+        node.children = node._children;
+        node._children = undefined;
+    }
+    if (node.children) {
+        node.children.forEach((child) =>
+            expandAtDepth(child, targetDepth, currentDepth + 1)
+        );
+    }
+    if (node._children) {
+        node._children.forEach((child) =>
+            expandAtDepth(child, targetDepth, currentDepth + 1)
+        );
     }
 }
 
@@ -161,11 +248,15 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     const [eventIdToLogTemplate, setEventIdToLogTemplate] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
 
+    const [entitiesCollapsed, setEntitiesCollapsed] = useState(false);
+    const [actionsCollapsed, setActionsCollapsed] = useState(false);
+
     function buildSequenceTreeData(decomp: KroneDecompRow): SequenceTreeData {
         const entities: EntityNode[] = [];
         const { entity_nodes_for_logkeys, action_nodes_for_logkeys, status_nodes_for_logkeys, seq } = decomp;
 
         let i = 0;
+        let lineNumber = 1;
         while (i < entity_nodes_for_logkeys.length) {
             const entityName = entity_nodes_for_logkeys[i];
             const entityNode: EntityNode = {
@@ -196,6 +287,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         name: status_nodes_for_logkeys[k],
                         logTemplate: seq[k],
                         isAnomaly: false,
+                        lineNumber: lineNumber++,
                     });
                     k++;
                 }
@@ -260,6 +352,25 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             setLoading(false);
         }
     }, [kroneDecompData, kroneDetectData, selectedIndex]);
+
+    useEffect(() => {
+        if (!treeData) return;
+        // Clone tree to avoid mutating state directly
+        const cloned = JSON.parse(JSON.stringify(treeData)) as TreeNode;
+        if (entitiesCollapsed) {
+            collapseAtDepth(cloned, 1);
+        } else {
+            expandAtDepth(cloned, 1);
+        }
+        if (actionsCollapsed) {
+            collapseAtDepth(cloned, 2);
+        } else {
+            expandAtDepth(cloned, 2);
+        }
+        addIndexPath(cloned);
+        setTreeData(cloned);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [entitiesCollapsed, actionsCollapsed]);
 
     useEffect(() => {
         if (!treeData || !svgRef.current) return;
@@ -401,10 +512,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 }
                 const logTemplate = eventIdToLogTemplate[eventId] || "";
                 if (logTemplate) {
+                    // Use line number as prefix for measuring
+                    const linePrefix = typeof node.data.lineNumber === "number" ? `${node.data.lineNumber}. ` : "";
                     const tempLogText = tempSvg2.append("text")
                         .attr("font-size", Math.max(fontSize * 0.8, 14))
                         .attr("font-family", font)
-                        .text(logTemplate);
+                        .text(linePrefix + logTemplate);
                     const logBBox = (tempLogText.node() as SVGTextElement).getBBox();
                     const logRight = rightEdge + getPadding(fontSize) * 2 + logBBox.width;
                     if (logRight > maxLogTemplateRight) maxLogTemplateRight = logRight;
@@ -533,7 +646,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .on("mouseover", function (event, d) {
                 highlightText.call(this, event, d);
                 if (
-                    d.depth === 3 &&
+                    (d.depth === 1 || d.depth === 2 || d.depth === 3) &&
                     d.data.isAnomaly &&
                     d.data.anomalyReason
                 ) {
@@ -569,7 +682,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("rx", radius)
                     .attr("ry", radius);
 
-                // Left-align log template text for all status nodes
+                // Log template text for status nodes, with line numbers as prefix
                 if (d.depth === 3) {
                     let eventId = "";
                     const match = /\(([^)]+)\)$/.exec(d.data.name);
@@ -578,20 +691,64 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     }
                     const logTemplate = eventIdToLogTemplate[eventId] || "";
                     if (logTemplate) {
+                        const linePrefix = typeof d.data.lineNumber === "number" ? `${d.data.lineNumber}. ` : "";
                         nodeGroup
                             .append("text")
                             .attr("class", "log-template-text")
-                            .attr("x", maxStatusLabelRight + getPadding(fontSize) * 2)
+                            .attr("x", maxStatusLabelRight + getPadding(fontSize) * 2 + 25)
                             .attr("y", bbox.y + bbox.height / 2 + 2)
                             .attr("alignment-baseline", "middle")
                             .attr("font-size", Math.max(fontSize * 0.8, 14))
-                            .attr("fill", "#444")
+                            .attr("fill", d.data.isAnomaly ? "#c8102e" : "#444")
                             .attr("text-anchor", "start")
-                            .text(logTemplate);
+                            .on("mouseover", function (event) {
+                                if (d.data.isAnomaly && d.data.anomalyReason) {
+                                    setHoveredAnomaly({
+                                        explanation: d.data.anomalyReason,
+                                        x: event.clientX,
+                                        y: event.clientY,
+                                    });
+                                }
+                            })
+                            .on("mouseout", function () {
+                                setHoveredAnomaly(null);
+                            })
+                            .text(linePrefix + logTemplate);
                     }
                 }
 
-                if (!d.children && !d.data._children && d.data.isAnomaly) {
+                // Add warning symbol for anomaly entity/action nodes
+                if (
+                    (d.depth === 1 || d.depth === 2) &&
+                    d.data.isAnomaly
+                ) {
+                    nodeGroup
+                        .append("text")
+                        .attr("class", "anomaly-warning")
+                        .attr("x", bbox.x + bbox.width + padding * 1.2)
+                        .attr("y", bbox.y - padding / 2 + 8)
+                        .attr("alignment-baseline", "hanging")
+                        .attr("font-size", Math.max(fontSize * 0.8, 18))
+                        .attr("fill", "#FFD100")
+                        .attr("text-anchor", "start")
+                        .style("cursor", "pointer")
+                        .text("⚠️")
+                        .on("mouseover", function (event) {
+                            if (d.data.anomalyReason) {
+                                setHoveredAnomaly({
+                                    explanation: d.data.anomalyReason,
+                                    x: event.clientX,
+                                    y: event.clientY,
+                                });
+                            }
+                        })
+                        .on("mouseout", function () {
+                            setHoveredAnomaly(null);
+                        });
+                }
+
+                // Add warning symbol for status nodes as before
+                if (!d.children && !d.data._children && d.data.isAnomaly && d.depth === 3) {
                     nodeGroup
                         .append("text")
                         .attr("class", "anomaly-warning")
@@ -600,7 +757,20 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .attr("alignment-baseline", "middle")
                         .attr("font-size", Math.max(fontSize * 0.8, 14))
                         .attr("fill", "#FFD100")
-                        .text("⚠️");
+                        .attr("text-anchor", "start")
+                        .text("⚠️")
+                        .on("mouseover", function (event) {
+                            if (d.data.anomalyReason) {
+                                setHoveredAnomaly({
+                                    explanation: d.data.anomalyReason,
+                                    x: event.clientX,
+                                    y: event.clientY,
+                                });
+                            }
+                        })
+                        .on("mouseout", function () {
+                            setHoveredAnomaly(null);
+                        });
                 }
             });
     }, [treeData, eventIdToLogTemplate]);
@@ -609,7 +779,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         <div style={{ width: "100%", display: "flex", justifyContent: "center", position: "relative" }}>
             <div className="sequence-tree h-max">
                 <h2>Sequence Tree</h2>
-                <div style={{ marginBottom: 12 }}>
+                <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
                     <label>
                         Sequence:&nbsp;
                         <select
@@ -627,6 +797,33 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             ))}
                         </select>
                     </label>
+                    <button
+                        onClick={() => setEntitiesCollapsed(val => !val)}
+                        style={{
+                            marginLeft: 16,
+                            padding: "4px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #ccc",
+                            background: entitiesCollapsed ? "#ffd100" : "#eee",
+                            fontWeight: 600,
+                            cursor: "pointer"
+                        }}
+                    >
+                        {entitiesCollapsed ? "Expand Entities" : "Collapse Entities"}
+                    </button>
+                    <button
+                        onClick={() => setActionsCollapsed(val => !val)}
+                        style={{
+                            padding: "4px 12px",
+                            borderRadius: 6,
+                            border: "1px solid #ccc",
+                            background: actionsCollapsed ? "#ffd100" : "#eee",
+                            fontWeight: 600,
+                            cursor: "pointer"
+                        }}
+                    >
+                        {actionsCollapsed ? "Expand Actions" : "Collapse Actions"}
+                    </button>
                 </div>
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "2rem" }}>
