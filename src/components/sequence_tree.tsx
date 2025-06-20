@@ -77,45 +77,37 @@ function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cu
 function annotateAnomalies(tree: TreeNode, decomp: KroneDecompRow, detect: KroneDetectRow[]) {
     const anomalies = detect.filter(d => d.seq_id === decomp.seq_id);
     for (const anomaly of anomalies) {
-        const seg = anomaly.anomaly_seg, lvl = anomaly.anomaly_level, reason = anomaly.anomaly_reason;
+        const seg = anomaly.anomaly_seg, reason = anomaly.anomaly_reason;
         if (!seg?.length) continue;
-        if (lvl === "status") {
-            tree.children?.forEach(ent =>
-                ent.children?.forEach(act =>
-                    act.children?.forEach(stat => {
-                        if (seg.includes(stat.name.split('(')[1]?.replace(')', '') || "")) {
-                            stat.isAnomaly = true; stat.anomalyReason = reason;
-                            act.isAnomaly = true; act.anomalyReason = reason;
-                            ent.isAnomaly = true; ent.anomalyReason = reason;
-                        }
-                    })
-                )
-            );
-        } else if (lvl === "action" || lvl === "entity") {
-            const allStats: TreeNode[] = [];
-            tree.children?.forEach(ent =>
-                ent.children?.forEach(act =>
-                    act.children?.forEach(stat => allStats.push(stat))
-                )
-            );
-            for (let i = 0; i <= allStats.length - seg.length; i++) {
-                if (seg.every((v, j) => allStats[i + j].name.split('(')[1]?.replace(')', '') === v)) {
-                    for (let j = 0; j < seg.length; j++) {
-                        allStats[i + j].isAnomaly = true;
-                        allStats[i + j].anomalyReason = reason;
-                    }
+
+        // Helper to extract event id from status node name
+        const getEventId = (name: string) => name.split('(')[1]?.replace(')', '') || "";
+
+        // Always use sliding window over all statuses, regardless of anomaly level
+        const allStats: TreeNode[] = [];
+        tree.children?.forEach(ent =>
+            ent.children?.forEach(act =>
+                act.children?.forEach(stat => allStats.push(stat))
+            )
+        );
+        for (let i = 0; i <= allStats.length - seg.length; i++) {
+            if (seg.every((v, j) => getEventId(allStats[i + j].name) === v)) {
+                for (let j = 0; j < seg.length; j++) {
+                    allStats[i + j].isAnomaly = true;
+                    allStats[i + j].anomalyReason = reason;
                 }
             }
-            tree.children?.forEach(ent => {
-                let entAnom = false;
-                ent.children?.forEach(act => {
-                    let actAnom = false;
-                    act.children?.forEach(stat => { if (stat.isAnomaly) actAnom = true; });
-                    if (actAnom) { act.isAnomaly = true; act.anomalyReason = reason; entAnom = true; }
-                });
-                if (entAnom) { ent.isAnomaly = true; ent.anomalyReason = reason; }
-            });
         }
+        // Propagate anomaly up to actions/entities if any child is anomalous
+        tree.children?.forEach(ent => {
+            let entAnom = false;
+            ent.children?.forEach(act => {
+                let actAnom = false;
+                act.children?.forEach(stat => { if (stat.isAnomaly) actAnom = true; });
+                if (actAnom) { act.isAnomaly = true; act.anomalyReason = reason; entAnom = true; }
+            });
+            if (entAnom) { ent.isAnomaly = true; ent.anomalyReason = reason; }
+        });
     }
 }
 
@@ -299,8 +291,14 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
                 .each(function(n) {
                     const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+                    // If this node is related and is an anomaly, keep it red
+                    const isRelatedAnomaly = isRelated && n.data.isAnomaly;
                     select(this)
-                        .attr("fill", isRelated ? "#003366" : (n.data.isAnomaly ? "#c8102e" : "#222"));
+                        .attr("fill",
+                            isRelatedAnomaly
+                                ? "#c8102e"
+                                : (isRelated ? "#003366" : (n.data.isAnomaly ? "#c8102e" : "#222"))
+                        );
                     select(this.parentNode as Element).select("rect")
                         .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
                         .attr("stroke-width", isRelated ? 5 : 2);

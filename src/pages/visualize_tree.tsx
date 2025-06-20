@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 // TODO fix status toggle (toggle action + status, expand entity, then untoggle status)
 // TODO center tree
 // TODO when hovering on a node, then collapse and it moves, hover box doesn't clear
-export type TreeNode = {
+type TreeNode = {
 
   name: string;
   children?: TreeNode[];
