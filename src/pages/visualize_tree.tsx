@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 // TODO center tree
 // TODO when hovering on a node, then collapse and it moves, hover box doesn't clear
 type TreeNode = {
-
   name: string;
   children?: TreeNode[];
   _children?: TreeNode[];
@@ -21,7 +20,7 @@ type TreeNode = {
   event_id?: string;
 };
 
-export type CustomHierarchyNode = HierarchyNode<TreeNode> & {
+type CustomHierarchyNode = HierarchyNode<TreeNode> & {
   _children?: CustomHierarchyNode[];
 };
 
