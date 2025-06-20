@@ -104,29 +104,6 @@ function toTreeNode(data: SequenceTreeData): TreeNode {
     };
 }
 
-// Recursively mark parent and children as anomalies
-function markParentAndChildrenAnomaly(
-    node: any,
-    anomalyReason: string
-) {
-    node.isAnomaly = true;
-    node.anomalyReason = anomalyReason;
-    if (node.actions) {
-        for (const action of node.actions) {
-            markParentAndChildrenAnomaly(action, anomalyReason);
-        }
-    }
-    if (node.statuses) {
-        for (const status of node.statuses) {
-            markParentAndChildrenAnomaly(status, anomalyReason);
-        }
-    }
-    if (node.children) {
-        for (const child of node.children) {
-            markParentAndChildrenAnomaly(child, anomalyReason);
-        }
-    }
-}
 
 // Annotate anomalies in the SequenceTreeData structure
 function annotateAnomalies(
@@ -325,7 +302,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     skipEmptyLines: true,
                     complete: (results) => {
                         const mapping: Record<string, string> = {};
-                        for (const row of results.data as any[]) {
+                        interface StructuredProcessRow {
+                            event_id?: string;
+                            log_template?: string;
+                            [key: string]: unknown;
+                        }
+                        for (const row of results.data as StructuredProcessRow[]) {
                             if (row.event_id && row.log_template) {
                                 mapping[String(row.event_id)] = String(row.log_template);
                             }
@@ -790,7 +772,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             }}
                             style={{ minWidth: 120 }}
                         >
-                            {kroneDecompData.map((row, idx) => (
+                            {kroneDecompData.map((row) => (
                                 <option key={row.seq_id} value={row.seq_id}>
                                     {row.seq_id}
                                 </option>
