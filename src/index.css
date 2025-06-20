@@ -203,3 +203,16 @@
     }
   }
 }
+
+.highlighted-node {
+  fill: #003366 !important;
+}
+
+.highlighted-rect {
+  fill: #B3D8FF !important;
+}
+
+.highlighted-link {
+  stroke: #B3D8FF !important;
+  stroke-opacity: 1 !important;
+}

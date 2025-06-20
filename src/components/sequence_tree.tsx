@@ -273,7 +273,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .attr("transform", d => `translate(${d.y},${d.x})`);
 
         function collectRelatedNodes(d: HierarchyNode<TreeNode>) {
-            const related = new Set<import("d3-hierarchy").HierarchyNode<TreeNode>>();
+            const related = new Set<HierarchyNode<TreeNode>>();
             related.add(d);
             let ancestor = d.parent;
             while (ancestor) { related.add(ancestor); ancestor = ancestor.parent; }
@@ -284,32 +284,24 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         function highlightText(this: SVGTextElement, _event: unknown, d: HierarchyNode<TreeNode>) {
             const related = collectRelatedNodes(d);
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
-                .each(function (n) {
-                    const isRelated = related.has(n);
-                    select(this)
-                        .attr("fill", isRelated ? "#003366" : (n.data.isAnomaly ? "#c8102e" : "#222"));
-                    select(this.parentNode as Element).select("rect")
-                        .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }));
-                });
+                .classed("highlighted-node", n => related.has(n));
+            svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
+                .select("rect")
+                .classed("highlighted-rect", n => related.has(n));
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
-                .attr("stroke", lnk =>
-                    related.has(lnk.source) || related.has(lnk.target) ? "#B3D8FF" : linkBorderColor(lnk)
-                )
-                .attr("stroke-opacity", lnk =>
-                    related.has(lnk.source) || related.has(lnk.target) ? 1 : 0.4
+                .classed("highlighted-link", lnk =>
+                    related.has(lnk.source) || related.has(lnk.target)
                 );
         }
 
         function unhighlightText(this: SVGTextElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
-                .attr("fill", d => d.data.isAnomaly ? "#c8102e" : "#222")
-                .attr("font-weight", null);
+                .classed("highlighted-node", false);
             svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
                 .select("rect")
-                .attr("fill", n => linkFillColor({ source: { depth: n.depth - 1 } }));
+                .classed("highlighted-rect", false);
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
-                .attr("stroke", linkBorderColor)
-                .attr("stroke-opacity", 0.4);
+                .classed("highlighted-link", false);
         }
 
         node.append("text")
