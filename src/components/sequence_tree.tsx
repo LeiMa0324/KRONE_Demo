@@ -266,42 +266,79 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         const node = svg.append("g")
             .attr("stroke-linejoin", "round")
-            .attr("stroke-width", 3)
+            .attr("stroke-width", 2)
             .selectAll("g")
             .data(root.descendants())
             .join("g")
             .attr("transform", d => `translate(${d.y},${d.x})`);
 
-        function collectRelatedNodes(d: HierarchyNode<TreeNode>) {
-            const related = new Set<HierarchyNode<TreeNode>>();
-            related.add(d);
-            let ancestor = d.parent;
-            while (ancestor) { related.add(ancestor); ancestor = ancestor.parent; }
-            d.descendants().forEach(desc => related.add(desc));
-            return related;
-        }
-
         function highlightText(this: SVGTextElement, _event: unknown, d: HierarchyNode<TreeNode>) {
-            const related = collectRelatedNodes(d);
+            // Highlight ancestors and descendants (like visualize_tree.tsx)
+            const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+            let current: HierarchyNode<TreeNode> | null = d;
+            while (current) {
+                ancestorNodes.add(current);
+                current = current.parent;
+            }
+            const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+            function collectDescendants(node: HierarchyNode<TreeNode>) {
+                descendantNodes.add(node);
+                if (node.children) node.children.forEach(collectDescendants);
+                const treeNode = node.data as TreeNode;
+                if (treeNode._children) {
+                    treeNode._children.forEach((child, i) => {
+                        const childNode = node as HierarchyNode<TreeNode>;
+                        if (childNode && childNode.children) {
+                            collectDescendants(childNode.children[i]);
+                        }
+                    });
+                }
+            }
+            collectDescendants(d);
+
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
-                .classed("highlighted-node", n => related.has(n));
-            svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
-                .select("rect")
-                .classed("highlighted-rect", n => related.has(n));
+                .each(function(n) {
+                    const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+                    select(this)
+                        .attr("fill", isRelated ? "#003366" : (n.data.isAnomaly ? "#c8102e" : "#222"));
+                    select(this.parentNode as Element).select("rect")
+                        .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
+                        .attr("stroke-width", isRelated ? 5 : 2);
+                });
+
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
-                .classed("highlighted-link", lnk =>
-                    related.has(lnk.source) || related.has(lnk.target)
-                );
+                .attr("stroke", lnk => {
+                    const isAncestorPath =
+                        ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    const isDescendantPath =
+                        descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
+                })
+                .attr("stroke-width", lnk => {
+                    const isAncestorPath =
+                        ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    const isDescendantPath =
+                        descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
+                });
         }
 
         function unhighlightText(this: SVGTextElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
-                .classed("highlighted-node", false);
-            svg.selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
-                .select("rect")
-                .classed("highlighted-rect", false);
+                .each(function(n) {
+                    select(this)
+                        .attr("fill", n.data.isAnomaly ? "#c8102e" : "#222");
+                    select(this.parentNode as Element).select("rect")
+                        .attr("fill", linkFillColor({ source: { depth: n.depth - 1 } }))
+                        .attr("stroke-width", 2);
+                });
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
-                .classed("highlighted-link", false);
+                .attr("stroke", linkBorderColor)
+                .attr("stroke-width", 1.5);
         }
 
         node.append("text")
