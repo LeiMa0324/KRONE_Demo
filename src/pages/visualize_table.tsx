@@ -69,7 +69,7 @@ export const VisualizeTable = () => {
                     header: true,
                     skipEmptyLines: true,
                     complete: (results) => {
-                        const rows: KroneDecompRow[] = results.data.map((row: unknown) => {
+                        const rows: KroneDecompRow[] = results.data.slice(0,1000).map((row: unknown) => {
                             const r = row as Record<string, unknown>;
                             return {
                                 seq_id: String(r.seq_id ?? ""),
@@ -90,7 +90,7 @@ export const VisualizeTable = () => {
                     header: true,
                     skipEmptyLines: true,
                     complete: (results) => {
-                        const rows: KroneDetectRow[] = results.data.map((row: unknown) => {
+                        const rows: KroneDetectRow[] = results.data.slice(0, 58).map((row: unknown) => {
                             const r = row as Record<string, unknown>;
                             return {
                                 seq_id: String(r.seq_id ?? ""),

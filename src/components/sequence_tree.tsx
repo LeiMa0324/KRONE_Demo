@@ -5,11 +5,26 @@ import type { HierarchyNode, HierarchyLink } from 'd3-hierarchy';
 import { select } from 'd3-selection';
 import Papa from 'papaparse';
 
+/**
+ * Props for the SequenceTree component.
+ * - kroneDecompData: Array of decomposed sequence rows (tree structure).
+ * - kroneDetectData: Array of detected anomaly rows.
+ */
 type SequenceTreeProps = {
     kroneDecompData: KroneDecompRow[];
     kroneDetectData: KroneDetectRow[];
 };
 
+/**
+ * TreeNode represents a node in the sequence tree.
+ * - name: Display name for the node.
+ * - children: Expanded children nodes.
+ * - _children: Collapsed children nodes.
+ * - isAnomaly: Whether this node is anomalous.
+ * - anomalyReason: Explanation for anomaly.
+ * - indexPath: Path to this node in the tree (for toggling).
+ * - lineNumber: Optional line number for log template display.
+ */
 type TreeNode = {
     name: string;
     children?: TreeNode[];
@@ -20,24 +35,48 @@ type TreeNode = {
     lineNumber?: number;
 };
 
+/**
+ * Recursively adds an indexPath array to each node, representing its path from the root.
+ * Used for toggling expand/collapse.
+ */
 function addIndexPath(node: TreeNode, path: number[] = []): void {
     node.indexPath = path;
     (node.children || []).forEach((c, i) => addIndexPath(c, [...path, i]));
     (node._children || []).forEach((c, i) => addIndexPath(c, [...path, i]));
 }
 
+/**
+ * Recursively toggles (expand/collapse) a node at the given indexPath.
+ * Returns a new tree with the toggled node.
+ */
 function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
-    if (!path.length) return node;
-    const [h, ...r] = path, arr = node.children ?? node._children;
-    if (!arr || !arr[h]) return node;
-    const n = [...arr];
-    if (!r.length) {
-        const t = n[h], exp = !!t.children;
-        n[h] = { ...t, children: exp ? undefined : t._children, _children: exp ? t.children : undefined };
-    } else n[h] = toggleNodeByIndexPath(n[h], r);
-    return { ...node, children: node.children ? n : undefined, _children: node._children ? n : undefined };
+    if (path.length === 0) return node;
+    const [currentIndex, ...remainingPath] = path;
+    const childArray = node.children ?? node._children;
+    if (!childArray || !childArray[currentIndex]) return node;
+    const updatedChildren = [...childArray];
+    if (remainingPath.length === 0) {
+        const targetNode = updatedChildren[currentIndex];
+        const isExpanded = !!targetNode.children;
+        updatedChildren[currentIndex] = {
+            ...targetNode,
+            children: isExpanded ? undefined : targetNode._children,
+            _children: isExpanded ? targetNode.children : undefined,
+        };
+    } else {
+        updatedChildren[currentIndex] = toggleNodeByIndexPath(updatedChildren[currentIndex], remainingPath);
+    }
+    return {
+        ...node,
+        children: node.children ? updatedChildren : undefined,
+        _children: node._children ? updatedChildren : undefined,
+    };
 }
 
+/**
+ * Converts a KroneDecompRow into a nested TreeNode structure.
+ * Groups by entity, then action, then status.
+ */
 function toTreeNode(data: KroneDecompRow): TreeNode {
     let i = 0, line = 1;
     const ents: TreeNode[] = [];
@@ -61,6 +100,10 @@ function toTreeNode(data: KroneDecompRow): TreeNode {
     return { name: "Root", children: ents };
 }
 
+/**
+ * Recursively collapses or expands nodes at a given depth.
+ * Used for "Collapse Entities" and "Collapse Actions" buttons.
+ */
 function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cur = 0) {
     if (!node.children && !node._children) return;
     if (cur === depth) {
@@ -74,6 +117,10 @@ function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cu
     } else (node.children || node._children || []).forEach(c => setCollapseAtDepth(c, depth, collapse, cur + 1));
 }
 
+/**
+ * Annotates the tree with anomaly information from kroneDetectData.
+ * Marks nodes as anomalous and attaches explanations.
+ */
 function annotateAnomalies(tree: TreeNode, decomp: KroneDecompRow, detect: KroneDetectRow[]) {
     const anomalies = detect.filter(d => d.seq_id === decomp.seq_id);
     for (const anomaly of anomalies) {
@@ -111,16 +158,37 @@ function annotateAnomalies(tree: TreeNode, decomp: KroneDecompRow, detect: Krone
     }
 }
 
+/**
+ * SequenceTree component renders the sequence tree and controls.
+ * Handles loading, toggling, anomaly tooltips, and SVG rendering (to be replaced with HTML tree).
+ */
 export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData }) => {
+    // Ref for SVG (legacy, can be removed if switching to HTML tree)
     const svgRef = useRef<SVGSVGElement | null>(null);
+
+    // State for the tree data structure
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
+
+    // State for hovered anomaly tooltip
     const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
+
+    // State for which sequence is selected
     const [selectedIndex, setSelectedIndex] = useState(0);
+
+    // Mapping from event_id to log template (loaded from CSV)
     const [eventIdToLogTemplate, setEventIdToLogTemplate] = useState<Record<string, string>>({});
+
+    // Loading state for async data
     const [loading, setLoading] = useState(true);
+
+    // Collapse toggles for entity and action levels
     const [entitiesCollapsed, setEntitiesCollapsed] = useState(false);
     const [actionsCollapsed, setActionsCollapsed] = useState(false);
+    const [showTree, setShowTree] = useState(false);
 
+    /**
+     * Loads the event_id to log_template mapping from CSV on mount.
+     */
     useEffect(() => {
         fetch("/structured_processes.csv")
             .then(res => res.text())
@@ -139,6 +207,9 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             });
     }, []);
 
+    /**
+     * When the selected sequence changes, build the tree and annotate anomalies.
+     */
     useEffect(() => {
         if (kroneDecompData.length && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
             setLoading(true);
@@ -151,6 +222,9 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         }
     }, [kroneDecompData, kroneDetectData, selectedIndex]);
 
+    /**
+     * When collapse toggles change, update the tree accordingly.
+     */
     useEffect(() => {
         if (!treeData) return;
         const cloned = JSON.parse(JSON.stringify(treeData)) as TreeNode;
@@ -161,10 +235,28 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [entitiesCollapsed, actionsCollapsed]);
 
+    /**
+     * Handles SVG rendering and D3 layout.
+     * 
+     * This effect is responsible for:
+     * - Measuring the width of each label at each tree depth to determine column spacing.
+     * - Laying out the tree nodes using d3-hierarchy's tree layout.
+     * - Calculating the positions for each node and link.
+     * - Drawing the tree structure (nodes, links, labels, anomaly icons, and log templates) in SVG.
+     * - Handling mouse events for highlighting and tooltips.
+
+     */
     useEffect(() => {
+        if (!showTree) return; // <-- Only draw SVG if tree is shown
         if (!treeData || !svgRef.current) return;
+
+        // Ensure each node has an indexPath for toggling
         addIndexPath(treeData);
+
+        // Build a d3 hierarchy from the tree data
         const root = hierarchy<TreeNode>(treeData, d => d.children);
+
+        // --- Layout and style constants ---
         const baseFont = 28, minFont = 15, fontStep = 5, basePadding = 0.25, baseRadius = 0.25, depthSpacing = 14, siblingSpacing = 13;
         const getFontSize = (d: number) => Math.max(baseFont - d * fontStep, minFont);
         const getPadding = (f: number) => f * basePadding;
@@ -178,6 +270,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
         const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
 
+        // --- Measure label widths to determine column spacing ---
         let widestEntity = 0, widestAction = 0;
         const tempSvg = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;").attr("font-family", font);
         root.descendants().forEach(node => {
@@ -191,12 +284,15 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         });
         tempSvg.remove();
 
+        // --- Layout the tree using d3.tree() ---
         const dy = Math.max(widestEntity + 20, widestAction + 40);
         tree<TreeNode>().nodeSize([siblingSpacing + 4, dy]).separation((a, b) => (Math.max(getFontSize(a.depth), getFontSize(b.depth)) + 8) / depthSpacing)(root);
 
+        // --- Offset status nodes (depth 3) to the right for log template display ---
         const statusDy = 150;
         root.each(node => { if (node.depth === 3 && node.parent && typeof node.parent.y === "number") node.y = node.parent.y + statusDy; });
 
+        // --- Calculate SVG bounds for viewBox and sizing ---
         let x0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         root.each(d => {
             if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
@@ -204,6 +300,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             if ((d.y ?? 0) > y1) y1 = d.y ?? 0;
         });
 
+        // --- Measure rightmost edge for status and log template columns ---
         let maxStatusLabelRight = 0, maxLogTemplateRight = 0;
         const tempSvg2 = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;").attr("font-family", font);
         root.descendants().forEach(node => {
@@ -228,12 +325,14 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         });
         tempSvg2.remove();
 
+        // --- Set SVG size and viewBox based on calculated bounds ---
         const rightmost = Math.max(y1 + 600, maxStatusLabelRight + 600, maxLogTemplateRight + 600);
         const minRootWidth = 400;
         const visibleNodes = root.descendants().length;
         const adjustedWidth = visibleNodes === 1 ? minRootWidth : rightmost;
         const height = x1 - x0 + baseFont * 2;
 
+        // --- Prepare SVG for drawing ---
         const svg = select(svgRef.current);
         svg.selectAll("*").remove();
         svg
@@ -243,6 +342,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .attr("style", "max-width: 100%; height: auto; font: 10px;")
             .attr("font-family", font);
 
+        // --- Draw tree links (edges) ---
         svg.append("g")
             .attr("fill", "none")
             .attr("stroke-opacity", 0.4)
@@ -251,11 +351,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .data(root.links())
             .join("path")
             .attr("d", (d: HierarchyLink<TreeNode>) => {
+                // Draws an elbow connector from parent to child
                 const gap = 18, sourceY = d.source.y ?? 0, sourceStubY = sourceY + gap;
                 return [`M${sourceY},${d.source.x}`, `H${sourceStubY}`, `V${d.target.x}`, `H${d.target.y}`].join(" ");
             })
             .attr("stroke", linkBorderColor);
 
+        // --- Draw tree nodes (labels, rectangles, anomaly icons, log templates) ---
         const node = svg.append("g")
             .attr("stroke-linejoin", "round")
             .attr("stroke-width", 2)
@@ -264,6 +366,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .join("g")
             .attr("transform", d => `translate(${d.y},${d.x})`);
 
+        // --- Highlighting logic for mouseover/mouseout on nodes ---
         function highlightText(this: SVGTextElement, _event: unknown, d: HierarchyNode<TreeNode>) {
             // Highlight ancestors and descendants (like visualize_tree.tsx)
             const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
@@ -288,6 +391,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             }
             collectDescendants(d);
 
+            // Color related nodes and links
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
                 .each(function(n) {
                     const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
@@ -325,6 +429,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 });
         }
 
+        // --- Reset highlighting on mouseout ---
         function unhighlightText(this: SVGTextElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
                 .each(function(n) {
@@ -339,6 +444,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("stroke-width", 1.5);
         }
 
+        // --- Draw node labels, rectangles, anomaly icons, and log templates ---
         node.append("text")
             .attr("class", "node-label")
             .attr("dy", "0.31em")
@@ -361,6 +467,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 setHoveredAnomaly(null);
             })
             .on("click", function (event, d) {
+                // Toggle expand/collapse on click
                 event.stopPropagation();
                 const idx = d.data.indexPath;
                 if (!idx) return;
@@ -372,6 +479,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 });
             })
             .each(function (this: SVGTextElement, d) {
+                // Draw background rectangle behind label
                 const fontSize = getFontSize(d.depth), padding = getPadding(fontSize), radius = getRadius(fontSize);
                 const nodeGroup = select(this.parentNode as Element);
                 const bbox = this.getBBox();
@@ -385,6 +493,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("rx", radius)
                     .attr("ry", radius);
 
+                // Draw log template for status nodes
                 if (d.depth === 3) {
                     const eventId = /\(([^)]+)\)$/.exec(d.data.name)?.[1] || "";
                     const logTemplate = eventIdToLogTemplate[eventId] || "";
@@ -405,6 +514,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .text(linePrefix + logTemplate);
                     }
                 }
+                // Draw anomaly warning icon for anomalous nodes
                 if (
                     d.data.isAnomaly &&
                     (
@@ -429,13 +539,40 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .on("mouseout", function () { setHoveredAnomaly(null); });
                 }
             });
-    }, [treeData, eventIdToLogTemplate]);
 
+    }, [treeData, eventIdToLogTemplate, showTree]); // <-- add showTree as dependency
+
+    // --- Determine anomaly level for the selected sequence ---
+    const selectedSeqId = kroneDecompData[selectedIndex]?.seq_id;
+    const anomalyRow = kroneDetectData.find(row => row.seq_id === selectedSeqId);
+    let anomalyLevel = "Normal";
+    if (anomalyRow && anomalyRow.anomaly_level) {
+        // You may need to adjust the mapping below to match your data
+        if (anomalyRow.anomaly_level === "entity") anomalyLevel = "Entity-level Anomaly";
+        else if (anomalyRow.anomaly_level === "action") anomalyLevel = "Action-level Anomaly";
+        else if (anomalyRow.anomaly_level === "status") anomalyLevel = "Status-level Anomaly";
+        else anomalyLevel = String(anomalyRow.anomaly_level);
+    }
+
+    // --- Gather log templates for the selected sequence ---
+    let logTemplates: { lineNumber?: number; eventId: string; logTemplate: string }[] = [];
+    if (kroneDecompData[selectedIndex]) {
+        const decomp = kroneDecompData[selectedIndex];
+        const { seq } = decomp;
+        logTemplates = seq.map((eventId: string, i: number) => ({
+            lineNumber: i + 1,
+            eventId,
+            logTemplate: eventIdToLogTemplate[eventId] || "",
+        }));
+    }
+
+    // --- Render UI ---
     return (
-        <div style={{ width: "100%", display: "flex", justifyContent: "center", position: "relative" }}>
+        <div style={{ width: "100%", position: "relative" }}>
             <div className="sequence-tree h-max">
                 <h2>Sequence Tree</h2>
-                <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
+                {/* Controls for sequence selection and collapse toggles */}
+                <div style={{ marginBottom: 12, marginLeft: 20, gap: 12, alignItems: "center" }}>
                     <label>
                         Sequence:&nbsp;
                         <select
@@ -443,6 +580,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             onChange={e => {
                                 const idx = kroneDecompData.findIndex(row => row.seq_id === e.target.value);
                                 if (idx !== -1) setSelectedIndex(idx);
+                                setShowTree(false); // Reset to log templates when sequence changes
                             }}
                             style={{ minWidth: 120 }}
                         >
@@ -462,6 +600,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             fontWeight: 600,
                             cursor: "pointer"
                         }}
+                        disabled={!showTree}
                     >
                         {entitiesCollapsed ? "Expand Entities" : "Collapse Entities"}
                     </button>
@@ -475,10 +614,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             fontWeight: 600,
                             cursor: "pointer"
                         }}
+                        disabled={!showTree}
                     >
                         {actionsCollapsed ? "Expand Actions" : "Collapse Actions"}
                     </button>
                 </div>
+                {/* Loading spinner */}
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "2rem" }}>
                         <span className="animate-spin inline-block mr-2" style={{ fontSize: 24 }}>⏳</span>
@@ -486,36 +627,82 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     </div>
                 ) : (
                     <>
-                        <svg ref={svgRef} />
-                        {hoveredAnomaly && (
-                            <div
-                                ref={el => {
-                                    if (el) {
-                                        const { innerWidth, innerHeight } = window;
-                                        const rect = el.getBoundingClientRect();
-                                        let left = hoveredAnomaly.x + 30, top = hoveredAnomaly.y;
-                                        if (left + rect.width > innerWidth) left = innerWidth - rect.width - 16;
-                                        if (top + rect.height > innerHeight) top = innerHeight - rect.height - 16;
-                                        el.style.left = `${left}px`;
-                                        el.style.top = `${top}px`;
-                                    }
-                                }}
-                                style={{
-                                    position: "fixed",
-                                    background: "white",
-                                    color: "#222",
-                                    border: "1px solid #ccc",
-                                    borderRadius: 8,
-                                    padding: "1rem",
-                                    zIndex: 100,
-                                    maxWidth: 400,
-                                    boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-                                    pointerEvents: "none",
-                                }}
-                            >
-                                <strong>Anomaly Explanation</strong>
-                                <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
+                        {/* --- Anomaly Level Heading --- */}
+                        <h3 style={{ marginBottom: 8, color: anomalyLevel === "Normal" ? "#222" : "#c8102e" }}>
+                            {anomalyLevel}
+                        </h3>
+                        {/* --- Show log templates if tree is hidden --- */}
+                        {!showTree ? (
+                            <div style={{ margin: "2rem 2rem", textAlign: "left" }}>
+                                <h4>Log Templates</h4>
+                                <ol>
+                                    {logTemplates.map(({ lineNumber, eventId, logTemplate }) => (
+                                        <li key={eventId + lineNumber} style={{ marginBottom: 8 }}>
+                                            <span style={{ fontWeight: 600 }}>
+                                                {lineNumber}.
+                                            </span>{" "}
+                                            <span style={{ marginLeft: 8 }}>
+                                                {logTemplate}
+                                            </span>{" "}
+                                            <span style={{ color: "#888" }}>
+                                                ({eventId})
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ol>
+                                <button
+                                    onClick={() => setShowTree(true)}
+                                    style={{
+                                        marginTop: 24,
+                                        padding: "8px 24px",
+                                        borderRadius: 8,
+                                        border: "1px solid #c8102e",
+                                        background: "#fff",
+                                        color: "#c8102e",
+                                        fontWeight: 700,
+                                        fontSize: 18,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Decompose
+                                </button>
                             </div>
+                        ) : (
+                            <>
+                                {/* SVG tree visualization */}
+                                <svg ref={svgRef} />
+                                {/* Tooltip for anomaly explanation */}
+                                {hoveredAnomaly && (
+                                    <div
+                                        ref={el => {
+                                            if (el) {
+                                                const { innerWidth, innerHeight } = window;
+                                                const rect = el.getBoundingClientRect();
+                                                let left = hoveredAnomaly.x + 30, top = hoveredAnomaly.y;
+                                                if (left + rect.width > innerWidth) left = innerWidth - rect.width - 16;
+                                                if (top + rect.height > innerHeight) top = innerHeight - rect.height - 16;
+                                                el.style.left = `${left}px`;
+                                                el.style.top = `${top}px`;
+                                            }
+                                        }}
+                                        style={{
+                                            position: "fixed",
+                                            background: "white",
+                                            color: "#222",
+                                            border: "1px solid #ccc",
+                                            borderRadius: 8,
+                                            padding: "1rem",
+                                            zIndex: 100,
+                                            maxWidth: 400,
+                                            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                                            pointerEvents: "none",
+                                        }}
+                                    >
+                                        <strong>Anomaly Explanation</strong>
+                                        <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </>
                 )}
