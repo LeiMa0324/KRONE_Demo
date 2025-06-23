@@ -122,7 +122,7 @@ export const VisualizeTable = () => {
         try {
             // Remove brackets and quotes, but keep spaces, then split
             return str
-                .replace(/[\[\]'""]/g, "")
+                .replace(/[[\]'""]/g, "")
                 .split(",")
                 .map(s => s.trim())
                 .filter(Boolean);
