@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 
 
 // TODO fix status toggle (toggle action + status, expand entity, then untoggle status)
-// TODO center tree
-// TODO when hovering on a node, then collapse and it moves, hover box doesn't clear
 type TreeNode = {
   name: string;
   children?: TreeNode[];
@@ -95,7 +93,7 @@ export const VisualizeTree: React.FC = () => {
   // search statue
   const [searchValue, setSearchValue] = useState("");
   const [matchedNodeId, setMatchedNodeId] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState(""); // <-- new: controlled input
+  const [searchInput, setSearchInput] = useState("");
 
   // matched node for search
   const [matchedNodeObj, setMatchedNodeObj] = useState<HierarchyNode<TreeNode> | null>(null);
@@ -395,7 +393,7 @@ export const VisualizeTree: React.FC = () => {
         .attr("transform", (d) => `translate(${d.y},${d.x})`);
 
       // collapse and expand
-      function handleNodeClick(_event: unknown, d: CustomHierarchyNode) {
+      function handleNodeClick(_event: React.MouseEvent<SVGTextElement, MouseEvent>, d: CustomHierarchyNode) {
         if (d.depth === 0) return;
         if (d.children) {
           d._children = d.children as CustomHierarchyNode[];
@@ -408,7 +406,11 @@ export const VisualizeTree: React.FC = () => {
       }
 
       // highlight nodes and edges for hovered node
-      function highlightText(this: SVGTextElement, _event: React.MouseEvent<SVGTextElement, MouseEvent>, d: HierarchyNode<TreeNode>) {
+      function highlightText(
+        this: SVGTextElement,
+        _event: React.MouseEvent<SVGTextElement, MouseEvent>,
+        d: HierarchyNode<TreeNode>
+      ) {
         const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
         let current: HierarchyNode<TreeNode> | null = d;
         while (current) {
@@ -416,10 +418,10 @@ export const VisualizeTree: React.FC = () => {
           current = current.parent;
         }
         const descendantNodes = new Set<HierarchyNode<TreeNode>>();
-        function collectDescendants(node: HierarchyNode<TreeNode>) {
+        function collectDescendants(node: CustomHierarchyNode) {
           descendantNodes.add(node);
           if (node.children) node.children.forEach(collectDescendants);
-          if ((node as any)._children) (node as any)._children.forEach(collectDescendants);
+          if (node._children) node._children.forEach(collectDescendants);
         }
         collectDescendants(d);
 
@@ -453,9 +455,12 @@ export const VisualizeTree: React.FC = () => {
             return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
           });
       }
-
-      // remove highlight 
-      function unhighlightText(this: SVGTextElement, _event: MouseEvent, _d: HierarchyNode<TreeNode>) {
+ 
+      function unhighlightText(
+        this: SVGTextElement,
+        _event: React.MouseEvent<SVGTextElement, MouseEvent>,
+        _d: HierarchyNode<TreeNode>
+      ) {
         svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
           .attr("fill", "#fff")
           .attr("font-weight", null);
@@ -543,7 +548,8 @@ export const VisualizeTree: React.FC = () => {
           function collectDescendants(node: HierarchyNode<TreeNode>) {
             descendantNodes.add(node);
             if (node.children) node.children.forEach(collectDescendants);
-            if ((node as any)._children) (node as any)._children.forEach(collectDescendants);
+            if ((node as HierarchyTreeNode)._children)
+              (node as HierarchyTreeNode)._children!.forEach(collectDescendants);
           }
           collectDescendants(matched);
 
@@ -585,8 +591,12 @@ export const VisualizeTree: React.FC = () => {
     render();
   }, [treeData, collapseEntities, collapseActions, collapseStatuses, matchedNodeId]);
 
-// retrieve info for the hovered node
+// info for the hovered node
 function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
+  const wpired = typeof window !== "undefined"
+    ? getComputedStyle(document.documentElement).getPropertyValue('--color-WPIRed').trim() || "#c00"
+    : "#c00";
+
   if (!node) {
     return {
       title: "",
@@ -606,39 +616,106 @@ function getNodeInfo(node: HierarchyNode<TreeNode> | null) {
         numStatuses += statuses.length;
       });
     });
+
+    function collectStatuses(n: HierarchyNode<TreeNode>, arr: TreeNode[] = []): TreeNode[] {
+      if (n.depth === 3 && n.data.event_id) {
+        arr.push(n.data);
+      }
+      if (n.children) n.children.forEach(child => collectStatuses(child, arr));
+      if ((n as HierarchyTreeNode)._children)
+        (n as HierarchyTreeNode)._children!.forEach((child: HierarchyNode<TreeNode>) => collectStatuses(child, arr));
+      return arr;
+    }
+    const statuses = collectStatuses(node, []);
+    const normal = statuses.filter(s => !s.is_anomaly).map(s => s.event_id);
+    const abnormal = statuses.filter(s => s.is_anomaly).map(s => s.event_id);
+
+    let extra = "";
+    if (statuses.length > 0) {
+      extra = `
+        <div style="margin-top:2px;">
+          <b>Normal Log Keys:</b>
+          <div style="font-size:14px; color:#222; margin-bottom:2px;">
+            ${normal.length > 0 ? normal.join(", ") : "<i>None</i>"}
+          </div>
+          <b>Abnormal Log Keys:</b>
+          <div style="font-size:14px; color:${wpired};">
+            ${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}
+          </div>
+        </div>
+      `;
+    }
+
     return {
       title: "Root",
       content: `<div>
         <div style="margin-bottom:2px;"><b># of Entities:</b> ${numEntities}</div>
         <div style="margin-bottom:2px;"><b># of Actions:</b> ${numActions}</div>
         <div><b># of Statuses:</b> ${numStatuses}</div>
+        ${extra}
       </div>`
     };
   }
-  if (node.depth === 1) {
-    const actions = node.children || (node as unknown as HierarchyTreeNode)._children || [];
-    const numActions = actions.length;
-    let numStatuses = 0;
-    actions.forEach(action => {
-      const statuses = (action as HierarchyTreeNode).children || (action as HierarchyTreeNode)._children || [];
-      numStatuses += statuses.length;
-    });
-    return {
-      title: `Entity: ${node.data.name}`,
-      content: `<div>
-        <div style="margin-bottom:2px;"><b># of Actions:</b> ${numActions}</div>
-        <div><b># of Statuses:</b> ${numStatuses}</div>
-      </div>`
-    };
-  }
-  if (node.depth === 2) {
-    const n = node as HierarchyTreeNode;
-    const statusCount =
-      (n.children?.length || 0) + (n._children?.length || 0);
-    return {
-      title: `Action: ${node.data.name}`,
-      content: `<div><b># of Statuses:</b> ${statusCount}</div>`
-    };
+  if (node.depth === 1 || node.depth === 2) {
+    // collect all status descendants
+    function collectStatuses(n: HierarchyNode<TreeNode>, arr: TreeNode[] = []) {
+      if (n.depth === 3 && n.data.event_id) {
+        arr.push(n.data);
+      }
+      if (n.children) n.children.forEach(child => collectStatuses(child, arr));
+      if ((n as HierarchyTreeNode)._children)
+        (n as HierarchyTreeNode)._children!.forEach((child: HierarchyNode<TreeNode>) => collectStatuses(child, arr));
+      return arr;
+    }
+    const statuses = collectStatuses(node, []);
+    const normal = statuses.filter(s => !s.is_anomaly).map(s => s.event_id);
+    const abnormal = statuses.filter(s => s.is_anomaly).map(s => s.event_id);
+
+    let extra = "";
+    if (statuses.length > 0) {
+      extra = `
+        <div style="margin-top:2px;">
+          <b>Normal Log Keys:</b>
+          <div style="font-size:14px; color:#222; margin-bottom:2px;">
+            ${normal.length > 0 ? normal.join(", ") : "<i>None</i>"}
+          </div>
+          <b>Abnormal Log Keys:</b>
+          <div style="font-size:14px; color:#c00;">
+            ${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}
+          </div>
+        </div>
+      `;
+    }
+
+    if (node.depth === 1) {
+      const actions = node.children || (node as unknown as HierarchyTreeNode)._children || [];
+      const numActions = actions.length;
+      let numStatuses = 0;
+      actions.forEach(action => {
+        const statuses = (action as HierarchyTreeNode).children || (action as HierarchyTreeNode)._children || [];
+        numStatuses += statuses.length;
+      });
+      return {
+        title: `Entity: ${node.data.name}`,
+        content: `<div>
+          <div style="margin-bottom:2px;"><b># of Actions:</b> ${numActions}</div>
+          <div><b># of Statuses:</b> ${numStatuses}</div>
+          ${extra}
+        </div>`
+      };
+    }
+    if (node.depth === 2) {
+      const n = node as HierarchyTreeNode;
+      const statusCount =
+        (n.children?.length || 0) + (n._children?.length || 0);
+      return {
+        title: `Action: ${node.data.name}`,
+        content: `<div>
+          <div><b># of Statuses:</b> ${statusCount}</div>
+          ${extra}
+        </div>`
+      };
+    }
   }
   if (node.depth === 3) {
     return {
