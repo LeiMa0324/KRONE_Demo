@@ -5,7 +5,6 @@ import { About } from "./pages/about"; // Create this page
 import { FileUpload } from "./pages/file_upload"; // Create this page
 import { VisualizeTree } from "./pages/visualize_tree"; // Create this page
 import { VisualizeTable } from "./pages/visualize_table"; // Create this page
-import { KnowledgeTree } from "./pages/knowledge_tree";
 import { ErrorPage } from "./pages/error_page"
 import { FileProvider } from './FileContext';
 import { KnowledgeBaseViz } from './pages/knowledge_base_viz';
@@ -22,8 +21,6 @@ function App() {
             <Route path="/visualize-tree" element={<VisualizeTree />} />
             <Route path="/knowledge-base" element={<KnowledgeBaseViz />} />
             <Route path="/log-table" element={<VisualizeTable />} />
-            <Route path="/knowledge-tree" element={<KnowledgeTree />} /> {/* Add this line */}
-
             <Route path="*" element={<ErrorPage />} />
           </Routes>
       </Router>
