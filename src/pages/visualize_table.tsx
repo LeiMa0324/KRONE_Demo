@@ -21,14 +21,14 @@ type CsvRow = {
     anomaly_reason: string;
 };
 
-//Data type for visualizing new tree
+// Data type for visualizing new tree
 export type KroneDecompRow = {
     seq_id: string;
     seq: string[];
     entity_nodes_for_logkeys: string[];
     action_nodes_for_logkeys: string[];
     status_nodes_for_logkeys: string[];
-}
+};
 
 export type KroneDetectRow = {
     seq_id: string;
@@ -36,7 +36,85 @@ export type KroneDetectRow = {
     anomaly_seg: string[];
     anomaly_level: "entity" | "action" | "status";
     anomaly_reason: string;
-}
+};
+
+// Utility function to parse arrays from CSV strings
+const parseArray = (str: string): string[] => {
+    if (!str) return [];
+    try {
+        return str
+            .replace(/[[\]'""]/g, "") // Remove brackets and quotes
+            .split(",") // Split by commas
+            .map((s) => s.trim()) // Trim whitespace
+            .filter(Boolean); // Remove empty strings
+    } catch {
+        return [];
+    }
+};
+
+// Utility function to fetch and parse Krone Decompose data
+const fetchKroneDecompData = async (filePath: string): Promise<KroneDecompRow[]> => {
+    const response = await fetch(filePath);
+    if (!response.ok) {
+        console.error("Failed to fetch Krone Decompose data");
+        return [];
+    }
+
+    const csvText = await response.text();
+    const parsedData: KroneDecompRow[] = [];
+
+    Papa.parse<KroneDecompRow>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+            const rows: KroneDecompRow[] = results.data.map((row: unknown) => {
+                const r = row as Record<string, unknown>;
+                return {
+                    seq_id: String(r.seq_id ?? ""),
+                    seq: parseArray(String(r.seq ?? "")),
+                    entity_nodes_for_logkeys: parseArray(String(r.entity_nodes_for_logkeys ?? "")),
+                    action_nodes_for_logkeys: parseArray(String(r.action_nodes_for_logkeys ?? "")),
+                    status_nodes_for_logkeys: parseArray(String(r.status_nodes_for_logkeys ?? "")),
+                };
+            });
+            parsedData.push(...rows);
+        },
+    });
+
+    return parsedData;
+};
+
+// Utility function to fetch and parse Krone Detection data
+const fetchKroneDetectData = async (filePath: string): Promise<KroneDetectRow[]> => {
+    const response = await fetch(filePath);
+    if (!response.ok) {
+        console.error("Failed to fetch Krone Detection data");
+        return [];
+    }
+
+    const csvText = await response.text();
+    const parsedData: KroneDetectRow[] = [];
+
+    Papa.parse<KroneDetectRow>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+            const rows: KroneDetectRow[] = results.data.map((row: unknown) => {
+                const r = row as Record<string, unknown>;
+                return {
+                    seq_id: String(r.seq_id ?? ""),
+                    seq: parseArray(String(r.seq ?? "")),
+                    anomaly_seg: parseArray(String(r.anomaly_seg ?? "")),
+                    anomaly_level: r.anomaly_level as "entity" | "action" | "status",
+                    anomaly_reason: String(r.anomaly_reason ?? ""),
+                };
+            });
+            parsedData.push(...rows);
+        },
+    });
+
+    return parsedData;
+};
 
 // Create a dictionary for each event/template id and its corresponding log template
 async function createTemplateDict(filePath: string) {
@@ -279,73 +357,20 @@ export const VisualizeTable = () => {
         createTemplateDict("/Krone_Tree.csv").then((dict) => {
             setTemplateDict(dict);
         });
-    }, []);
 
-    const parseArray = (str: string): string[] => {
-        if (!str) return [];
-        try {
-            // Remove brackets and quotes, but keep spaces, then split
-            return str
-                .replace(/[[\]'""]/g, "")
-                .split(",")
-                .map(s => s.trim())
-                .filter(Boolean);
-        } catch {
-            return [];
-        }
-    }
-    
-    useEffect(() => {
-        fetch("/krone_decompose_res.csv")
-            .then((response) => response.text())
-            .then((csvText) => {
-                Papa.parse<KroneDecompRow>(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        const rows: KroneDecompRow[] = results.data.map((row: unknown) => {
-                            const r = row as Record<string, unknown>;
-                            return {
-                                seq_id: String(r.seq_id ?? ""),
-                                seq: parseArray(String(r.seq ?? "")),
-                                entity_nodes_for_logkeys: parseArray(String(r.entity_nodes_for_logkeys ?? "")),
-                                action_nodes_for_logkeys: parseArray(String(r.action_nodes_for_logkeys ?? "")),
-                                status_nodes_for_logkeys: parseArray(String(r.status_nodes_for_logkeys ?? "")),
-                            };
-                        });
-                        setKroneDecompData(rows);
-                    },
-                });
-            });
-        fetch("/krone_detection_res.csv")
-            .then((response) => response.text())
-            .then((csvText) => {
-                Papa.parse<KroneDetectRow>(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        const rows: KroneDetectRow[] = results.data.map((row: unknown) => {
-                            const r = row as Record<string, unknown>;
-                            return {
-                                seq_id: String(r.seq_id ?? ""),
-                                seq: parseArray(String(r.seq ?? "")),
-                                anomaly_seg: parseArray(String(r.anomaly_seg ?? "")),
-                                anomaly_level: r.anomaly_level as "entity" | "action" | "status",
-                                anomaly_reason: String(r.anomaly_reason ?? ""),
-                            };
-                        });
-                        setKroneDetectData(rows);
-                    },
-                });
-            });
-    }, []);
+        fetchKroneDecompData("/krone_decompose_res.csv").then((data) => {
+            setKroneDecompData(data);
+        });
 
-    useEffect(() => {
+        fetchKroneDetectData("/krone_detection_res.csv").then((data) => {
+            setKroneDetectData(data);
+        });
+
         createAnomalyData("/krone_detection_res.csv").then((anomData) => {
             const rows = anomData as CsvRow[];
             setData(rows);
             setDropdownOptions(rows);
-            setSelectedOption(rows[0].seq_id);
+            setSelectedOption(rows[0]?.seq_id || "");
             setLoading(false);
         });
     }, []);
@@ -365,7 +390,6 @@ export const VisualizeTable = () => {
     return (
         <div className="flex flex-col min-h-screen">
             <div className="flex-grow p-8 animate-fade-in-fast">
-                <div className="mb-6 flex flex-col gap-2 max-w-md mx-auto items-center mt-16"></div>
                 <h1 className="text-3xl font-WPIfont font-extrabold text-WPIRed mb-4 text-center">
                     Log Sequence Table
                 </h1>
