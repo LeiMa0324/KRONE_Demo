@@ -126,14 +126,6 @@ function approximateSearch(sequences: Seq[], targetEmbedding: number[], k: numbe
     return similarities.slice(1, k+1); //ignore the first as it's just the same one
 }
 
-// Exact search for sequences with a matching logkey_seq
-function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] {
-    return sequences.filter(seq =>
-        seq.logkey_seq.length === targetLogkeySeq.length &&
-        seq.logkey_seq.every((key, index) => key === targetLogkeySeq[index])
-    );
-}
-
 export const KnowledgeBaseViz = () => {
     const [knowledgeStructures, setKnowledgeStructures] = useState<{
         entityDict: EntityDict;
