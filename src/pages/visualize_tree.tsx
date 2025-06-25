@@ -142,6 +142,7 @@ export const VisualizeTree: React.FC = () => {
             collapseStatuses={collapseStatuses}
             matchedNodeId={matchedNodeId}
             setHoveredNode={setHoveredNode}
+            showAnomalySymbols={true}
           />
         )}
       </div>
