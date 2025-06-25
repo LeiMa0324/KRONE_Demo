@@ -5,7 +5,7 @@ import type { TreeNode } from "../tree_utils";
 
 type TreeLink = { source: HierarchyNode<TreeNode>; target: HierarchyNode<TreeNode> };
 
-type TreeRendererProps = {
+type VizTreeProps = {
   treeData: TreeNode;
   collapseEntities: boolean;
   collapseActions: boolean;
@@ -22,7 +22,7 @@ function hasHiddenChildren(node: HierarchyNode<TreeNode>): node is HierarchyNode
   return Array.isArray((node as HierarchyNodeWithHiddenChildren<TreeNode>)._children);
 }
 
-export const TreeRenderer: React.FC<TreeRendererProps> = ({
+export const VizTree: React.FC<VizTreeProps> = ({
   treeData,
   collapseEntities,
   collapseActions,
@@ -33,7 +33,6 @@ export const TreeRenderer: React.FC<TreeRendererProps> = ({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [localTree, setLocalTree] = useState<TreeNode | null>(null);
 
-  // Only reset localTree when treeData changes
   useEffect(() => {
     setLocalTree(JSON.parse(JSON.stringify(treeData)));
   }, [treeData]);

@@ -4,8 +4,8 @@ import { hierarchy } from "d3-hierarchy";
 import type { HierarchyNode } from "d3-hierarchy";
 import { buildTree } from "../tree_utils";
 import type { TreeNode } from "../tree_utils";
-import { TreeSidebar } from "../components/viz_tree_sidebar";
-import { TreeRenderer } from "../components/tree_renderer";
+import { TreeControls } from "../components/viz_tree_controls";
+import { VizTree } from "../components/viz_tree";
 import { TreeInfoPanel } from "../components/tree_info_panel";
 
 export const VisualizeTree: React.FC = () => {
@@ -61,6 +61,29 @@ export const VisualizeTree: React.FC = () => {
     setMatchedNodeObj(null);
   }
 
+  function handlePathSearch(entity: string, action: string, status: string) {
+    if (!treeData) return;
+
+    let foundId: string | null = null;
+    for (const entityNode of treeData.children || []) {
+      if (entityNode.name !== entity) continue;
+      for (const actionNode of entityNode.children || []) {
+        if (actionNode.name !== action) continue;
+        for (const statusNode of actionNode.children || []) {
+          if (statusNode.name === status && statusNode.event_id) {
+            foundId = statusNode.event_id;
+            break;
+          }
+        }
+        if (foundId) break;
+      }
+      if (foundId) break;
+    }
+    setSearchValue(foundId ?? "");
+    setMatchedNodeId(foundId);
+    if (!foundId) setMatchedNodeObj(null);
+  }
+
   return (
     <div
       style={{
@@ -68,7 +91,9 @@ export const VisualizeTree: React.FC = () => {
         height: "100vh",
         display: "flex",
         alignItems: "flex-start",
-        paddingTop: "65px",
+        paddingTop: "80px",
+        paddingLeft: "20px",
+        paddingRight: "20px",
         boxSizing: "border-box",
         overflow: "hidden",
       }}
@@ -81,7 +106,7 @@ export const VisualizeTree: React.FC = () => {
         height: "100%",
         overflowY: "auto"
       }}>
-        <TreeSidebar
+        <TreeControls
           {...{
             collapseEntities,
             setCollapseEntities,
@@ -95,6 +120,8 @@ export const VisualizeTree: React.FC = () => {
             handleClearSearch,
             searchValue,
             matchedNodeId,
+            treeData,
+            onPathSearch: handlePathSearch,
           }}
         />
       </div>
@@ -108,7 +135,7 @@ export const VisualizeTree: React.FC = () => {
         flexDirection: "column"
       }}>
         {treeData && (
-          <TreeRenderer
+          <VizTree
             treeData={treeData}
             collapseEntities={collapseEntities}
             collapseActions={collapseActions}
