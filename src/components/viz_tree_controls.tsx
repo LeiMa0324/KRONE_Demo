@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,6 +84,34 @@ export const TreeControls: React.FC<ControlProps> = ({
     setSelectedStatus(null);
   }
 
+  // Refs and positions for dropdowns
+  const entityInputRef = React.useRef<HTMLDivElement>(null);
+  const actionInputRef = React.useRef<HTMLDivElement>(null);
+  const statusInputRef = React.useRef<HTMLDivElement>(null);
+
+  const [entityDropdownPos, setEntityDropdownPos] = React.useState({left: 0, top: 0, width: 0});
+  const [actionDropdownPos, setActionDropdownPos] = React.useState({left: 0, top: 0, width: 0});
+  const [statusDropdownPos, setStatusDropdownPos] = React.useState({left: 0, top: 0, width: 0});
+
+  React.useLayoutEffect(() => {
+    if (entityInputRef.current) {
+      const rect = entityInputRef.current.getBoundingClientRect();
+      setEntityDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    }
+    if (actionInputRef.current) {
+      const rect = actionInputRef.current.getBoundingClientRect();
+      setActionDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    }
+    if (statusInputRef.current) {
+      const rect = statusInputRef.current.getBoundingClientRect();
+      setStatusDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    }
+  }, [
+    selectedEntity, selectedAction, selectedStatus,
+    entities, actions, statuses,
+    window.innerWidth, window.innerHeight
+  ]);
+
   return (
     <div
       style={{
@@ -102,18 +131,20 @@ export const TreeControls: React.FC<ControlProps> = ({
         Tree Controls
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
-          Collapse Entities
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
-          Collapse Actions
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
-          Collapse Statuses
-        </label>
+        <div style={{ alignItems: "flex-start", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
+            Collapse Entities
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
+            Collapse Actions
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
+            Collapse Statuses
+          </label>
+        </div>
       </div>
       {/* Log Key Search Section */}
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -125,6 +156,11 @@ export const TreeControls: React.FC<ControlProps> = ({
                 placeholder="Search Log Key..."
                 value={searchInput}
                 onValueChange={setSearchInput}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.form?.requestSubmit?.();
+                  }
+                }}
               />
             </Command>
           </div>
@@ -138,7 +174,7 @@ export const TreeControls: React.FC<ControlProps> = ({
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Sequence Search</div>
         {/* Entity Command */}
-        <div style={{ position: "relative", width: "fit-content" }}>
+        <div ref={entityInputRef} style={{ position: "relative", width: "fit-content" }}>
           <Command>
             <CommandInput
               placeholder="Search Entity..."
@@ -170,32 +206,47 @@ export const TreeControls: React.FC<ControlProps> = ({
                   zIndex: 2,
                 }}
               >
-                ×
+                x
               </button>
             )}
-            {selectedEntity !== null && selectedEntity.length > 0 && !entities.includes(selectedEntity) && (
-              <CommandList>
-                {entities
-                  .filter(entity => entity.toLowerCase().includes(selectedEntity.toLowerCase()))
-                  .map(entity => (
-                    <CommandItem
-                      key={entity}
-                      value={entity}
-                      onSelect={() => {
-                        setSelectedEntity(entity);
-                        setSelectedAction(null);
-                        setSelectedStatus(null);
-                      }}
-                    >
-                      {entity}
-                    </CommandItem>
-                  ))}
-              </CommandList>
+            {selectedEntity !== null && selectedEntity.length > 0 && !entities.includes(selectedEntity) && ReactDOM.createPortal(
+              <div
+                style={{
+                  position: "absolute",
+                  left: entityDropdownPos.left,
+                  top: entityDropdownPos.top,
+                  width: entityDropdownPos.width,
+                  zIndex: 9999,
+                  background: "#fff", // solid background
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <CommandList>
+                  {entities
+                    .filter(entity => entity.toLowerCase().includes(selectedEntity.toLowerCase()))
+                    .map(entity => (
+                      <CommandItem
+                        key={entity}
+                        value={entity}
+                        onSelect={() => {
+                          setSelectedEntity(entity);
+                          setSelectedAction(null);
+                          setSelectedStatus(null);
+                        }}
+                      >
+                        {entity}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </div>,
+              document.body
             )}
           </Command>
         </div>
         {/* Action Command */}
-        <div style={{ position: "relative", width: "fit-content" }}>
+        <div ref={actionInputRef} style={{ position: "relative", width: "fit-content" }}>
           <Command>
             <CommandInput
               placeholder="Search Action..."
@@ -229,28 +280,43 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedAction !== null && selectedAction.length > 0 && !actions.includes(selectedAction) && (
-              <CommandList>
-                {actions
-                  .filter(action => action.toLowerCase().includes(selectedAction.toLowerCase()))
-                  .map(action => (
-                    <CommandItem
-                      key={action}
-                      value={action}
-                      onSelect={() => {
-                        setSelectedAction(action);
-                        setSelectedStatus(null);
-                      }}
-                    >
-                      {action}
-                    </CommandItem>
-                  ))}
-              </CommandList>
+            {selectedAction !== null && selectedAction.length > 0 && !actions.includes(selectedAction) && ReactDOM.createPortal(
+              <div
+                style={{
+                  position: "absolute",
+                  left: actionDropdownPos.left,
+                  top: actionDropdownPos.top,
+                  width: actionDropdownPos.width,
+                  zIndex: 9999,
+                  background: "#fff", // solid background
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <CommandList>
+                  {actions
+                    .filter(action => action.toLowerCase().includes(selectedAction.toLowerCase()))
+                    .map(action => (
+                      <CommandItem
+                        key={action}
+                        value={action}
+                        onSelect={() => {
+                          setSelectedAction(action);
+                          setSelectedStatus(null);
+                        }}
+                      >
+                        {action}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </div>,
+              document.body
             )}
           </Command>
         </div>
         {/* Status Command */}
-        <div style={{ position: "relative", width: "fit-content" }}>
+        <div ref={statusInputRef} style={{ position: "relative", width: "fit-content" }}>
           <Command>
             <CommandInput
               placeholder="Search Status..."
@@ -278,20 +344,35 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedStatus !== null && selectedStatus.length > 0 && !statuses.includes(selectedStatus) && (
-              <CommandList>
-                {statuses
-                  .filter(status => status.toLowerCase().includes(selectedStatus.toLowerCase()))
-                  .map(status => (
-                    <CommandItem
-                      key={status}
-                      value={status}
-                      onSelect={() => setSelectedStatus(status)}
-                    >
-                      {status}
-                    </CommandItem>
-                  ))}
-              </CommandList>
+            {selectedStatus !== null && selectedStatus.length > 0 && !statuses.includes(selectedStatus) && ReactDOM.createPortal(
+              <div
+                style={{
+                  position: "absolute",
+                  left: statusDropdownPos.left,
+                  top: statusDropdownPos.top,
+                  width: statusDropdownPos.width,
+                  zIndex: 9999,
+                  background: "#fff", // solid background
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <CommandList>
+                  {statuses
+                    .filter(status => status.toLowerCase().includes(selectedStatus.toLowerCase()))
+                    .map(status => (
+                      <CommandItem
+                        key={status}
+                        value={status}
+                        onSelect={() => setSelectedStatus(status)}
+                      >
+                        {status}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </div>,
+              document.body
             )}
           </Command>
         </div>
