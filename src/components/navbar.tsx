@@ -58,6 +58,11 @@ export const NavBar = () => {
                             Log Table
                         </Button>
                     </Link>
+                    <Link to="/knowledge-base">
+                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
+                            Knowledge Base 
+                        </Button>
+                    </Link>
                     <Link to="/about">
                         <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             About
