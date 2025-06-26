@@ -7,6 +7,7 @@ import type { TreeNode } from "../tree_utils";
 import { TreeControls } from "../components/viz_tree_controls";
 import { VizTree } from "../components/viz_tree";
 import { TreeInfoPanel } from "../components/tree_info_panel";
+import { Footer } from "@/components/footer";
 
 export const VisualizeTree: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
@@ -83,78 +84,95 @@ export const VisualizeTree: React.FC = () => {
     setMatchedNodeId(foundId);
     if (!foundId) setMatchedNodeObj(null);
   }
+  
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   return (
     <div
       style={{
-        width: "100vw",
+        minHeight: "100vh",
         height: "100vh",
         display: "flex",
-        alignItems: "flex-start",
-        paddingTop: "80px",
-        paddingLeft: "20px",
-        paddingRight: "20px",
-        boxSizing: "border-box",
+        flexDirection: "column",
         overflow: "hidden",
       }}
     >
-      <div style={{
-        flex: "0 0 25%",
-        width: "25%",
-        minWidth: 180,
-        maxWidth: "30%",
-        height: "100%",
-        overflowY: "auto"
-      }}>
-        <TreeControls
-          {...{
-            collapseEntities,
-            setCollapseEntities,
-            collapseActions,
-            setCollapseActions,
-            collapseStatuses,
-            setCollapseStatuses,
-            searchInput,
-            setSearchInput,
-            handleSearchSubmit,
-            handleClearSearch,
-            searchValue,
-            matchedNodeId,
-            treeData,
-            onPathSearch: handlePathSearch,
-          }}
-        />
-      </div>
-      <div style={{
-        flex: "0 0 50%",
-        width: "50%",
-        minWidth: 0,
-        height: "100%",
-        overflow: "auto",
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        {treeData && (
-          <VizTree
-            treeData={treeData}
-            collapseEntities={collapseEntities}
-            collapseActions={collapseActions}
-            collapseStatuses={collapseStatuses}
-            matchedNodeId={matchedNodeId}
-            setHoveredNode={setHoveredNode}
-            showAnomalySymbols={true}
+      <div
+        style={{
+          flex: "1 1 auto",
+          display: "flex",
+          alignItems: "flex-start",
+          paddingTop: "80px",
+          paddingLeft: "20px",
+          paddingRight: "20px",
+          boxSizing: "border-box",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{
+          flex: "0 0 25%",
+          width: "25%",
+          minWidth: 180,
+          maxWidth: "30%",
+          height: "100%",
+          overflowY: "auto"
+        }}>
+          <TreeControls
+            {...{
+              collapseEntities,
+              setCollapseEntities,
+              collapseActions,
+              setCollapseActions,
+              collapseStatuses,
+              setCollapseStatuses,
+              searchInput,
+              setSearchInput,
+              handleSearchSubmit,
+              handleClearSearch,
+              searchValue,
+              matchedNodeId,
+              treeData,
+              onPathSearch: handlePathSearch,
+            }}
           />
-        )}
+        </div>
+        <div style={{
+          flex: "0 0 50%",
+          width: "50%",
+          minWidth: 0,
+          height: "100%",
+          overflow: "auto",
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          {treeData && (
+            <VizTree
+              treeData={treeData}
+              collapseEntities={collapseEntities}
+              collapseActions={collapseActions}
+              collapseStatuses={collapseStatuses}
+              matchedNodeId={matchedNodeId}
+              setHoveredNode={setHoveredNode}
+              showAnomalySymbols={true}
+            />
+          )}
+        </div>
+        <div style={{
+          flex: "0 0 25%",
+          width: "25%",
+          minWidth: 180,
+          maxWidth: "30%",
+          height: "100%",
+          overflowY: "auto"
+        }}>
+          <TreeInfoPanel node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode} />
+        </div>
       </div>
-      <div style={{
-        flex: "0 0 25%",
-        width: "25%",
-        minWidth: 180,
-        maxWidth: "30%",
-        height: "100%",
-        overflowY: "auto"
-      }}>
-        <TreeInfoPanel node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode} />
+      <div style={{ flex: "0 0 auto" }}>
+        <Footer />
       </div>
     </div>
   );
