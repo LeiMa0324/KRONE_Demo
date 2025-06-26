@@ -26,6 +26,26 @@ function addIndexPath(node: TreeNode, path: number[] = []): void {
     (node.children || []).forEach((c, i) => addIndexPath(c, [...path, i]));
 }
 
+function getFirstAnomalyReason(node: HierarchyNode<TreeNode>): string | undefined {
+    // Check direct children
+    if (node.children) {
+        for (const child of node.children) {
+            if (child.data.isAnomaly && child.data.anomalyReason) {
+                return child.data.anomalyReason;
+            }
+            // Check grandchildren
+            if (child.children) {
+                for (const grandchild of child.children) {
+                    if (grandchild.data.isAnomaly && grandchild.data.anomalyReason) {
+                        return grandchild.data.anomalyReason;
+                    }
+                }
+            }
+        }
+    }
+    return undefined;
+}
+
 function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
     if (path.length === 0) return node;
     const [currentIndex, ...remainingPath] = path;
@@ -51,6 +71,49 @@ function arraysEqual<T>(a: T[], b: T[]): boolean {
         if (a[i] !== b[i]) return false;
     }
     return true;
+}
+
+function allEntitiesCollapsed(treeData: TreeNode | null): boolean {
+    if (!treeData?.children) return false;
+    return treeData.children.every(entity => entity.collapsed);
+}
+
+// Helper to check if all actions are collapsed
+function allActionsCollapsed(treeData: TreeNode | null): boolean {
+    if (!treeData?.children) return false;
+    return treeData.children.every(entity =>
+        entity.children?.every(action => action.collapsed) ?? false
+    );
+}
+
+function anyAnomalyEntityCollapsed(treeData: TreeNode | null, anomalyLevel: string, anomalySeg: string[]): boolean {
+    if (!treeData?.children) return false;
+    if (anomalyLevel === "entity") {
+        // For entity-level, check all entities whose children contain the anomaly segment
+        return treeData.children.some(entity =>
+            entity.collapsed &&
+            entity.children?.some(action =>
+                action.children?.some(status =>
+                    anomalySeg.includes((status.name.match(/\(([^)]+)\)$/) || [])[1])
+                )
+            )
+        );
+    }
+    return false;
+}
+
+// Returns true if any action node involved in the anomaly is collapsed
+function anyAnomalyActionCollapsed(treeData: TreeNode | null, anomalySeg: string[]): boolean {
+    if (!treeData?.children) return false;
+    // For action-level or status-level, check all actions whose children contain the anomaly segment
+    return treeData.children.some(entity =>
+        entity.children?.some(action =>
+            action.collapsed &&
+            action.children?.some(status =>
+                anomalySeg.includes((status.name.match(/\(([^)]+)\)$/) || [])[1])
+            )
+        )
+    );
 }
 
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode {
@@ -80,6 +143,7 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode
             if (arraysEqual(seq.slice(i, i + anomalyLength), foundAnomaly.anomaly_seg)) {
                 for (let j = i; j < i + anomalyLength; j++) {
                     if (foundAnomaly.anomaly_level === "status") {
+                        
                         entities[j].children![0].children![0].isAnomaly = true;
                         entities[j].children![0].children![0].anomalyReason = foundAnomaly.anomaly_reason;
                         entities[j].children![0].isRelatedToAnomaly = true;
@@ -129,6 +193,23 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode
             }
         }
     }
+    function propagateRelatedToAnomaly(node: TreeNode) {
+        if (!node.children) return false;
+        let anyChildRelated = false;
+        for (const child of node.children) {
+            const childRelated = propagateRelatedToAnomaly(child);
+            if (child.isRelatedToAnomaly || childRelated) {
+                anyChildRelated = true;
+            }
+        }
+        if (anyChildRelated) {
+            node.isRelatedToAnomaly = true;
+        }
+        return node.isRelatedToAnomaly;
+    }
+
+    // ...after merging logic, before return:
+    propagateRelatedToAnomaly({ name: "Root", children: entities });
 
     return { name: "Root", children: entities };
 }
@@ -150,9 +231,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [eventIdToLogTemplate, setEventIdToLogTemplate] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
-    const [entitiesCollapsed, setEntitiesCollapsed] = useState(false);
+    const [entitiesCollapsed, setEntitiesCollapsed] = useState(true);
     const [actionsCollapsed, setActionsCollapsed] = useState(false);
-    const [showTree, setShowTree] = useState(false);
     const [multiLineAnomaly, setMultiLineAnomaly] = useState(false);
     const [anomalyLevelMulti, setAnomalyLevelMulti] = useState("Normal");
 
@@ -186,11 +266,14 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             } else {
                 setMultiLineAnomaly(false);
             }
+            // Apply initial collapse state
+            setCollapseAtDepth(treeNode, 1, entitiesCollapsed);
+            setCollapseAtDepth(treeNode, 2, actionsCollapsed);
             addIndexPath(treeNode);
             setTreeData(treeNode);
             setLoading(false);
         }
-    }, [kroneDecompData, kroneDetectData, selectedIndex]);
+    }, [kroneDecompData, kroneDetectData, selectedIndex, actionsCollapsed, entitiesCollapsed]);
 
     // Collapse/expand all entities or actions by toggling their collapsed property
     function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cur = 1) {
@@ -215,7 +298,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     }, [entitiesCollapsed, actionsCollapsed]);
 
     useEffect(() => {
-        if (!showTree) return;
         if (!treeData || !svgRef.current) return;
 
         addIndexPath(treeData);
@@ -426,7 +508,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         // Highlight associated log template(s)
         if (d.depth === 3 && typeof d.data.lineNumber === "number") {
             // Status node: highlight by lineNumber
-            svg.selectAll<SVGTextElement, any>("text.log-template-text")
+            svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
                 .filter(function() {
                     return +select(this).attr("data-line-number") === d.data.lineNumber;
                 })
@@ -440,11 +522,14 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     lineNumbers.push(n.data.lineNumber);
                 }
             });
-            svg.selectAll<SVGTextElement, any>("text.log-template-text")
+            svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
                 .filter(function() {
                     return lineNumbers.includes(+select(this).attr("data-line-number"));
                 })
-                .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#003366")
+                .attr("fill", function(d) {
+                    // Only highlight red if this log template/status is actually anomalous or related
+                    return d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#003366";
+                })
                 .attr("font-weight", "bold");
         }
 
@@ -479,7 +564,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("fill", linkFillColor({ source: { depth: n.depth - 1 } }))
                     .attr("stroke-width", 2);
             });
-        svg.selectAll<SVGTextElement, any>("text.log-template-text")
+        svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
             .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#444")
             .attr("font-weight", null);
         svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
@@ -547,7 +632,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .attr("class", "log-template-text")
                             .attr("data-event-id", eventId)
                             .attr("data-line-number", d.data.lineNumber || "")
-                            .attr("x", maxStatusLabelRight + getPadding(fontSize) * 2 + 25)
+                            .attr("x", maxStatusLabelRight + getPadding(fontSize) * 2 + 15)
                             .attr("y", bbox.y + bbox.height / 2 + 2)
                             .attr("alignment-baseline", "middle")
                             .attr("font-size", Math.max(fontSize * 0.8, 14))
@@ -575,11 +660,11 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         }
                     }
                 }
-                if (d.data.isAnomaly) {
+                if (d.data.isAnomaly && !d.parent?.data.collapsed && !d.parent?.parent?.data.collapsed) {
                     if (!multiLineAnomaly) {
                         nodeGroup.append("text")
                             .attr("class", "anomaly-warning")
-                            .attr("x", bbox.x + bbox.width + (d.depth === 3 ? padding * 2 : padding * 1.2))
+                            .attr("x", bbox.x - padding * 2.5 - 15)
                             .attr("y", d.depth === 3 ? bbox.y + bbox.height / 2 + 2 : bbox.y - padding / 2 + 8)
                             .attr("alignment-baseline", d.depth === 3 ? "middle" : "hanging")
                             .attr("font-size", Math.max(fontSize * 0.8, d.depth === 3 ? 14 : 18))
@@ -593,8 +678,39 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .on("mouseout", function () { setHoveredAnomaly(null); });
                     }
                 }
+                else if (d.data.isRelatedToAnomaly && d.data.collapsed && !d.parent?.data.collapsed) {
+                    const reason = getFirstAnomalyReason(d);
+                    nodeGroup.append("text")
+                        .attr("class", "anomaly-warning")
+                        .attr("x", bbox.x - padding * 2.5 - 15)
+                        .attr("y", d.depth === 3 ? bbox.y + bbox.height / 2 + 2 : bbox.y - padding / 2 + 8)
+                        .attr("alignment-baseline", d.depth === 3 ? "middle" : "hanging")
+                        .attr("font-size", Math.max(fontSize * 0.8, d.depth === 3 ? 14 : 18))
+                        .attr("fill", "#FFD100")
+                        .attr("text-anchor", "start")
+                        .style("cursor", "pointer")
+                        .text(!reason? "" : multiLineAnomaly ? "🚨" : "⚠️")
+                        .on("mouseover", function (event) {
+                            if (reason) setHoveredAnomaly({ explanation: reason, x: event.clientX, y: event.clientY });
+                        })
+                        .on("mouseout", function () { setHoveredAnomaly(null); });
+                }
             });
-        if (multiLineAnomaly && anomalyStartY !== Infinity && anomalyEndY !== -Infinity) {
+
+        const anomalyRow = kroneDetectData.find(row => row.seq_id === selectedSeqId);
+        const anomalySeg = anomalyRow?.anomaly_seg || [];
+
+        if (multiLineAnomaly && 
+            anomalyStartY !== Infinity && 
+            anomalyEndY !== -Infinity &&
+            (
+                // Entity-level: hide if any relevant entity is collapsed
+                (anomalyLevelMulti === "entity") ||
+                // Action-level: hide if any relevant entity is collapsed (not action!)
+                (anomalyLevelMulti === "action" && !allEntitiesCollapsed(treeData) && !anyAnomalyEntityCollapsed(treeData, "entity", anomalySeg)) ||
+                // Status-level: hide if any relevant entity or action is collapsed
+                (anomalyLevelMulti === "status" && !allEntitiesCollapsed(treeData) && !allActionsCollapsed(treeData) && !anyAnomalyEntityCollapsed(treeData, "entity", anomalySeg) && !anyAnomalyActionCollapsed(treeData, anomalySeg))
+            )) {
             svg.append("rect")
                 .attr("x", anomalyLevelMulti === "entity" ? 160 : anomalyLevelMulti === "action" ? 335 : 500) // Adjust based on depth
                 .attr("y", anomalyStartY - 20) // adjust as needed for padding
@@ -611,7 +727,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("pointer-events", hidden ? "none" : "auto");
         });
 
-    }, [treeData, eventIdToLogTemplate, showTree, entitiesCollapsed, actionsCollapsed, multiLineAnomaly]);
+    }, [treeData, eventIdToLogTemplate, entitiesCollapsed, actionsCollapsed, multiLineAnomaly]);
 
     const selectedSeqId = kroneDecompData[selectedIndex]?.seq_id;
     const anomalyRow = kroneDetectData.find(row => row.seq_id === selectedSeqId);
@@ -621,17 +737,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         else if (anomalyRow.anomaly_level === "action") anomalyLevel = "Action-level Anomaly";
         else if (anomalyRow.anomaly_level === "status") anomalyLevel = "Status-level Anomaly";
         else anomalyLevel = String(anomalyRow.anomaly_level);
-    }
-
-    let logTemplates: { lineNumber?: number; eventId: string; logTemplate: string }[] = [];
-    if (kroneDecompData[selectedIndex]) {
-        const decomp = kroneDecompData[selectedIndex];
-        const { seq } = decomp;
-        logTemplates = seq.map((eventId: string, i: number) => ({
-            lineNumber: i + 1,
-            eventId,
-            logTemplate: eventIdToLogTemplate[eventId] || "",
-        }));
     }
 
     return (
@@ -646,7 +751,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             onChange={e => {
                                 const idx = kroneDecompData.findIndex(row => row.seq_id === e.target.value);
                                 if (idx !== -1) setSelectedIndex(idx);
-                                setShowTree(false);
                             }}
                             style={{ minWidth: 120 }}
                         >
@@ -658,7 +762,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     <button
                         onClick={() => {
                             setEntitiesCollapsed(v => !v);
-                            if (!showTree) setShowTree(true);
                         }}
                         style={{
                             marginLeft: 16,
@@ -675,7 +778,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     <button
                         onClick={() => {
                             setActionsCollapsed(v => !v);
-                            if (!showTree) setShowTree(true);
                         }}
                         style={{
                             padding: "4px 12px",
@@ -709,79 +811,42 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         >
                             {anomalyLevel}
                         </h3>
-                        {!showTree ? (
-                            <div style={{ margin: "2rem 2rem", textAlign: "left" }}>
-                                <h4>Log Templates</h4>
-                                <ol>
-                                    {logTemplates.map(({ lineNumber, eventId, logTemplate }) => (
-                                        <li key={eventId + lineNumber} style={{ marginBottom: 8 }}>
-                                            <span style={{ fontWeight: 600 }}>
-                                                {lineNumber}.
-                                            </span>{" "}
-                                            <span style={{ marginLeft: 8 }}>
-                                                {logTemplate}
-                                            </span>{" "}
-                                            <span style={{ color: "#888" }}>
-                                                ({eventId})
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ol>
-                                <button
-                                    onClick={() => setShowTree(true)}
+                        <>
+                            <svg ref={svgRef} />
+                            {hoveredAnomaly && (
+                                <div
                                     style={{
-                                        marginTop: 24,
-                                        padding: "8px 24px",
+                                        position: "fixed",
+                                        background: "white",
+                                        color: "#222",
+                                        border: "1px solid #ccc",
                                         borderRadius: 8,
-                                        border: "1px solid #c8102e",
-                                        background: "#fff",
-                                        color: "#c8102e",
-                                        fontWeight: 700,
-                                        fontSize: 18,
-                                        cursor: "pointer",
+                                        padding: "1rem",
+                                        zIndex: 100,
+                                        maxWidth: 400,
+                                        boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+                                        pointerEvents: "none",
+                                        left: (() => {
+                                            const { innerWidth } = window;
+                                            let left = hoveredAnomaly.x + 30;
+                                            const width = 300;
+                                            if (left + width > innerWidth) left = innerWidth - width - 16;
+                                            return left;
+                                        })(),
+                                        top: (() => {
+                                            const { innerHeight } = window;
+                                            let top = hoveredAnomaly.y;
+                                            const height = 100;
+                                            if (top + height > innerHeight) top = innerHeight - height - 16;
+                                            return top;
+                                        })(),
                                     }}
                                 >
-                                    Decompose
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <svg ref={svgRef} />
-                                {hoveredAnomaly && (
-                                    <div
-                                        style={{
-                                            position: "fixed",
-                                            background: "white",
-                                            color: "#222",
-                                            border: "1px solid #ccc",
-                                            borderRadius: 8,
-                                            padding: "1rem",
-                                            zIndex: 100,
-                                            maxWidth: 400,
-                                            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-                                            pointerEvents: "none",
-                                            left: (() => {
-                                                const { innerWidth } = window;
-                                                let left = hoveredAnomaly.x + 30;
-                                                const width = 300;
-                                                if (left + width > innerWidth) left = innerWidth - width - 16;
-                                                return left;
-                                            })(),
-                                            top: (() => {
-                                                const { innerHeight } = window;
-                                                let top = hoveredAnomaly.y;
-                                                const height = 100;
-                                                if (top + height > innerHeight) top = innerHeight - height - 16;
-                                                return top;
-                                            })(),
-                                        }}
-                                    >
-                                        <strong>Anomaly Explanation</strong>
-                                        <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
-                                    </div>
-                                )}
-                            </>
-                        )}
+                                    <strong>Anomaly Explanation</strong>
+                                    <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
+                                </div>
+                            )}
+                        </>
                     </>
                 )}
             </div>
