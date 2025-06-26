@@ -320,6 +320,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         let widestEntity = 0, widestAction = 0;
         const tempSvg = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;").attr("font-family", font);
+
+        
         root.descendants().forEach(node => {
             const fontSize = getFontSize(node.depth);
             const tempText = tempSvg.append("text").attr("font-size", fontSize).attr("font-family", font).text(node.data.name);
@@ -613,6 +615,29 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 const fontSize = getFontSize(d.depth), padding = getPadding(fontSize), radius = getRadius(fontSize);
                 const nodeGroup = select(this.parentNode as Element);
                 const bbox = this.getBBox();
+                if (d.data.collapsed && !d.parent?.data.collapsed) {
+                    nodeGroup.insert("text", "text") // insert before label
+                        .attr("class", "collapse-indicator")
+                        .attr("x", bbox.x + bbox.width + padding * 2.5) // adjust as needed
+                        .attr("y", bbox.y + bbox.height / 2 + 2)
+                        .attr("alignment-baseline", "middle")
+                        .attr("font-size", Math.max(fontSize * 0.8, 16))
+                        .attr("fill", "#888")
+                        .on("click", function (event: MouseEvent) {
+                            event.stopPropagation();
+                            const idx = d.data.indexPath;
+                            if (!idx) return;
+                            setTreeData(prev => {
+                                if (!prev) return null;
+                                const updated = toggleNodeByIndexPath(prev, idx);
+                                addIndexPath(updated);
+                                return updated;
+                            });
+                        })
+                        .attr("text-anchor", "start")
+                        .style("cursor", "pointer")
+                        .text("▶");
+                }
                 nodeGroup.insert("rect", "text")
                     .attr("x", bbox.x - padding)
                     .attr("y", bbox.y - padding / 2)
