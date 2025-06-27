@@ -216,21 +216,3 @@
   stroke: #B3D8FF !important;
   stroke-opacity: 1 !important;
 }
-
-/* Tree branch lines for HTML tree */
-.tree-row {
-  position: relative;
-}
-
-.tree-branch {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 18px;
-  height: 2px;
-  background: #bbb;
-  content: "";
-  display: inline-block;
-  transform: translateY(-50%);
-  z-index: 0;
-}
