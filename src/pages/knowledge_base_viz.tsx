@@ -1,6 +1,8 @@
 import { Footer } from "@/components/footer";
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
+import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
+import type { KnowledgeBaseData } from "@/components/KnowledgeBaseSideBar";
 
 export type Seq = {
     arr: string[];
@@ -8,7 +10,8 @@ export type Seq = {
     seqType: string;
     isAnomaly: boolean;
     logkey_seq: string[];
-    embedding: number[]; // Added embedding member
+    embedding: number[];
+    path_summary?: string; // Added path_summary field
 };
 
 export type EntityDict = Record<string, Seq[]>;
@@ -22,12 +25,14 @@ export type CSVRow = {
     status_identifier?: string;
     logkey_seq?: string;
     path_reason?: string;
-    pattern_embedding?: string; // Embedding field as a JSON array string
+    pattern_embedding?: string;
+    path_summary?: string; // Added path_summary field
+    path_pred?: string; // Added path_pred field for isAnomaly
 };
 
 function parseListField(field: string): string[] {
     if (!field || field.trim() === "") return [];
-    return field.split(",").map(s => s.trim()).filter(Boolean);
+    return field.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 function parseEmbeddingField(field: string): number[] {
@@ -43,12 +48,12 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
     entityDict: EntityDict;
     actionDict: ActionDict;
     entitySequences: EntitySequences;
-    allSequences: Seq[]; // Added AllSequences
+    allSequences: Seq[];
 } {
     const entityDict: EntityDict = {};
     const actionDict: ActionDict = {};
     const entitySequences: EntitySequences = [];
-    const allSequences: Seq[] = []; // Initialize AllSequences
+    const allSequences: Seq[] = [];
 
     for (const row of rows) {
         const path_layer = row.path_layer?.trim().toUpperCase();
@@ -58,15 +63,19 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
         const logkey_seq = parseListField(row.logkey_seq || "");
         const explanation = row.path_reason || "";
         const seqType = path_layer || "";
-        const isAnomaly = false;
-        const embedding = parseEmbeddingField(row.pattern_embedding || ""); // Parse embedding field
 
-        const seq: Seq = { arr: [], explanation, seqType, isAnomaly, logkey_seq, embedding };
+        // Parse path_pred column as isAnomaly
+        const isAnomaly = row.path_pred !== undefined ? row.path_pred === "1" : false;
+
+        const embedding = parseEmbeddingField(row.pattern_embedding || "");
+        const path_summary = row.path_summary || ""; // Extract path_summary
+
+        const seq: Seq = { arr: [], explanation, seqType, isAnomaly, logkey_seq, embedding, path_summary };
 
         if (path_layer === "STATUS") {
             const statusSeq = parseListField(status_id || "");
             seq.arr = statusSeq;
-            allSequences.push(seq); // Add to AllSequences
+            allSequences.push(seq);
             if (action_id) {
                 if (!actionDict[action_id]) actionDict[action_id] = [];
                 actionDict[action_id].push(seq);
@@ -74,7 +83,7 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
         } else if (path_layer === "ACTION") {
             const actionSeq = parseListField(action_id || "");
             seq.arr = actionSeq;
-            allSequences.push(seq); // Add to AllSequences
+            allSequences.push(seq);
             if (entity_id) {
                 if (!entityDict[entity_id]) entityDict[entity_id] = [];
                 entityDict[entity_id].push(seq);
@@ -83,7 +92,7 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
             const entitySeq = parseListField(entity_id || "");
             seq.arr = entitySeq;
             entitySequences.push(seq);
-            allSequences.push(seq); // Add to AllSequences
+            allSequences.push(seq);
         }
     }
 
@@ -113,7 +122,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 // Approximate search for top k closest sequences using cosine similarity
-function approximateSearch(sequences: Seq[], targetEmbedding: number[], k: number): { sequence: Seq, similarity: number }[] {
+export function approximateSearch(sequences: Seq[], targetEmbedding: number[], k: number): { sequence: Seq, similarity: number }[] {
     const similarities = sequences.map(seq => ({
         sequence: seq,
         similarity: cosineSimilarity(seq.embedding, targetEmbedding),
@@ -123,11 +132,11 @@ function approximateSearch(sequences: Seq[], targetEmbedding: number[], k: numbe
     similarities.sort((a, b) => b.similarity - a.similarity);
 
     // Return top k closest sequences
-    return similarities.slice(1, k+1); //ignore the first as it's just the same one
+    return similarities.slice(0, k); //ignore the first as it's just the same one
 }
 
 // Exact search for sequences with a matching logkey_seq
-function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] {
+export function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] {
     return sequences.filter(seq =>
         seq.logkey_seq.length === targetLogkeySeq.length &&
         seq.logkey_seq.every((key, index) => key === targetLogkeySeq[index])
@@ -136,27 +145,73 @@ function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] {
 
 export const KnowledgeBaseViz = () => {
     const [knowledgeStructures, setKnowledgeStructures] = useState<{
-        entityDict: EntityDict;
-        actionDict: ActionDict;
-        entitySequences: EntitySequences;
+        trainingData: KnowledgeBaseData | null;
+        testingData: KnowledgeBaseData | null;
         allSequences: Seq[];
-    } | null>(null);
+    }>({
+        trainingData: null,
+        testingData: null,
+        allSequences: [],
+    });
+
+    const [showSidebar, setShowSidebar] = useState(false);
+
+    const toggleSidebar = () => {
+        setShowSidebar(!showSidebar);
+    };
 
     useEffect(() => {
-        // Load train_knowledge_all.csv
-        fetch("/train_knowledge_all.csv")
-            .then(response => response.text())
-            .then(csvText => {
-                parseKnowledgeCSV(csvText, (structures) => {
-                    setKnowledgeStructures(structures);
+        Promise.all([
+            fetch("/train_knowledge_all.csv").then(res => res.text()),
+            fetch("/test_knowledge_all.csv").then(res => res.text()),
+        ])
+            .then(([trainCSV, testCSV]) => {
+                let trainStructures: ReturnType<typeof buildKnowledgeStructures>;
+                let testStructures: ReturnType<typeof buildKnowledgeStructures>;
+
+                parseKnowledgeCSV(trainCSV, (train) => {
+                    trainStructures = train;
+                    parseKnowledgeCSV(testCSV, (test) => {
+                        testStructures = test;
+
+                        // Build training and testing data
+                        const trainingData = {
+                            entityDict: trainStructures.entityDict,
+                            actionDict: trainStructures.actionDict,
+                            entitySequences: trainStructures.entitySequences,
+                        };
+
+                        const testingData = {
+                            entityDict: testStructures.entityDict,
+                            actionDict: testStructures.actionDict,
+                            entitySequences: testStructures.entitySequences,
+                        };
+
+                        // Combine both sets of sequences
+                        const allSequences = [
+                            ...trainStructures.allSequences,
+                            ...testStructures.allSequences,
+                        ];
+
+                        // Set all knowledge structures in one go
+                        setKnowledgeStructures({
+                            trainingData,
+                            testingData,
+                            allSequences,
+                        });
+                    });
                 });
             })
-            .catch(error => console.error("Error loading CSV:", error));
+            .catch((error) => console.error("Error loading CSV files:", error));
     }, []);
 
-    //Example usage of approximateSearch
+
+
+
+
+    // Example usage of approximateSearch
     useEffect(() => {
-        if (knowledgeStructures?.allSequences) {
+        if (knowledgeStructures?.allSequences.length > 0) {
             const targetEmbedding = knowledgeStructures.allSequences[1].embedding; // Example target embedding
             const topK = approximateSearch(knowledgeStructures.allSequences, targetEmbedding, 5);
             console.log("Target Embedding: ", knowledgeStructures.allSequences[1]);
@@ -166,6 +221,20 @@ export const KnowledgeBaseViz = () => {
 
     return (
         <>
+            <div className="pt-[4.5rem]"></div>
+            <button onClick={toggleSidebar} className="bg-WPIRed text-white px-4 py-2 rounded">
+                Toggle Sidebar
+            </button>
+            {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
+                <KnowledgeBaseSideBar
+                    showSidebar={showSidebar}
+                    toggleSidebar={toggleSidebar}
+                    trainingData={knowledgeStructures.trainingData}
+                    testingData={knowledgeStructures.testingData}
+                    allSequences={knowledgeStructures.allSequences}
+                    query={"receiving_28"} // Example query
+                />
+            )}
             <h1>Knowledge Base Visualization</h1>
             <Footer />
         </>
