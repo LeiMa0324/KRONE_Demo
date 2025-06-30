@@ -71,6 +71,11 @@ export const TreeControls: React.FC<ControlProps> = ({
   const logKeyOptions = React.useMemo(() => getAllLogKeys(treeData), [treeData]);
   const [logKeyDropdownOpen, setLogKeyDropdownOpen] = React.useState(false);
 
+  // Add dropdown open states
+  const [entityDropdownOpen, setEntityDropdownOpen] = React.useState(false);
+  const [actionDropdownOpen, setActionDropdownOpen] = React.useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = React.useState(false);
+
   const entities = React.useMemo(() => {
     if (!treeData) return [];
     return treeData.children?.map(e => e.name) ?? [];
@@ -283,7 +288,10 @@ export const TreeControls: React.FC<ControlProps> = ({
                 setSelectedEntity(v);
                 setSelectedAction(null);
                 setSelectedStatus(null);
+                setEntityDropdownOpen(true);
               }}
+              onFocus={() => setEntityDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setEntityDropdownOpen(false), 150)}
             />
             {selectedEntity && (
               <button
@@ -309,7 +317,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedEntity !== null && selectedEntity.length > 0 && !entities.includes(selectedEntity) && ReactDOM.createPortal(
+            {entityDropdownOpen && ReactDOM.createPortal(
               <div
                 style={{
                   position: "absolute",
@@ -317,7 +325,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                   top: entityDropdownPos.top,
                   width: entityDropdownPos.width,
                   zIndex: 9999,
-                  background: "#fff", // solid background
+                  background: "#fff",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                   borderRadius: 6,
                   border: "1px solid #e0e0e0",
@@ -325,7 +333,7 @@ export const TreeControls: React.FC<ControlProps> = ({
               >
                 <CommandList>
                   {entities
-                    .filter(entity => entity.toLowerCase().includes(selectedEntity.toLowerCase()))
+                    .filter(entity => (selectedEntity ?? "").length === 0 || entity.toLowerCase().includes((selectedEntity ?? "").toLowerCase()))
                     .map(entity => (
                       <CommandItem
                         key={entity}
@@ -334,6 +342,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                           setSelectedEntity(entity);
                           setSelectedAction(null);
                           setSelectedStatus(null);
+                          setEntityDropdownOpen(false);
                         }}
                       >
                         {entity}
@@ -354,7 +363,10 @@ export const TreeControls: React.FC<ControlProps> = ({
               onValueChange={v => {
                 setSelectedAction(v);
                 setSelectedStatus(null);
+                setActionDropdownOpen(true);
               }}
+              onFocus={() => setActionDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setActionDropdownOpen(false), 150)}
               disabled={!selectedEntity}
             />
             {selectedAction && (
@@ -380,7 +392,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedAction !== null && selectedAction.length > 0 && !actions.includes(selectedAction) && ReactDOM.createPortal(
+            {actionDropdownOpen && ReactDOM.createPortal(
               <div
                 style={{
                   position: "absolute",
@@ -388,7 +400,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                   top: actionDropdownPos.top,
                   width: actionDropdownPos.width,
                   zIndex: 9999,
-                  background: "#fff", // solid background
+                  background: "#fff",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                   borderRadius: 6,
                   border: "1px solid #e0e0e0",
@@ -396,7 +408,7 @@ export const TreeControls: React.FC<ControlProps> = ({
               >
                 <CommandList>
                   {actions
-                    .filter(action => action.toLowerCase().includes(selectedAction.toLowerCase()))
+                    .filter(action => (selectedAction ?? "").length === 0 || action.toLowerCase().includes((selectedAction ?? "").toLowerCase()))
                     .map(action => (
                       <CommandItem
                         key={action}
@@ -404,6 +416,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                         onSelect={() => {
                           setSelectedAction(action);
                           setSelectedStatus(null);
+                          setActionDropdownOpen(false);
                         }}
                       >
                         {action}
@@ -421,7 +434,12 @@ export const TreeControls: React.FC<ControlProps> = ({
             <CommandInput
               placeholder="Search Status..."
               value={selectedStatus ?? ""}
-              onValueChange={v => setSelectedStatus(v)}
+              onValueChange={v => {
+                setSelectedStatus(v);
+                setStatusDropdownOpen(true);
+              }}
+              onFocus={() => setStatusDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setStatusDropdownOpen(false), 150)}
               disabled={!selectedAction}
             />
             {selectedStatus && (
@@ -444,7 +462,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedStatus !== null && selectedStatus.length > 0 && !statuses.includes(selectedStatus) && ReactDOM.createPortal(
+            {statusDropdownOpen && ReactDOM.createPortal(
               <div
                 style={{
                   position: "absolute",
@@ -452,7 +470,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                   top: statusDropdownPos.top,
                   width: statusDropdownPos.width,
                   zIndex: 9999,
-                  background: "#fff", // solid background
+                  background: "#fff",
                   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                   borderRadius: 6,
                   border: "1px solid #e0e0e0",
@@ -460,12 +478,15 @@ export const TreeControls: React.FC<ControlProps> = ({
               >
                 <CommandList>
                   {statuses
-                    .filter(status => status.toLowerCase().includes(selectedStatus.toLowerCase()))
+                    .filter(status => (selectedStatus ?? "").length === 0 || status.toLowerCase().includes((selectedStatus ?? "").toLowerCase()))
                     .map(status => (
                       <CommandItem
                         key={status}
                         value={status}
-                        onSelect={() => setSelectedStatus(status)}
+                        onSelect={() => {
+                          setSelectedStatus(status);
+                          setStatusDropdownOpen(false);
+                        }}
                       >
                         {status}
                       </CommandItem>
@@ -478,7 +499,7 @@ export const TreeControls: React.FC<ControlProps> = ({
         </div>
         <Button
           style={{ marginTop: 12 }}
-          disabled={!selectedEntity || !selectedAction || !selectedStatus}
+          disabled={!selectedEntity && !selectedAction && !selectedStatus}
           onClick={handlePathSearch}
         >
           Search Sequence
