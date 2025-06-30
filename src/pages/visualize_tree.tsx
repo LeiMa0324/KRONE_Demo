@@ -102,26 +102,81 @@ export const VisualizeTree: React.FC = () => {
     }
 
     // If entity, action, and status are selected
-    let foundId: string | null = null;
-    for (const entityNode of treeData.children || []) {
-      if (entityNode.name !== entity) continue;
-      for (const actionNode of entityNode.children || []) {
-        if (actionNode.name !== action) continue;
-        for (const statusNode of actionNode.children || []) {
-          if (statusNode.name === status && statusNode.event_id) {
-            foundId = statusNode.event_id;
-            break;
+    if (entity && action && status) {
+      let foundId: string | null = null;
+      for (const entityNode of treeData.children || []) {
+        if (entityNode.name !== entity) continue;
+        for (const actionNode of entityNode.children || []) {
+          if (actionNode.name !== action) continue;
+          for (const statusNode of actionNode.children || []) {
+            if (statusNode.name === status && statusNode.event_id) {
+              foundId = statusNode.event_id;
+              break;
+            }
           }
+          if (foundId) break;
         }
         if (foundId) break;
       }
-      if (foundId) break;
+      setSearchValue(foundId ?? "");
+      setMatchedNodeId(foundId);
+      if (!foundId) setMatchedNodeObj(null);
+      return;
     }
-    setSearchValue(foundId ?? "");
-    setMatchedNodeId(foundId);
-    if (!foundId) setMatchedNodeObj(null);
+
+    // If only action is selected (search all actions)
+    if (!entity && action && !status) {
+      setSearchValue(action);
+      setMatchedNodeId(action);
+      setMatchedNodeObj(null);
+      return;
+    }
+
+    // If only status is selected (search all statuses)
+    if (!entity && !action && status) {
+      // Find the first status node with this name
+      let foundId: string | null = null;
+      for (const entityNode of treeData.children || []) {
+        for (const actionNode of entityNode.children || []) {
+          for (const statusNode of actionNode.children || []) {
+            if (statusNode.name === status && statusNode.event_id) {
+              foundId = statusNode.event_id;
+              break;
+            }
+          }
+          if (foundId) break;
+        }
+        if (foundId) break;
+      }
+      setSearchValue(foundId ?? "");
+      setMatchedNodeId(foundId);
+      if (!foundId) setMatchedNodeObj(null);
+      return;
+    }
+
+    // If action and status are selected (but no entity)
+    if (!entity && action && status) {
+      let foundId: string | null = null;
+      for (const entityNode of treeData.children || []) {
+        for (const actionNode of entityNode.children || []) {
+          if (actionNode.name !== action) continue;
+          for (const statusNode of actionNode.children ?? []) {
+            if (statusNode.name === status && statusNode.event_id) {
+              foundId = statusNode.event_id;
+              break;
+            }
+          }
+          if (foundId) break;
+        }
+        if (foundId) break;
+      }
+      setSearchValue(foundId ?? "");
+      setMatchedNodeId(foundId);
+      if (!foundId) setMatchedNodeObj(null);
+      return;
+    }
   }
-  
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };

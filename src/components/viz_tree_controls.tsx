@@ -85,22 +85,51 @@ export const TreeControls: React.FC<ControlProps> = ({
   const [actionDropdownOpen, setActionDropdownOpen] = React.useState(false);
   const [statusDropdownOpen, setStatusDropdownOpen] = React.useState(false);
 
+  // Entities
   const entities = React.useMemo(() => {
     if (!treeData) return [];
     return treeData.children?.map(e => e.name) ?? [];
   }, [treeData]);
 
+  // Actions: filtered by entity if selected, otherwise all unique actions in the tree
   const actions = React.useMemo(() => {
-    if (!treeData || !selectedEntity) return [];
-    const entityNode = treeData.children?.find(e => e.name === selectedEntity);
-    return entityNode?.children?.map(a => a.name) ?? [];
+    if (!treeData) return [];
+    if (selectedEntity) {
+      const entityNode = treeData.children?.find(e => e.name === selectedEntity);
+      return entityNode?.children?.map(a => a.name) ?? [];
+    }
+    // All unique actions in the tree
+    const allActions = (treeData.children ?? []).flatMap(e => e.children ?? []).map(a => a.name);
+    return Array.from(new Set(allActions));
   }, [treeData, selectedEntity]);
 
+  // Statuses: filtered by entity+action if both selected, by action if only action, otherwise all unique statuses
   const statuses = React.useMemo(() => {
-    if (!treeData || !selectedEntity || !selectedAction) return [];
-    const entityNode = treeData.children?.find(e => e.name === selectedEntity);
-    const actionNode = entityNode?.children?.find(a => a.name === selectedAction);
-    return actionNode?.children?.map(s => s.name) ?? [];
+    if (!treeData) return [];
+    if (selectedEntity && selectedAction) {
+      const entityNode = treeData.children?.find(e => e.name === selectedEntity);
+      const actionNode = entityNode?.children?.find(a => a.name === selectedAction);
+      return actionNode?.children?.map(s => s.name) ?? [];
+    }
+    if (selectedAction && !selectedEntity) {
+      // All statuses under all entities for this action
+      const allStatuses = (treeData.children ?? [])
+        .flatMap(e =>
+          (e.children ?? [])
+            .filter(a => a.name === selectedAction)
+            .flatMap(a => a.children ?? [])
+        )
+        .map(s => s.name);
+      return Array.from(new Set(allStatuses));
+    }
+    // All unique statuses in the tree
+    const allStatuses = (treeData.children ?? [])
+      .flatMap(e =>
+        (e.children ?? [])
+          .flatMap(a => a.children ?? [])
+      )
+      .map(s => s.name);
+    return Array.from(new Set(allStatuses));
   }, [treeData, selectedEntity, selectedAction]);
 
   function handlePathSearch() {
@@ -109,7 +138,7 @@ export const TreeControls: React.FC<ControlProps> = ({
       selectedAction ?? "",
       selectedStatus ?? ""
     );
-}
+  }
 
   function handleUnifiedClear() {
     handleClearSearch();
@@ -308,7 +337,7 @@ export const TreeControls: React.FC<ControlProps> = ({
               onBlur={() => setTimeout(() => setEntityDropdownOpen(false), 150)}
               onKeyDown={e => {
                 if (e.key === "Enter") {
-                  e.preventDefault(); // Prevent form submit!
+                  e.preventDefault();
                 }
               }}
             />
@@ -386,10 +415,9 @@ export const TreeControls: React.FC<ControlProps> = ({
               }}
               onFocus={() => setActionDropdownOpen(true)}
               onBlur={() => setTimeout(() => setActionDropdownOpen(false), 150)}
-              disabled={!selectedEntity}
               onKeyDown={e => {
                 if (e.key === "Enter") {
-                  e.preventDefault(); // Prevent form submit!
+                  e.preventDefault();
                 }
               }}
             />
@@ -464,10 +492,9 @@ export const TreeControls: React.FC<ControlProps> = ({
               }}
               onFocus={() => setStatusDropdownOpen(true)}
               onBlur={() => setTimeout(() => setStatusDropdownOpen(false), 150)}
-              disabled={!selectedAction}
               onKeyDown={e => {
                 if (e.key === "Enter") {
-                  e.preventDefault(); // Prevent form submit!
+                  e.preventDefault();
                 }
               }}
             />
