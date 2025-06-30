@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+#testembeddingcsv
+test_embedding_all.csv
