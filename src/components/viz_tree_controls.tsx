@@ -14,6 +14,7 @@ type TreeNode = {
   name: string;
   children?: TreeNode[];
   event_id?: string;
+  log_template?: string;
 };
 
 type ControlProps = {
@@ -31,6 +32,12 @@ type ControlProps = {
   matchedNodeId: string | null;
   treeData: TreeNode | null;
   onPathSearch: (entity: string, action: string, status: string) => void;
+  selectedEntity: string | null;
+  setSelectedEntity: (v: string | null) => void;
+  selectedAction: string | null;
+  setSelectedAction: (v: string | null) => void;
+  selectedStatus: string | null;
+  setSelectedStatus: (v: string | null) => void;
 };
 
 // Helper to flatten all status nodes (log keys) with their templates
@@ -62,11 +69,13 @@ export const TreeControls: React.FC<ControlProps> = ({
   matchedNodeId,
   treeData,
   onPathSearch,
+  selectedEntity,
+  setSelectedEntity,
+  selectedAction,
+  setSelectedAction,
+  selectedStatus,
+  setSelectedStatus,
 }) => {
-  const [selectedEntity, setSelectedEntity] = React.useState<string | null>(null);
-  const [selectedAction, setSelectedAction] = React.useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = React.useState<string | null>(null);
-
   // Gather all log keys for dropdown
   const logKeyOptions = React.useMemo(() => getAllLogKeys(treeData), [treeData]);
   const [logKeyDropdownOpen, setLogKeyDropdownOpen] = React.useState(false);
@@ -95,10 +104,12 @@ export const TreeControls: React.FC<ControlProps> = ({
   }, [treeData, selectedEntity, selectedAction]);
 
   function handlePathSearch() {
-    if (selectedEntity && selectedAction && selectedStatus) {
-      onPathSearch(selectedEntity, selectedAction, selectedStatus);
-    }
-  }
+    onPathSearch(
+      selectedEntity ?? "",
+      selectedAction ?? "",
+      selectedStatus ?? ""
+    );
+}
 
   function handleUnifiedClear() {
     handleClearSearch();
@@ -173,7 +184,10 @@ export const TreeControls: React.FC<ControlProps> = ({
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Log Key Search</div>
         <form
-          onSubmit={handleSearchSubmit}
+          onSubmit={e => {
+            e.preventDefault();
+            handleSearchSubmit(e);
+          }}
           style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}
           autoComplete="off"
         >
@@ -292,6 +306,11 @@ export const TreeControls: React.FC<ControlProps> = ({
               }}
               onFocus={() => setEntityDropdownOpen(true)}
               onBlur={() => setTimeout(() => setEntityDropdownOpen(false), 150)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault(); // Prevent form submit!
+                }
+              }}
             />
             {selectedEntity && (
               <button
@@ -368,6 +387,11 @@ export const TreeControls: React.FC<ControlProps> = ({
               onFocus={() => setActionDropdownOpen(true)}
               onBlur={() => setTimeout(() => setActionDropdownOpen(false), 150)}
               disabled={!selectedEntity}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault(); // Prevent form submit!
+                }
+              }}
             />
             {selectedAction && (
               <button
@@ -441,6 +465,11 @@ export const TreeControls: React.FC<ControlProps> = ({
               onFocus={() => setStatusDropdownOpen(true)}
               onBlur={() => setTimeout(() => setStatusDropdownOpen(false), 150)}
               disabled={!selectedAction}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault(); // Prevent form submit!
+                }
+              }}
             />
             {selectedStatus && (
               <button
@@ -500,6 +529,7 @@ export const TreeControls: React.FC<ControlProps> = ({
         <Button
           style={{ marginTop: 12 }}
           disabled={!selectedEntity && !selectedAction && !selectedStatus}
+          type="button"
           onClick={handlePathSearch}
         >
           Search Sequence

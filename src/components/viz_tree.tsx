@@ -311,19 +311,30 @@ export const VizTree: React.FC<VizTreeProps> = ({
 
       // search highlight matched node
       if (matchedNodeId) {
+        // Find a node by event_id (for status) or name (for entity/action)
         const matched = root.descendants().find(
-          d => d.depth === 3 && d.data.event_id === matchedNodeId
+          d =>
+            (d.depth === 3 && d.data.event_id === matchedNodeId) ||
+            ((d.depth === 1 || d.depth === 2) && d.data.name === matchedNodeId)
         );
         if (matched) {
-          const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+          const ancestorNodes = new Set<string>();
           let current: HierarchyNode<TreeNode> | null = matched;
           while (current) {
-            ancestorNodes.add(current);
+            ancestorNodes.add(
+              current.depth === 3
+                ? `3:${current.data.event_id}`
+                : `${current.depth}:${current.data.name}`
+            );
             current = current.parent;
           }
-          const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+          const descendantNodes = new Set<string>();
           function collectDescendants(node: HierarchyNode<TreeNode>) {
-            descendantNodes.add(node);
+            descendantNodes.add(
+              node.depth === 3
+                ? `3:${node.data.event_id}`
+                : `${node.depth}:${node.data.name}`
+            );
             if (node.children) node.children.forEach(collectDescendants);
             if (hasHiddenChildren(node) && node._children)
               node._children.forEach(collectDescendants);
@@ -332,7 +343,12 @@ export const VizTree: React.FC<VizTreeProps> = ({
 
           svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text")
             .each(function(n) {
-              const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+              const key =
+                n.depth === 3
+                  ? `3:${n.data.event_id}`
+                  : `${n.depth}:${n.data.name}`;
+              const isRelated =
+                ancestorNodes.has(key) || descendantNodes.has(key);
               select(this)
                 .attr("fill", isRelated ? "#003366" : "#fff");
               select(this.parentNode as Element).select("rect")
@@ -342,21 +358,33 @@ export const VizTree: React.FC<VizTreeProps> = ({
 
           svg.selectAll<SVGPathElement, TreeLink>("path")
             .attr("stroke", lnk => {
+              const sourceKey =
+                lnk.source.depth === 3
+                  ? `3:${lnk.source.data.event_id}`
+                  : `${lnk.source.depth}:${lnk.source.data.name}`;
+              const targetKey =
+                lnk.target.depth === 3
+                  ? `3:${lnk.target.data.event_id}`
+                  : `${lnk.target.depth}:${lnk.target.data.name}`;
               const isAncestorPath =
-                ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                ancestorNodes.has(sourceKey) && ancestorNodes.has(targetKey);
               const isDescendantPath =
-                descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                descendantNodes.has(sourceKey) && descendantNodes.has(targetKey);
               return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkColor(lnk);
             })
             .attr("stroke-width", lnk => {
+              const sourceKey =
+                lnk.source.depth === 3
+                  ? `3:${lnk.source.data.event_id}`
+                  : `${lnk.source.depth}:${lnk.source.data.name}`;
+              const targetKey =
+                lnk.target.depth === 3
+                  ? `3:${lnk.target.data.event_id}`
+                  : `${lnk.target.depth}:${lnk.target.data.name}`;
               const isAncestorPath =
-                ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                ancestorNodes.has(sourceKey) && ancestorNodes.has(targetKey);
               const isDescendantPath =
-                descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                descendantNodes.has(sourceKey) && descendantNodes.has(targetKey);
               return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
             });
         }
