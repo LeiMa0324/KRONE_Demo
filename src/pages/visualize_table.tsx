@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import { Footer } from "@/components/footer";
+/*
 import {
     Table,
     TableBody,
@@ -8,10 +9,11 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"; */
 import { SequenceTree } from "@/components/sequence_tree";
 
 // CsvRow type for new output data
+/*
 type CsvRow = {
     row_num: number;
     seq_id: string;
@@ -20,7 +22,7 @@ type CsvRow = {
     anomaly_level: string;
     anomaly_reason: string;
 };
-
+*/
 // Data type for visualizing new tree
 export type KroneDecompRow = {
     seq_id: string;
@@ -77,7 +79,7 @@ const fetchKroneDecompData = async (filePath: string): Promise<KroneDecompRow[]>
                     status_nodes_for_logkeys: parseArray(String(r.status_nodes_for_logkeys ?? "")),
                 };
             });
-            parsedData.push(...rows);
+            parsedData.push(...rows.slice(0,1000));
         },
     });
 
@@ -117,6 +119,7 @@ const fetchKroneDetectData = async (filePath: string): Promise<KroneDetectRow[]>
 };
 
 // Create a dictionary for each event/template id and its corresponding log template
+/*
 async function createTemplateDict(filePath: string) {
     const templateDict: Record<string, string> = {};
 
@@ -143,8 +146,9 @@ async function createTemplateDict(filePath: string) {
 
     return templateDict;
 }
-
+*/
 // Parse anomaly data and convert `seq` and `anomaly_seg` to arrays of strings
+/*
 async function createAnomalyData(filePath: string) {
     const anomCSV: CsvRow[] = [];
 
@@ -184,8 +188,10 @@ async function createAnomalyData(filePath: string) {
 
     return anomCSV;
 }
+*/
 
 // Function to find all starting indexes of an exact match of `pattern` in `array`
+/*
 const findPatternIndexes = (array: string[], pattern: string[]): number[] => {
     const indexes: number[] = [];
     const patternLength = pattern.length;
@@ -198,8 +204,10 @@ const findPatternIndexes = (array: string[], pattern: string[]): number[] => {
 
     return indexes;
 };
+*/
 
 // Component for choosing a row
+/*
 const RowSelector = ({
     dropdownOptions,
     selectedOption,
@@ -258,8 +266,10 @@ const RowSelector = ({
         </div>
     );
 };
+*/
 
 // Component for displaying the table
+/*
 const LogSequenceTable = ({
     row,
     templateDict,
@@ -340,24 +350,26 @@ const LogSequenceTable = ({
         </div>
     );
 };
+*/
 
 // Main Component
 export const VisualizeTable = () => {
-    const [templateDict, setTemplateDict] = useState<Record<string, string>>({});
+    //const [templateDict, setTemplateDict] = useState<Record<string, string>>({});
     const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
     const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
-    const [data, setData] = useState<CsvRow[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [dropdownOptions, setDropdownOptions] = useState<CsvRow[]>([]);
-    const [selectedOption, setSelectedOption] = useState<string>("");
-    const [displayedOption, setDisplayedOption] = useState<string>("");
-    const [prediction, setPrediction] = useState<string>("None");
+    //const [data, setData] = useState<CsvRow[]>([]);
+    //const [loading, setLoading] = useState(true);
+    //const [dropdownOptions, setDropdownOptions] = useState<CsvRow[]>([]);
+    //const [selectedOption, setSelectedOption] = useState<string>("");
+    //const [displayedOption, setDisplayedOption] = useState<string>("");
+    //const [prediction, setPrediction] = useState<string>("None");
 
     useEffect(() => {
+        /*
         createTemplateDict("/Krone_Tree.csv").then((dict) => {
             setTemplateDict(dict);
         });
-
+        */
         fetchKroneDecompData("/krone_decompose_res.csv").then((data) => {
             setKroneDecompData(data);
         });
@@ -366,15 +378,17 @@ export const VisualizeTable = () => {
             setKroneDetectData(data);
         });
 
+        /*
         createAnomalyData("/krone_detection_res.csv").then((anomData) => {
             const rows = anomData as CsvRow[];
             setData(rows);
             setDropdownOptions(rows);
             setSelectedOption(rows[0]?.seq_id || "");
             setLoading(false);
-        });
+        });*/
     }, []);
 
+    /*
     const handleRunOption = () => {
         setDisplayedOption(selectedOption);
         const row = data.find((row) => row.seq_id === selectedOption);
@@ -384,28 +398,12 @@ export const VisualizeTable = () => {
         }
         setPrediction("Abnormal");
     };
+    */
 
-    const row = data.find((row) => row.seq_id === displayedOption);
+    //const row = data.find((row) => row.seq_id === displayedOption);
 
     return (
-        <div className="flex flex-col min-h-screen">
-            <div className="flex-grow p-8 animate-fade-in-fast">
-                <h1 className="text-3xl font-WPIfont font-extrabold text-WPIRed mb-4 text-center">
-                    Log Sequence Table
-                </h1>
-                <RowSelector
-                    dropdownOptions={dropdownOptions}
-                    selectedOption={selectedOption}
-                    setSelectedOption={setSelectedOption}
-                    handleRunOption={handleRunOption}
-                    prediction={prediction}
-                />
-                {loading ? (
-                    <div className="font-WPIfont">Loading table...</div>
-                ) : (
-                    <LogSequenceTable row={row} templateDict={templateDict} />
-                )}
-            </div>
+        <div className="flex flex-col min-h-screen pt-20">
             <SequenceTree kroneDecompData={kroneDecompData} kroneDetectData={kroneDetectData} />
             <Footer />
         </div>
