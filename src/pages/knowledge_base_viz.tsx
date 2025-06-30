@@ -42,13 +42,22 @@ function parseListField(field: string): string[] {
 
 function parseEmbeddingField(field: string): number[] {
     if (!field || field.trim() === "") return [];
+
     try {
-        return JSON.parse(field).map((n: number) => n);
+        const parsed = JSON.parse(field);
+
+        // Flatten in case it's [[...]] instead of [...]
+        if (Array.isArray(parsed) && Array.isArray(parsed[0])) {
+            return parsed.flat(); // or parsed[0] if it's always one row
+        }
+
+        return parsed.map((n: number) => n); // assume flat
     } catch {
         console.error("Failed to parse embedding field:", field);
         return [];
     }
 }
+
 
 function buildKnowledgeStructures(rows: CSVRow[]): {
     entityDict: EntityDict;
@@ -143,6 +152,10 @@ export function approximateSearch(sequences: Seq[], targetEmbedding: number[], k
     const similarities = sequences.map(seq => {
         if (seq.embedding.length !== targetEmbedding.length) {
             console.error("Embedding dimensionality mismatch.");
+            console.log(targetEmbedding);
+            console.log(seq.embedding);
+            console.log(targetEmbedding.length);
+            console.log(seq.embedding.length);
             return { sequence: seq, similarity: NaN };
         }
         return {
@@ -189,7 +202,7 @@ export const KnowledgeBaseViz = () => {
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
-            fetch("/test_knowledge_all.csv").then(res => res.text()),
+            fetch("/test_knowledge_all_fixed.csv").then(res => res.text()),
         ])
             .then(([trainCSV, testCSV]) => {
                 let trainStructures: ReturnType<typeof buildKnowledgeStructures>;
