@@ -84,7 +84,7 @@ export const VisualizeTree: React.FC = () => {
     setMatchedNodeId(foundId);
     if (!foundId) setMatchedNodeObj(null);
   }
-
+  
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };

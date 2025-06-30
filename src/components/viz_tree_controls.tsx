@@ -33,6 +33,20 @@ type ControlProps = {
   onPathSearch: (entity: string, action: string, status: string) => void;
 };
 
+// Helper to flatten all status nodes (log keys) with their templates
+function getAllLogKeys(tree: TreeNode | null): { event_id: string; log_template: string; status: string }[] {
+  const result: { event_id: string; log_template: string; status: string }[] = [];
+  function traverse(node: any) {
+    if (!node) return;
+    if (node.event_id && node.log_template) {
+      result.push({ event_id: node.event_id, log_template: node.log_template, status: node.name });
+    }
+    if (node.children) node.children.forEach(traverse);
+  }
+  traverse(tree);
+  return result;
+}
+
 export const TreeControls: React.FC<ControlProps> = ({
   collapseEntities,
   setCollapseEntities,
@@ -52,6 +66,10 @@ export const TreeControls: React.FC<ControlProps> = ({
   const [selectedEntity, setSelectedEntity] = React.useState<string | null>(null);
   const [selectedAction, setSelectedAction] = React.useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = React.useState<string | null>(null);
+
+  // Gather all log keys for dropdown
+  const logKeyOptions = React.useMemo(() => getAllLogKeys(treeData), [treeData]);
+  const [logKeyDropdownOpen, setLogKeyDropdownOpen] = React.useState(false);
 
   const entities = React.useMemo(() => {
     if (!treeData) return [];
@@ -149,19 +167,101 @@ export const TreeControls: React.FC<ControlProps> = ({
       {/* Log Key Search Section */}
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Log Key Search</div>
-        <form onSubmit={handleSearchSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}>
+        <form
+          onSubmit={handleSearchSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}
+          autoComplete="off"
+        >
           <div style={{ position: "relative", width: "fit-content" }}>
             <Command>
               <CommandInput
                 placeholder="Search Log Key..."
                 value={searchInput}
-                onValueChange={setSearchInput}
+                onValueChange={v => {
+                  setSearchInput(v);
+                  setLogKeyDropdownOpen(true);
+                }}
+                onFocus={() => setLogKeyDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setLogKeyDropdownOpen(false), 150)}
                 onKeyDown={e => {
                   if (e.key === "Enter") {
                     e.currentTarget.form?.requestSubmit?.();
+                    setLogKeyDropdownOpen(false);
                   }
                 }}
               />
+              {logKeyDropdownOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "100%",
+                    width: "100%",
+                    zIndex: 9999,
+                    background: "#fff",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                    borderRadius: 6,
+                    border: "1px solid #e0e0e0",
+                  }}
+                >
+                  <CommandList
+                    style={{
+                      maxHeight: 240,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {logKeyOptions
+                      .filter(opt =>
+                        (opt.event_id + " " + opt.log_template + " " + opt.status)
+                          .toLowerCase()
+                          .includes(searchInput.toLowerCase())
+                      )
+                      .sort((a, b) => a.event_id.localeCompare(b.event_id, undefined, { numeric: true }))
+                      .map(opt => (
+                        <CommandItem
+                          key={opt.event_id}
+                          value={opt.event_id}
+                          onSelect={() => {
+                            setSearchInput(opt.event_id);
+                            setLogKeyDropdownOpen(false);
+                            setTimeout(() => {
+                              document.activeElement && (document.activeElement as HTMLElement).blur();
+                            }, 0);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            paddingTop: 6,
+                            paddingBottom: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              fontFamily: "monospace",
+                              minWidth: "56px",
+                              marginRight: 8,
+                            }}
+                          >
+                            {opt.event_id}
+                          </span>
+                          <span
+                            style={{
+                              color: "#888",
+                              fontSize: "0.95em",
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            {opt.log_template}
+                          </span>
+                        </CommandItem>
+                      ))}
+                  </CommandList>
+                </div>
+              )}
             </Command>
           </div>
           {searchValue && !matchedNodeId && (
@@ -206,7 +306,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                   zIndex: 2,
                 }}
               >
-                x
+                ×
               </button>
             )}
             {selectedEntity !== null && selectedEntity.length > 0 && !entities.includes(selectedEntity) && ReactDOM.createPortal(
