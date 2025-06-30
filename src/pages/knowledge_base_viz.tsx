@@ -2,7 +2,12 @@ import { Footer } from "@/components/footer";
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
 import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
-import type { KnowledgeBaseData } from "@/components/KnowledgeBaseSideBar";
+
+export type KnowledgeBaseData = {
+    entityDict: EntityDict;
+    actionDict: ActionDict;
+    entitySequences: EntitySequences;
+};
 
 export type Seq = {
     arr: string[];
@@ -40,6 +45,7 @@ function parseEmbeddingField(field: string): number[] {
     try {
         return JSON.parse(field).map((n: number) => n);
     } catch {
+        console.error("Failed to parse embedding field:", field);
         return [];
     }
 }
@@ -67,7 +73,9 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
         // Parse path_pred column as isAnomaly
         const isAnomaly = row.path_pred !== undefined ? row.path_pred === "1" : false;
 
+        //Find embedding from test_embedding_all_csv
         const embedding = parseEmbeddingField(row.pattern_embedding || "");
+
         const path_summary = row.path_summary || ""; // Extract path_summary
 
         const seq: Seq = { arr: [], explanation, seqType, isAnomaly, logkey_seq, embedding, path_summary };
@@ -107,8 +115,12 @@ function parseKnowledgeCSV(
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-            const structures = buildKnowledgeStructures(results.data);
-            callback(structures);
+            try {
+                const structures = buildKnowledgeStructures(results.data);
+                callback(structures);
+            } catch (error) {
+                console.error("Error building knowledge structures:", error);
+            }
         },
     });
 }
@@ -123,16 +135,30 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 // Approximate search for top k closest sequences using cosine similarity
 export function approximateSearch(sequences: Seq[], targetEmbedding: number[], k: number): { sequence: Seq, similarity: number }[] {
-    const similarities = sequences.map(seq => ({
-        sequence: seq,
-        similarity: cosineSimilarity(seq.embedding, targetEmbedding),
-    }));
+    if (targetEmbedding.length === 0) {
+        console.error("Target embedding is empty. Approximate search cannot proceed.");
+        return [];
+    }
+
+    const similarities = sequences.map(seq => {
+        if (seq.embedding.length !== targetEmbedding.length) {
+            console.error("Embedding dimensionality mismatch.");
+            return { sequence: seq, similarity: NaN };
+        }
+        return {
+            sequence: seq,
+            similarity: cosineSimilarity(seq.embedding, targetEmbedding),
+        };
+    });
+
+    // Filter out invalid results (e.g., NaN similarities)
+    const validSimilarities = similarities.filter(item => !isNaN(item.similarity));
 
     // Sort by similarity descending
-    similarities.sort((a, b) => b.similarity - a.similarity);
+    validSimilarities.sort((a, b) => b.similarity - a.similarity);
 
     // Return top k closest sequences
-    return similarities.slice(0, k); //ignore the first as it's just the same one
+    return validSimilarities.slice(0, k);
 }
 
 // Exact search for sequences with a matching logkey_seq
@@ -205,20 +231,6 @@ export const KnowledgeBaseViz = () => {
             .catch((error) => console.error("Error loading CSV files:", error));
     }, []);
 
-
-
-
-
-    // Example usage of approximateSearch
-    useEffect(() => {
-        if (knowledgeStructures?.allSequences.length > 0) {
-            const targetEmbedding = knowledgeStructures.allSequences[1].embedding; // Example target embedding
-            const topK = approximateSearch(knowledgeStructures.allSequences, targetEmbedding, 5);
-            console.log("Target Embedding: ", knowledgeStructures.allSequences[1]);
-            console.log("Top 5 closest sequences from AllSequences:", topK);
-        }
-    }, [knowledgeStructures]);
-
     return (
         <>
             <div className="pt-[4.5rem]"></div>
@@ -232,7 +244,7 @@ export const KnowledgeBaseViz = () => {
                     trainingData={knowledgeStructures.trainingData}
                     testingData={knowledgeStructures.testingData}
                     allSequences={knowledgeStructures.allSequences}
-                    query={"receiving_28"} // Example query
+                    query={"blk_4"} // Example query
                 />
             )}
             <h1>Knowledge Base Visualization</h1>
