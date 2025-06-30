@@ -1,4 +1,5 @@
 import React from "react";
+import ReactDOM from "react-dom";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ type TreeNode = {
   name: string;
   children?: TreeNode[];
   event_id?: string;
+  log_template?: string;
 };
 
 type ControlProps = {
@@ -30,7 +32,27 @@ type ControlProps = {
   matchedNodeId: string | null;
   treeData: TreeNode | null;
   onPathSearch: (entity: string, action: string, status: string) => void;
+  selectedEntity: string | null;
+  setSelectedEntity: (v: string | null) => void;
+  selectedAction: string | null;
+  setSelectedAction: (v: string | null) => void;
+  selectedStatus: string | null;
+  setSelectedStatus: (v: string | null) => void;
 };
+
+// Helper to flatten all status nodes (log keys) with their templates
+function getAllLogKeys(tree: TreeNode | null): { event_id: string; log_template: string; status: string }[] {
+  const result: { event_id: string; log_template: string; status: string }[] = [];
+  function traverse(node: any) {
+    if (!node) return;
+    if (node.event_id && node.log_template) {
+      result.push({ event_id: node.event_id, log_template: node.log_template, status: node.name });
+    }
+    if (node.children) node.children.forEach(traverse);
+  }
+  traverse(tree);
+  return result;
+}
 
 export const TreeControls: React.FC<ControlProps> = ({
   collapseEntities,
@@ -47,33 +69,75 @@ export const TreeControls: React.FC<ControlProps> = ({
   matchedNodeId,
   treeData,
   onPathSearch,
+  selectedEntity,
+  setSelectedEntity,
+  selectedAction,
+  setSelectedAction,
+  selectedStatus,
+  setSelectedStatus,
 }) => {
-  const [selectedEntity, setSelectedEntity] = React.useState<string | null>(null);
-  const [selectedAction, setSelectedAction] = React.useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = React.useState<string | null>(null);
+  // Gather all log keys for dropdown
+  const logKeyOptions = React.useMemo(() => getAllLogKeys(treeData), [treeData]);
+  const [logKeyDropdownOpen, setLogKeyDropdownOpen] = React.useState(false);
 
+  // Add dropdown open states
+  const [entityDropdownOpen, setEntityDropdownOpen] = React.useState(false);
+  const [actionDropdownOpen, setActionDropdownOpen] = React.useState(false);
+  const [statusDropdownOpen, setStatusDropdownOpen] = React.useState(false);
+
+  // Entities
   const entities = React.useMemo(() => {
     if (!treeData) return [];
     return treeData.children?.map(e => e.name) ?? [];
   }, [treeData]);
 
+  // Actions: filtered by entity if selected, otherwise all unique actions in the tree
   const actions = React.useMemo(() => {
-    if (!treeData || !selectedEntity) return [];
-    const entityNode = treeData.children?.find(e => e.name === selectedEntity);
-    return entityNode?.children?.map(a => a.name) ?? [];
+    if (!treeData) return [];
+    if (selectedEntity) {
+      const entityNode = treeData.children?.find(e => e.name === selectedEntity);
+      return entityNode?.children?.map(a => a.name) ?? [];
+    }
+    // All unique actions in the tree
+    const allActions = (treeData.children ?? []).flatMap(e => e.children ?? []).map(a => a.name);
+    return Array.from(new Set(allActions));
   }, [treeData, selectedEntity]);
 
+  // Statuses: filtered by entity+action if both selected, by action if only action, otherwise all unique statuses
   const statuses = React.useMemo(() => {
-    if (!treeData || !selectedEntity || !selectedAction) return [];
-    const entityNode = treeData.children?.find(e => e.name === selectedEntity);
-    const actionNode = entityNode?.children?.find(a => a.name === selectedAction);
-    return actionNode?.children?.map(s => s.name) ?? [];
+    if (!treeData) return [];
+    if (selectedEntity && selectedAction) {
+      const entityNode = treeData.children?.find(e => e.name === selectedEntity);
+      const actionNode = entityNode?.children?.find(a => a.name === selectedAction);
+      return actionNode?.children?.map(s => s.name) ?? [];
+    }
+    if (selectedAction && !selectedEntity) {
+      // All statuses under all entities for this action
+      const allStatuses = (treeData.children ?? [])
+        .flatMap(e =>
+          (e.children ?? [])
+            .filter(a => a.name === selectedAction)
+            .flatMap(a => a.children ?? [])
+        )
+        .map(s => s.name);
+      return Array.from(new Set(allStatuses));
+    }
+    // All unique statuses in the tree
+    const allStatuses = (treeData.children ?? [])
+      .flatMap(e =>
+        (e.children ?? [])
+          .flatMap(a => a.children ?? [])
+      )
+      .map(s => s.name);
+    return Array.from(new Set(allStatuses));
   }, [treeData, selectedEntity, selectedAction]);
 
   function handlePathSearch() {
-    if (selectedEntity && selectedAction && selectedStatus) {
-      onPathSearch(selectedEntity, selectedAction, selectedStatus);
-    }
+    onPathSearch(
+      selectedEntity ?? "",
+      selectedAction ?? "",
+      selectedStatus ?? ""
+    );
   }
 
   function handleUnifiedClear() {
@@ -82,6 +146,34 @@ export const TreeControls: React.FC<ControlProps> = ({
     setSelectedAction(null);
     setSelectedStatus(null);
   }
+
+  // Refs and positions for dropdowns
+  const entityInputRef = React.useRef<HTMLDivElement>(null);
+  const actionInputRef = React.useRef<HTMLDivElement>(null);
+  const statusInputRef = React.useRef<HTMLDivElement>(null);
+
+  const [entityDropdownPos, setEntityDropdownPos] = React.useState({left: 0, top: 0, width: 0});
+  const [actionDropdownPos, setActionDropdownPos] = React.useState({left: 0, top: 0, width: 0});
+  const [statusDropdownPos, setStatusDropdownPos] = React.useState({left: 0, top: 0, width: 0});
+
+  React.useLayoutEffect(() => {
+    if (entityInputRef.current) {
+      const rect = entityInputRef.current.getBoundingClientRect();
+      setEntityDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    }
+    if (actionInputRef.current) {
+      const rect = actionInputRef.current.getBoundingClientRect();
+      setActionDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    }
+    if (statusInputRef.current) {
+      const rect = statusInputRef.current.getBoundingClientRect();
+      setStatusDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    }
+  }, [
+    selectedEntity, selectedAction, selectedStatus,
+    entities, actions, statuses,
+    window.innerWidth, window.innerHeight
+  ]);
 
   return (
     <div
@@ -102,30 +194,122 @@ export const TreeControls: React.FC<ControlProps> = ({
         Tree Controls
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
-          Collapse Entities
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
-          Collapse Actions
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
-          Collapse Statuses
-        </label>
+        <div style={{ alignItems: "flex-start", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Switch checked={collapseEntities} onCheckedChange={setCollapseEntities} />
+            Collapse Entities
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
+            Collapse Actions
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
+            Collapse Statuses
+          </label>
+        </div>
       </div>
       {/* Log Key Search Section */}
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Log Key Search</div>
-        <form onSubmit={handleSearchSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}>
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            handleSearchSubmit(e);
+          }}
+          style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignItems: "center" }}
+          autoComplete="off"
+        >
           <div style={{ position: "relative", width: "fit-content" }}>
             <Command>
               <CommandInput
                 placeholder="Search Log Key..."
                 value={searchInput}
-                onValueChange={setSearchInput}
+                onValueChange={v => {
+                  setSearchInput(v);
+                  setLogKeyDropdownOpen(true);
+                }}
+                onFocus={() => setLogKeyDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setLogKeyDropdownOpen(false), 150)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.form?.requestSubmit?.();
+                    setLogKeyDropdownOpen(false);
+                  }
+                }}
               />
+              {logKeyDropdownOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: "100%",
+                    width: "100%",
+                    zIndex: 9999,
+                    background: "#fff",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                    borderRadius: 6,
+                    border: "1px solid #e0e0e0",
+                  }}
+                >
+                  <CommandList
+                    style={{
+                      maxHeight: 240,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {logKeyOptions
+                      .filter(opt =>
+                        (opt.event_id + " " + opt.log_template + " " + opt.status)
+                          .toLowerCase()
+                          .includes(searchInput.toLowerCase())
+                      )
+                      .sort((a, b) => a.event_id.localeCompare(b.event_id, undefined, { numeric: true }))
+                      .map(opt => (
+                        <CommandItem
+                          key={opt.event_id}
+                          value={opt.event_id}
+                          onSelect={() => {
+                            setSearchInput(opt.event_id);
+                            setLogKeyDropdownOpen(false);
+                            setTimeout(() => {
+                              document.activeElement && (document.activeElement as HTMLElement).blur();
+                            }, 0);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            paddingTop: 6,
+                            paddingBottom: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              fontFamily: "monospace",
+                              minWidth: "56px",
+                              marginRight: 8,
+                            }}
+                          >
+                            {opt.event_id}
+                          </span>
+                          <span
+                            style={{
+                              color: "#888",
+                              fontSize: "0.95em",
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            {opt.log_template}
+                          </span>
+                        </CommandItem>
+                      ))}
+                  </CommandList>
+                </div>
+              )}
             </Command>
           </div>
           {searchValue && !matchedNodeId && (
@@ -138,7 +322,7 @@ export const TreeControls: React.FC<ControlProps> = ({
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Sequence Search</div>
         {/* Entity Command */}
-        <div style={{ position: "relative", width: "fit-content" }}>
+        <div ref={entityInputRef} style={{ position: "relative", width: "fit-content" }}>
           <Command>
             <CommandInput
               placeholder="Search Entity..."
@@ -147,6 +331,14 @@ export const TreeControls: React.FC<ControlProps> = ({
                 setSelectedEntity(v);
                 setSelectedAction(null);
                 setSelectedStatus(null);
+                setEntityDropdownOpen(true);
+              }}
+              onFocus={() => setEntityDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setEntityDropdownOpen(false), 150)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                }
               }}
             />
             {selectedEntity && (
@@ -173,29 +365,45 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedEntity !== null && selectedEntity.length > 0 && !entities.includes(selectedEntity) && (
-              <CommandList>
-                {entities
-                  .filter(entity => entity.toLowerCase().includes(selectedEntity.toLowerCase()))
-                  .map(entity => (
-                    <CommandItem
-                      key={entity}
-                      value={entity}
-                      onSelect={() => {
-                        setSelectedEntity(entity);
-                        setSelectedAction(null);
-                        setSelectedStatus(null);
-                      }}
-                    >
-                      {entity}
-                    </CommandItem>
-                  ))}
-              </CommandList>
+            {entityDropdownOpen && ReactDOM.createPortal(
+              <div
+                style={{
+                  position: "absolute",
+                  left: entityDropdownPos.left,
+                  top: entityDropdownPos.top,
+                  width: entityDropdownPos.width,
+                  zIndex: 9999,
+                  background: "#fff",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <CommandList>
+                  {entities
+                    .filter(entity => (selectedEntity ?? "").length === 0 || entity.toLowerCase().includes((selectedEntity ?? "").toLowerCase()))
+                    .map(entity => (
+                      <CommandItem
+                        key={entity}
+                        value={entity}
+                        onSelect={() => {
+                          setSelectedEntity(entity);
+                          setSelectedAction(null);
+                          setSelectedStatus(null);
+                          setEntityDropdownOpen(false);
+                        }}
+                      >
+                        {entity}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </div>,
+              document.body
             )}
           </Command>
         </div>
         {/* Action Command */}
-        <div style={{ position: "relative", width: "fit-content" }}>
+        <div ref={actionInputRef} style={{ position: "relative", width: "fit-content" }}>
           <Command>
             <CommandInput
               placeholder="Search Action..."
@@ -203,8 +411,15 @@ export const TreeControls: React.FC<ControlProps> = ({
               onValueChange={v => {
                 setSelectedAction(v);
                 setSelectedStatus(null);
+                setActionDropdownOpen(true);
               }}
-              disabled={!selectedEntity}
+              onFocus={() => setActionDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setActionDropdownOpen(false), 150)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                }
+              }}
             />
             {selectedAction && (
               <button
@@ -229,34 +444,59 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedAction !== null && selectedAction.length > 0 && !actions.includes(selectedAction) && (
-              <CommandList>
-                {actions
-                  .filter(action => action.toLowerCase().includes(selectedAction.toLowerCase()))
-                  .map(action => (
-                    <CommandItem
-                      key={action}
-                      value={action}
-                      onSelect={() => {
-                        setSelectedAction(action);
-                        setSelectedStatus(null);
-                      }}
-                    >
-                      {action}
-                    </CommandItem>
-                  ))}
-              </CommandList>
+            {actionDropdownOpen && ReactDOM.createPortal(
+              <div
+                style={{
+                  position: "absolute",
+                  left: actionDropdownPos.left,
+                  top: actionDropdownPos.top,
+                  width: actionDropdownPos.width,
+                  zIndex: 9999,
+                  background: "#fff",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <CommandList>
+                  {actions
+                    .filter(action => (selectedAction ?? "").length === 0 || action.toLowerCase().includes((selectedAction ?? "").toLowerCase()))
+                    .map(action => (
+                      <CommandItem
+                        key={action}
+                        value={action}
+                        onSelect={() => {
+                          setSelectedAction(action);
+                          setSelectedStatus(null);
+                          setActionDropdownOpen(false);
+                        }}
+                      >
+                        {action}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </div>,
+              document.body
             )}
           </Command>
         </div>
         {/* Status Command */}
-        <div style={{ position: "relative", width: "fit-content" }}>
+        <div ref={statusInputRef} style={{ position: "relative", width: "fit-content" }}>
           <Command>
             <CommandInput
               placeholder="Search Status..."
               value={selectedStatus ?? ""}
-              onValueChange={v => setSelectedStatus(v)}
-              disabled={!selectedAction}
+              onValueChange={v => {
+                setSelectedStatus(v);
+                setStatusDropdownOpen(true);
+              }}
+              onFocus={() => setStatusDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setStatusDropdownOpen(false), 150)}
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                }
+              }}
             />
             {selectedStatus && (
               <button
@@ -278,26 +518,45 @@ export const TreeControls: React.FC<ControlProps> = ({
                 ×
               </button>
             )}
-            {selectedStatus !== null && selectedStatus.length > 0 && !statuses.includes(selectedStatus) && (
-              <CommandList>
-                {statuses
-                  .filter(status => status.toLowerCase().includes(selectedStatus.toLowerCase()))
-                  .map(status => (
-                    <CommandItem
-                      key={status}
-                      value={status}
-                      onSelect={() => setSelectedStatus(status)}
-                    >
-                      {status}
-                    </CommandItem>
-                  ))}
-              </CommandList>
+            {statusDropdownOpen && ReactDOM.createPortal(
+              <div
+                style={{
+                  position: "absolute",
+                  left: statusDropdownPos.left,
+                  top: statusDropdownPos.top,
+                  width: statusDropdownPos.width,
+                  zIndex: 9999,
+                  background: "#fff",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  borderRadius: 6,
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <CommandList>
+                  {statuses
+                    .filter(status => (selectedStatus ?? "").length === 0 || status.toLowerCase().includes((selectedStatus ?? "").toLowerCase()))
+                    .map(status => (
+                      <CommandItem
+                        key={status}
+                        value={status}
+                        onSelect={() => {
+                          setSelectedStatus(status);
+                          setStatusDropdownOpen(false);
+                        }}
+                      >
+                        {status}
+                      </CommandItem>
+                    ))}
+                </CommandList>
+              </div>,
+              document.body
             )}
           </Command>
         </div>
         <Button
           style={{ marginTop: 12 }}
-          disabled={!selectedEntity || !selectedAction || !selectedStatus}
+          disabled={!selectedEntity && !selectedAction && !selectedStatus}
+          type="button"
           onClick={handlePathSearch}
         >
           Search Sequence
