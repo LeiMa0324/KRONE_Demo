@@ -101,6 +101,28 @@ export const VisualizeTree: React.FC = () => {
       return;
     }
 
+    // If entity and status are selected (but no action)
+    if (entity && !action && status) {
+      let foundId: string | null = null;
+      for (const entityNode of treeData.children || []) {
+        if (entityNode.name !== entity) continue;
+        for (const actionNode of entityNode.children || []) {
+          for (const statusNode of actionNode.children || []) {
+            if (statusNode.name === status && statusNode.event_id) {
+              foundId = statusNode.event_id;
+              break;
+            }
+          }
+          if (foundId) break;
+        }
+        if (foundId) break;
+      }
+      setSearchValue(foundId ?? "");
+      setMatchedNodeId(foundId);
+      if (!foundId) setMatchedNodeObj(null);
+      return;
+    }
+
     // If entity, action, and status are selected
     if (entity && action && status) {
       let foundId: string | null = null;

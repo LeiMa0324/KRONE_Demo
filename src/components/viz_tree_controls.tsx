@@ -103,7 +103,7 @@ export const TreeControls: React.FC<ControlProps> = ({
     return Array.from(new Set(allActions));
   }, [treeData, selectedEntity]);
 
-  // Statuses: filtered by entity+action if both selected, by action if only action, otherwise all unique statuses
+  // Statuses: filtered by entity+action if both selected, by action if only action, by entity if only entity, otherwise all unique statuses
   const statuses = React.useMemo(() => {
     if (!treeData) return [];
     if (selectedEntity && selectedAction) {
@@ -122,6 +122,14 @@ export const TreeControls: React.FC<ControlProps> = ({
         .map(s => s.name);
       return Array.from(new Set(allStatuses));
     }
+    if (selectedEntity && !selectedAction) {
+      // All statuses under this entity (all actions)
+      const entityNode = treeData.children?.find(e => e.name === selectedEntity);
+      const allStatuses = (entityNode?.children ?? [])
+        .flatMap(a => a.children ?? [])
+        .map(s => s.name);
+      return Array.from(new Set(allStatuses));
+    }
     // All unique statuses in the tree
     const allStatuses = (treeData.children ?? [])
       .flatMap(e =>
@@ -133,6 +141,7 @@ export const TreeControls: React.FC<ControlProps> = ({
   }, [treeData, selectedEntity, selectedAction]);
 
   function handlePathSearch() {
+    setSearchInput("");
     onPathSearch(
       selectedEntity ?? "",
       selectedAction ?? "",
@@ -260,9 +269,8 @@ export const TreeControls: React.FC<ControlProps> = ({
                   >
                     {logKeyOptions
                       .filter(opt =>
-                        (opt.event_id + " " + opt.log_template + " " + opt.status)
-                          .toLowerCase()
-                          .includes(searchInput.toLowerCase())
+                        opt.event_id.toLowerCase().includes(searchInput.toLowerCase()) ||
+                        opt.log_template.toLowerCase().includes(searchInput.toLowerCase())
                       )
                       .sort((a, b) => a.event_id.localeCompare(b.event_id, undefined, { numeric: true }))
                       .map(opt => (
@@ -315,7 +323,7 @@ export const TreeControls: React.FC<ControlProps> = ({
           {searchValue && !matchedNodeId && (
             <div style={{ color: "#b00", fontSize: "0.95rem" }}>No status node found.</div>
           )}
-          <Button type="submit" style={{ marginTop: 8 }}>Search Log Key</Button>
+          <Button type="submit" style={{ marginTop: 8 }}   disabled={!searchInput.trim()}>Search Log Key</Button>
         </form>
       </div>
       {/* Path Search Section */}
