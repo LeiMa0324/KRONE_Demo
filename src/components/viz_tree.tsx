@@ -20,6 +20,7 @@ type VizTreeProps = {
   setHoveredNode: (node: HierarchyNode<TreeNode> | null) => void;
   showAnomalySymbols?: boolean;
   collapsible?: boolean;
+  disableHoverHighlight?: boolean; // <-- add this line
 };
 
 type HierarchyNodeWithHiddenChildren<T> = HierarchyNode<T> & { _children?: HierarchyNode<T>[] };
@@ -37,6 +38,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
   setHoveredNode,
   showAnomalySymbols = true,
   collapsible = true,
+  disableHoverHighlight = false, // <-- add this line
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [localTree, setLocalTree] = useState<TreeNode | null>(null);
@@ -183,11 +185,13 @@ export const VizTree: React.FC<VizTreeProps> = ({
       .attr("pointer-events", d => isNodeHidden(d) ? "none" : "auto")
       .on("mouseover", function (event, d) {
         if (!(this instanceof SVGElement)) return;
+        if (disableHoverHighlight) return; // <-- add this line
         highlightText.call(this, event, d);
         setHoveredNode(d);
       })
       .on("mouseout", function () {
         if (!(this instanceof SVGElement)) return;
+        if (disableHoverHighlight) return; // <-- add this line
         unhighlightText.call(this);
         setHoveredNode(null);
       })
