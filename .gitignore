@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# test embedding CSV files
+public/test_embedding_all.csv
+public/test_knowledge_all_fixed.csv
