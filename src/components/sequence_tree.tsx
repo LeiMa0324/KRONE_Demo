@@ -318,7 +318,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
         const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
 
-        let widestEntity = 0, widestAction = 0;
+        const widestByDepth = [75, 0, 0, 0]
         const tempSvg = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;").attr("font-family", font);
 
         
@@ -327,14 +327,17 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             const tempText = tempSvg.append("text").attr("font-size", fontSize).attr("font-family", font).text(node.data.name);
             const bbox = (tempText.node() as SVGTextElement).getBBox();
             const labelWidth = bbox.width + getPadding(fontSize) * 2;
-            if (node.depth === 1 && labelWidth > widestEntity) widestEntity = labelWidth;
-            if (node.depth === 2 && labelWidth > widestAction) widestAction = labelWidth;
+            for (let i = 1; i < widestByDepth.length; i++) {
+                if (node.depth === i && labelWidth > widestByDepth[i]) {
+                    widestByDepth[i] = labelWidth;
+                }
+            }
             tempText.remove();
         });
         tempSvg.remove();
 
         const entitySpacing = 22;
-        const dy = Math.max(widestEntity + 20, widestAction + 40);
+        const dy = Math.max(widestByDepth[1] + 40, widestByDepth[2] + 50);
         tree<TreeNode>().nodeSize([entitySpacing, dy]).separation((a, b) => (Math.max(getFontSize(a.depth), getFontSize(b.depth)) + 8) / depthSpacing)(root);
 
         function topAlign(node: HierarchyNode<TreeNode>) {
@@ -344,10 +347,38 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             }
         }
         topAlign(root);
+        const minEntityGap = 50; // Adjust as needed
+        const entityNodes = root.children || [];
+        for (let i = 1; i < entityNodes.length; i++) {
+            const prev = entityNodes[i - 1];
+            const curr = entityNodes[i];
+            // If the gap is too small, push this entity and its subtree down
+            if (curr.x! - prev.x! < minEntityGap) {
+                const offset = minEntityGap - (curr.x! - prev.x!);
+                function offsetSubtree(node: HierarchyNode<TreeNode>, delta: number) {
+                    node.x! += delta;
+                    if (node.children) node.children.forEach(child => offsetSubtree(child, delta));
+                }
+                offsetSubtree(curr, offset);
+                // Also update all subsequent entities
+                for (let j = i + 1; j < entityNodes.length; j++) {
+                    offsetSubtree(entityNodes[j], offset);
+                }
+            }
+        }
 
-        const statusDy = 150;
-        root.each(node => { if (node.depth === 3 && node.parent && typeof node.parent.y === "number") node.y = node.parent.y + statusDy; });
+        const extraColSpacing = [0, 80, 60, 60]; // [root, entity, action, status] - adjust as needed
 
+        // Calculate cumulative x-offsets for each depth
+        const colOffsets = [0];
+        for (let i = 1; i < widestByDepth.length; i++) {
+            colOffsets[i] = (colOffsets[i - 1] || 0) + widestByDepth[i - 1] + extraColSpacing[i];
+        }
+
+        // Now, after tree layout, manually adjust y for each node:
+        root.each(node => {
+            node.y = colOffsets[node.depth];
+        });
         let x0 = Infinity, x1 = -Infinity, y1 = -Infinity;
         root.each(d => {
             if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
@@ -403,7 +434,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .style("pointer-events", "none")
             .text("Entity");
         svg.append("text")
-            .attr("x", 700)
+            .attr("x", 775)
             .attr("y", x0 - baseFont)
             .attr("font-size", 30)
             .attr("font-weight", "bold")
@@ -413,7 +444,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         if (!entitiesCollapsed) {
             svg.append("text")
-                .attr("x", 350)
+                .attr("x", 375)
                 .attr("y", x0 - baseFont)
                 .attr("font-size", 30)
                 .attr("font-weight", "bold")
@@ -423,7 +454,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
             if (!actionsCollapsed) {
                 svg.append("text")
-                    .attr("x", 510)
+                    .attr("x", 575)
                     .attr("y", x0 - baseFont)
                     .attr("font-size", 30)
                     .attr("font-weight", "bold")
@@ -442,25 +473,19 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .data(root.links())
             .join("path")
             .attr("d", (d: HierarchyLink<TreeNode>) => {
-                const fontSize = getFontSize(d.source.depth);
-                const padding = getPadding(fontSize);
-                const tempSvg = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;");
-                const tempText = tempSvg.append("text")
-                    .attr("font-size", fontSize)
-                    .attr("font-family", font)
-                    .text(d.source.data.name);
-                const bbox = (tempText.node() as SVGTextElement).getBBox();
-                tempSvg.remove();
-                const labelWidth = bbox.width + padding - 5;
-                const sourceY = (d.source.y ?? 0) + labelWidth;
+                // Always exit from the right edge of the source node and enter the left edge of the target node
+                const sourceWidth = widestByDepth[d.source.depth];
+                const sourceY = (d.source.y ?? 0) + sourceWidth - 20; // right edge of source
                 const sourceX = d.source.x;
-                const gap = 18;
-                const sourceStubY = sourceY + gap;
+                const targetY = d.target.y ?? 0; // left edge of target
+                const targetX = d.target.x;
+                // Horizontal-vertical-horizontal elbow
+                const midY = (sourceY + targetY) / 2;
                 return [
                     `M${sourceY},${sourceX}`,
-                    `H${sourceStubY}`,
-                    `V${d.target.x}`,
-                    `H${d.target.y}`
+                    `H${midY}`,
+                    `V${targetX}`,
+                    `H${targetY}`
                 ].join(" ");
             })
             .attr("stroke", linkBorderColor)
@@ -474,11 +499,34 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .data(root.descendants())
             .join("g")
             .attr("transform", d => `translate(${d.y},${d.x})`)
+            .on("mouseover", function (event, d) {
+                if (!(this instanceof SVGElement)) return;
+                highlightText.call(this, event, d);
+                if ((d.depth === 1 || d.depth === 2 || d.depth === 3) && d.data.isAnomaly && d.data.anomalyReason) {
+                    setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
+                }
+            })
+            .on("mouseout", function () {
+                if (!(this instanceof SVGElement)) return;
+                unhighlightText.call(this);
+                setHoveredAnomaly(null);
+            })
+            .on("click", function (event, d) {
+                event.stopPropagation();
+                const idx = d.data.indexPath;
+                if (!idx) return;
+                setTreeData(prev => {
+                    if (!prev) return null;
+                    const updated = toggleNodeByIndexPath(prev, idx);
+                    addIndexPath(updated);
+                    return updated;
+                });
+            });
         
 
 
 
-    function highlightText(this: SVGTextElement, _event: unknown, d: HierarchyNode<TreeNode>) {
+    function highlightText(this: SVGElement, _event: unknown, d: HierarchyNode<TreeNode>) {
         const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
         let current: HierarchyNode<TreeNode> | null = d;
         while (current) {
@@ -502,7 +550,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             ? "#c8102e"
                             : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222"))
                     );
-                select(this.parentNode as Element).select("rect")
+                select(this.parentNode as Element).selectAll("rect")
                     .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
                     .attr("stroke-width", isRelated ? 5 : 2);
             });
@@ -554,25 +602,25 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
                 return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
             });
-    }
+        }
 
-    // In unhighlightText, reset log template highlights:
-    function unhighlightText(this: SVGTextElement) {
-        svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
-            .each(function (n) {
-                select(this)
-                    .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222");
-                select(this.parentNode as Element).select("rect")
-                    .attr("fill", linkFillColor({ source: { depth: n.depth - 1 } }))
-                    .attr("stroke-width", 2);
-            });
-        svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-            .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#444")
-            .attr("font-weight", null);
-        svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
-            .attr("stroke", linkBorderColor)
-            .attr("stroke-width", 1.5);
-    }
+        // In unhighlightText, reset log template highlights:
+        function unhighlightText(this: SVGElement) {
+            svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
+                .each(function (n) {
+                    select(this)
+                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222");
+                    select(this.parentNode as Element).selectAll("rect")
+                        .attr("fill", linkFillColor({ source: { depth: n.depth - 1 } }))
+                        .attr("stroke-width", 2);
+                });
+            svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
+                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#444")
+                .attr("font-weight", null);
+            svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
+                .attr("stroke", linkBorderColor)
+                .attr("stroke-width", 1.5);
+        }
 
         let anomalyStartY = Infinity;
         let anomalyEndY = -Infinity;
@@ -590,35 +638,23 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .text(d => d.data.name)
             .attr("fill", d => d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#222")
             .attr("font-size", d => getFontSize(d.depth))
-            .on("mouseover", function (event, d) {
-                highlightText.call(this, event, d);
-                if ((d.depth === 1 || d.depth === 2 || d.depth === 3) && d.data.isAnomaly && d.data.anomalyReason) {
-                    setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
-                }
-            })
-            .on("mouseout", function () {
-                unhighlightText.call(this);
-                setHoveredAnomaly(null);
-            })
-            .on("click", function (event, d) {
-                event.stopPropagation();
-                const idx = d.data.indexPath;
-                if (!idx) return;
-                setTreeData(prev => {
-                    if (!prev) return null;
-                    const updated = toggleNodeByIndexPath(prev, idx);
-                    addIndexPath(updated);
-                    return updated;
-                });
-            })
             .each(function (this: SVGTextElement, d) {
                 const fontSize = getFontSize(d.depth), padding = getPadding(fontSize), radius = getRadius(fontSize);
                 const nodeGroup = select(this.parentNode as Element);
                 const bbox = this.getBBox();
-                if (d.data.collapsed && !d.parent?.data.collapsed) {
+                nodeGroup.insert("rect", "text")
+                    .attr("x", bbox.x - padding)
+                    .attr("y", bbox.y - padding / 2)
+                    .attr("width", widestByDepth[d.depth])
+                    .attr("height", bbox.height + padding)
+                    .attr("fill", () => linkFillColor({ source: { depth: d.depth - 1 } }))
+                    .attr("stroke", () => linkBorderColor({ source: { depth: d.depth - 1 } }))
+                    .attr("rx", radius)
+                    .attr("ry", radius);
+                if (d.children && d.children.length > 0 && d.data.collapsed && !d.parent?.data.collapsed) {
                     nodeGroup.insert("text", "text") // insert before label
                         .attr("class", "collapse-indicator")
-                        .attr("x", bbox.x + bbox.width + padding * 2.5) // adjust as needed
+                        .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5) // node start + node width + some padding
                         .attr("y", bbox.y + bbox.height / 2 + 2)
                         .attr("alignment-baseline", "middle")
                         .attr("font-size", Math.max(fontSize * 0.8, 16))
@@ -641,7 +677,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 nodeGroup.insert("rect", "text")
                     .attr("x", bbox.x - padding)
                     .attr("y", bbox.y - padding / 2)
-                    .attr("width", bbox.width + 2 * padding)
+                    .attr("width", widestByDepth[d.depth])
                     .attr("height", bbox.height + padding)
                     .attr("fill", () => linkFillColor({ source: { depth: d.depth - 1 } }))
                     .attr("stroke", () => linkBorderColor({ source: { depth: d.depth - 1 } }))
@@ -721,29 +757,188 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .on("mouseout", function () { setHoveredAnomaly(null); });
                 }
             });
-
         const anomalyRow = kroneDetectData.find(row => row.seq_id === selectedSeqId);
         const anomalySeg = anomalyRow?.anomaly_seg || [];
-
-        if (multiLineAnomaly && 
-            anomalyStartY !== Infinity && 
+        if (
+            multiLineAnomaly &&
+            anomalyStartY !== Infinity &&
             anomalyEndY !== -Infinity &&
             (
-                // Entity-level: hide if any relevant entity is collapsed
                 (anomalyLevelMulti === "entity") ||
-                // Action-level: hide if any relevant entity is collapsed (not action!)
                 (anomalyLevelMulti === "action" && !allEntitiesCollapsed(treeData) && !anyAnomalyEntityCollapsed(treeData, "entity", anomalySeg)) ||
-                // Status-level: hide if any relevant entity or action is collapsed
                 (anomalyLevelMulti === "status" && !allEntitiesCollapsed(treeData) && !allActionsCollapsed(treeData) && !anyAnomalyEntityCollapsed(treeData, "entity", anomalySeg) && !anyAnomalyActionCollapsed(treeData, anomalySeg))
-            )) {
+            )
+        ) {
+            let highlightYStart = anomalyStartY;
+            let highlightYEnd = anomalyEndY;
+
+            // --- Special logic for entity-level multi-line anomalies ---
+            if (anomalyLevelMulti === "entity") {
+                // Find all entity nodes in the anomaly segment, sorted by their x (vertical) position
+                const anomalyEntityNodes = root.descendants().filter(
+                    node =>
+                        node.depth === 1 &&
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
+                        !isNodeHidden(node)
+                ).sort((a, b) => a.x! - b.x!);
+
+                if (anomalyEntityNodes.length > 0) {
+                    // Start at the first entity
+                    highlightYStart = anomalyEntityNodes[0].x!;
+
+                    // Find the last entity node
+                    const lastEntityNode = anomalyEntityNodes[anomalyEntityNodes.length - 1];
+
+                    // If the last entity is collapsed, box ends at the last entity node
+                    if (lastEntityNode.data.collapsed) {
+                        const fontSize = getFontSize(1);
+                        const nodeHeight = fontSize + getPadding(fontSize);
+                        highlightYEnd = lastEntityNode.x! + nodeHeight;
+                    } else {
+                        // Find the last action of the last entity
+                        const lastActionNodes = (lastEntityNode.children || []).filter(a => !isNodeHidden(a));
+                        if (lastActionNodes.length > 0) {
+                            const lastActionNode = lastActionNodes[lastActionNodes.length - 1];
+                            if (lastActionNode.data.collapsed) {
+                                // If last action is collapsed, box ends at last action node
+                                const fontSize = getFontSize(2);
+                                const nodeHeight = fontSize + getPadding(fontSize);
+                                highlightYEnd = lastActionNode.x! + nodeHeight;
+                            } else {
+                                // Otherwise, box ends at the last status node under the last action
+                                let lastStatusNode: HierarchyNode<TreeNode> | null = null;
+                                (lastActionNode.children || []).forEach((statusNode: HierarchyNode<TreeNode>) => {
+                                    if (!isNodeHidden(statusNode)) {
+                                        if (!lastStatusNode || statusNode.x! > (lastStatusNode as HierarchyNode<TreeNode>).x!) {
+                                            lastStatusNode = statusNode;
+                                        }
+                                    }
+                                });
+                                if (lastStatusNode) {
+                                    const fontSize = getFontSize(3);
+                                    const nodeHeight = fontSize + getPadding(fontSize);
+                                    highlightYEnd = (lastStatusNode as HierarchyNode<TreeNode>).x! + nodeHeight;
+                                } else {
+                                    // Fallback to last action node if no status nodes
+                                    const fontSize = getFontSize(2);
+                                    const nodeHeight = fontSize + getPadding(fontSize);
+                                    highlightYEnd = lastActionNode.x! + nodeHeight;
+                                }
+                            }
+                        } else {
+                            // Fallback to last entity node if no actions
+                            const fontSize = getFontSize(1);
+                            const nodeHeight = fontSize + getPadding(fontSize);
+                            highlightYEnd = lastEntityNode.x! + nodeHeight;
+                        }
+                    }
+                }
+            }
+
+            // --- Special logic for action-level multi-line anomalies (unchanged) ---
+            if (anomalyLevelMulti === "action") {
+                const anomalyActionNodes = root.descendants().filter(
+                    node =>
+                        node.depth === 2 &&
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
+                        !isNodeHidden(node)
+                ).sort((a, b) => a.x! - b.x!);
+
+                if (anomalyActionNodes.length > 0) {
+                    const lastActionNode = anomalyActionNodes[anomalyActionNodes.length - 1];
+                    if (lastActionNode.data.collapsed) {
+                        const fontSize = getFontSize(2);
+                        const nodeHeight = fontSize + getPadding(fontSize);
+                        highlightYStart = anomalyActionNodes[0].x!;
+                        highlightYEnd = lastActionNode.x! + nodeHeight;
+                    } else {
+                        let minY = Infinity, maxY = -Infinity;
+                        let maxNode: HierarchyNode<TreeNode> | null = null;
+                        anomalyActionNodes.forEach(actionNode => {
+                            actionNode.descendants().forEach(desc => {
+                                if (desc.depth === 3 && !isNodeHidden(desc)) {
+                                    if (desc.x! < minY) minY = desc.x!;
+                                    if (desc.x! > maxY) {
+                                        maxY = desc.x!;
+                                        maxNode = desc;
+                                    }
+                                }
+                            });
+                        });
+                        if (minY !== Infinity && maxY !== -Infinity && maxNode) {
+                            const fontSize = getFontSize(3);
+                            const nodeHeight = fontSize + getPadding(fontSize);
+                            highlightYStart = minY;
+                            highlightYEnd = maxY + nodeHeight;
+                        }
+                    }
+                }
+            }
+
+            // Calculate left and right edges to cover the correct columns
+            let leftX: number, rightX: number;
+            if (anomalyLevelMulti === "entity") {
+                leftX = colOffsets[1];
+                // Define anomalyEntityNodes in this scope
+                const anomalyEntityNodes = root.descendants().filter(
+                    node =>
+                        node.depth === 1 &&
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
+                        !isNodeHidden(node)
+                ).sort((a, b) => a.x! - b.x!);
+
+                if (anomalyEntityNodes && anomalyEntityNodes.length > 0) {
+                    const lastEntityNode = anomalyEntityNodes[anomalyEntityNodes.length - 1];
+                    if (lastEntityNode.data.collapsed) {
+                        rightX = colOffsets[1] + widestByDepth[1];
+                    } else {
+                        // Check last action of last entity
+                        const lastActionNodes = (lastEntityNode.children || []).filter(a => !isNodeHidden(a));
+                        if (lastActionNodes.length > 0) {
+                            const lastActionNode = lastActionNodes[lastActionNodes.length - 1];
+                            if (lastActionNode.data.collapsed) {
+                                rightX = colOffsets[2] + widestByDepth[2];
+                            } else {
+                                rightX = colOffsets[3] + widestByDepth[3];
+                            }
+                        } else {
+                            rightX = colOffsets[1] + widestByDepth[1];
+                        }
+                    }
+                } else {
+                    rightX = colOffsets[1] + widestByDepth[1];
+                }
+            } else if (anomalyLevelMulti === "action") {
+                leftX = colOffsets[2];
+                const anomalyActionNodes = root.descendants().filter(
+                    node =>
+                        node.depth === 2 &&
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
+                        !isNodeHidden(node)
+                ).sort((a, b) => a.x! - b.x!);
+                const lastActionNode = anomalyActionNodes[anomalyActionNodes.length - 1];
+                rightX = (lastActionNode && lastActionNode.data.collapsed)
+                    ? colOffsets[2] + widestByDepth[2]
+                    : colOffsets[3] + widestByDepth[3];
+            } else {
+                leftX = colOffsets[3];
+                rightX = colOffsets[3] + widestByDepth[3];
+            }
+            const rectWidth = rightX - leftX;
+
+            if (anomalyLevelMulti === "status") {
+                highlightYEnd += 15 }
+
             svg.append("rect")
-                .attr("x", anomalyLevelMulti === "entity" ? 160 : anomalyLevelMulti === "action" ? 335 : 500) // Adjust based on depth
-                .attr("y", anomalyStartY - 20) // adjust as needed for padding
-                .attr("width", anomalyLevelMulti === "entity" ? 180 : anomalyLevelMulti === "action" ? 150 : 110)
-                .attr("height", anomalyEndY - anomalyStartY + 40) // adjust as needed for padding
-                .attr("fill", "#FF0000")
+                .attr("x", leftX - 20)
+                .attr("y", highlightYStart - 20)
+                .attr("width", rectWidth + 25)
+                .attr("height", highlightYEnd - highlightYStart + 20)
+                .attr("fill", "#FFCCCC")
+                .attr("stroke", "#FF0000")
                 .attr("fill-opacity", 0.2)
-                .attr("pointer-events", "none");
+                .attr("pointer-events", "none")
+                .lower();
         }
         node.each(function(d) {
             const hidden = isNodeHidden(d);
