@@ -2,6 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { hierarchy, tree as d3Tree, type HierarchyNode } from "d3-hierarchy";
 import { select } from "d3-selection";
 import type { TreeNode } from "../tree_utils";
+import {
+  addIndexPath,
+  toggleNodeByIndexPath,
+  setCollapseAtDepth,
+  isNodeHidden,
+} from "../tree_utils";
 
 type TreeLink = { source: HierarchyNode<TreeNode>; target: HierarchyNode<TreeNode> };
 
@@ -16,59 +22,10 @@ type VizTreeProps = {
   collapsible?: boolean;
 };
 
-// Add indexPath to each node for collapse toggling
-function addIndexPath(node: TreeNode, path: number[] = []): void {
-  (node as any).indexPath = path;
-  (node.children || []).forEach((c, i) => addIndexPath(c, [...path, i]));
-}
+type HierarchyNodeWithHiddenChildren<T> = HierarchyNode<T> & { _children?: HierarchyNode<T>[] };
 
-// Toggle collapse by indexPath (like sequence_tree)
-function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
-  if (path.length === 0) return node;
-  const [currentIndex, ...remainingPath] = path;
-  if (!node.children || !node.children[currentIndex]) return node;
-  const updatedChildren = [...node.children];
-  if (remainingPath.length === 0) {
-    updatedChildren[currentIndex] = {
-      ...updatedChildren[currentIndex],
-      collapsed: !updatedChildren[currentIndex].collapsed,
-    };
-  } else {
-    updatedChildren[currentIndex] = toggleNodeByIndexPath(updatedChildren[currentIndex], remainingPath);
-  }
-  return {
-    ...node,
-    children: updatedChildren,
-  };
-}
-
-// Collapse/expand all nodes at a given depth (like sequence_tree)
-function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cur = 1) {
-  if (!node.children) return;
-  if (cur === depth) {
-    node.children.forEach(child => {
-      child.collapsed = collapse;
-    });
-  } else {
-    node.children.forEach(c => setCollapseAtDepth(c, depth, collapse, cur + 1));
-  }
-}
-
-// Helper: is this node or any ancestor collapsed?
-function isNodeHidden(node: HierarchyNode<TreeNode>): boolean {
-  let current = node.parent;
-  while (current) {
-    if (current.data.collapsed) return true;
-    current = current.parent;
-  }
-  return false;
-}
-
-// Helper: does this node have hidden children due to collapse?
-function hasHiddenChildren(d: HierarchyNode<TreeNode>) {
-  if (!d.children || d.children.length === 0) return false;
-  if (d.data.collapsed) return true;
-  return d.children.some(child => hasHiddenChildren(child));
+function hasHiddenChildren(node: HierarchyNode<TreeNode>): node is HierarchyNodeWithHiddenChildren<TreeNode> {
+  return Array.isArray((node as HierarchyNodeWithHiddenChildren<TreeNode>)._children);
 }
 
 export const VizTree: React.FC<VizTreeProps> = ({
@@ -97,7 +54,6 @@ export const VizTree: React.FC<VizTreeProps> = ({
   useEffect(() => {
     if (!svgRef.current || !localTree) return;
 
-    // --- Color variables and helpers (match sequence_tree.tsx) ---
     const getCssVar = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
     const wpired = getCssVar('--color-WPIRed') || "#c8102e";
     const wpigold = getCssVar('--color-WPIGold') || "#ffd100";
@@ -107,7 +63,11 @@ export const VizTree: React.FC<VizTreeProps> = ({
     const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
     const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
 
-    // Compute widest label for each depth (column) for uniform node width
+    function childrenOrCollapsed(d: TreeNode) {
+      if (d.collapsed) return undefined;
+      return d.children;
+    }
+
     function getWidestByDepth(tree: TreeNode) {
       const widestByDepth = [75, 0, 0, 0];
       const root = hierarchy(tree, d => d.children);
@@ -132,14 +92,12 @@ export const VizTree: React.FC<VizTreeProps> = ({
 
     const baseFont = 28, minFont = 15, fontStep = 5;
     const basePadding = 0.25, baseRadius = 0.25;
-    const siblingSpacing = 13;
     const getFontSize = (depth: number) => Math.max(baseFont - depth * fontStep, minFont);
     const getPadding = (fontSize: number) => fontSize * basePadding;
     const getRadius = (fontSize: number) => fontSize * baseRadius;
 
     const widestByDepth = getWidestByDepth(localTree);
 
-    // Calculate y positions for each depth based on widestByDepth
     const extraColSpacing = [0, 60, 60, 60];
     const colOffsets = [0];
     for (let i = 1; i < widestByDepth.length; i++) {
@@ -147,22 +105,9 @@ export const VizTree: React.FC<VizTreeProps> = ({
     }
     const getYByDepth = (depth: number) => colOffsets[depth];
 
-    // Always use all children, never prune for collapse
-    const root = hierarchy<TreeNode>(localTree, d => d.children);
-
-    // Use nodeSize for vertical spacing, but we'll manually set y for columns
+    const root = hierarchy<TreeNode>(localTree, childrenOrCollapsed);
     (d3Tree<TreeNode>().nodeSize([40, 0]).separation(() => 1))(root);
 
-    // Top align: set all parents' x to their first child's x
-    function topAlign(node: HierarchyNode<TreeNode>) {
-      if (node.children && node.children.length > 0) {
-        node.children.forEach(topAlign);
-        node.x = node.children[0].x;
-      }
-    }
-    //topAlign(root);
-
-    // Enforce minimum vertical gap between entity nodes
     const minEntityGap = 50;
     const entityNodes = root.children || [];
     for (let i = 1; i < entityNodes.length; i++) {
@@ -181,7 +126,6 @@ export const VizTree: React.FC<VizTreeProps> = ({
       }
     }
 
-    // Set y for each node by column
     root.each(node => {
       node.y = getYByDepth(node.depth);
     });
@@ -201,22 +145,21 @@ export const VizTree: React.FC<VizTreeProps> = ({
     const svg = select(svgRef.current);
     svg.selectAll("*").remove();
     svg
-      .attr("width", adjustedWidth)
+      .attr("width", adjustedWidth + 35)
       .attr("height", height)
       .attr("viewBox", `0 ${x0 - baseFont} ${adjustedWidth} ${height}`)
       .attr("style", "max-width: 100%; height: auto; font: 10px;")
       .attr("font-family", font);
 
-    // --- Draw links: always from right edge of source to left edge of target ---
-    svg.append("g").attr("fill", "none").attr("stroke-width", 2)
+    svg.append("g").attr("fill", "none").attr("stroke-width", 1.5)
       .selectAll("path")
       .data(root.links())
       .join("path")
       .attr("d", (d: { source: HierarchyNode<TreeNode>, target: HierarchyNode<TreeNode> }) => {
         const sourceWidth = widestByDepth[d.source.depth];
-        const sourceY = (d.source.y ?? 0) + sourceWidth - 20; // right edge of source
+        const sourceY = (d.source.y ?? 0) + sourceWidth - 20;
         const sourceX = d.source.x;
-        const targetY = d.target.y ?? 0; // left edge of target
+        const targetY = d.target.y ?? 0;
         const targetX = d.target.x;
         const midY = (sourceY + targetY) / 2;
         return [
@@ -229,7 +172,6 @@ export const VizTree: React.FC<VizTreeProps> = ({
       .attr("stroke", linkBorderColor)
       .attr("opacity", d => (isNodeHidden(d.source) || isNodeHidden(d.target)) ? 0 : 1);
 
-    // nodes
     const node = svg.append("g")
       .attr("stroke-linejoin", "round")
       .attr("stroke-width", 2)
@@ -255,7 +197,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
         if (!d.data.indexPath) return;
         setLocalTree(prev => {
           if (!prev) return null;
-          const updated = toggleNodeByIndexPath(prev, d.data.indexPath);
+          const updated = toggleNodeByIndexPath(prev, d.data.indexPath!);
           addIndexPath(updated);
           return updated;
         });
@@ -264,10 +206,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
     node.append("text")
       .attr("class", "node-label")
       .attr("dy", "0.31em")
-      .attr("x", (d: HierarchyNode<TreeNode>) => {
-        const fontSize = getFontSize(d.depth);
-        return (d.children ? -fontSize * 0.2 : fontSize * 0.2);
-      })
+      .attr("x", (d: HierarchyNode<TreeNode>) => getFontSize(d.depth) * 0.2)      
       .attr("text-anchor", "start")
       .text((d: HierarchyNode<TreeNode>) => d.data.name)
       .attr("fill", "#000")
@@ -288,7 +227,12 @@ export const VizTree: React.FC<VizTreeProps> = ({
           .attr("rx", radius).attr("ry", radius);
 
         // Collapse indicator (▶) if node is collapsed
-        if (d.children && d.children.length > 0 && d.data.collapsed && !d.parent?.data.collapsed) {
+       if (
+        collapsible &&
+        d.data.collapsed === true &&
+        d.data.indexPath && // must be togglable
+        d.depth < 3
+      )  {
           nodeGroup.insert("text", "text")
             .attr("class", "collapse-indicator")
             .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5)
@@ -301,50 +245,32 @@ export const VizTree: React.FC<VizTreeProps> = ({
             .text("▶");
         }
 
-        // --- Warning symbol logic like sequence_tree.tsx ---
-        // Show warning for anomaly nodes (not hidden by collapse)
+        // Anomaly warning symbol to the left of the label, like sequence_tree.tsx
         if (
           showAnomalySymbols &&
-          (d.data as any).is_anomaly &&
-          !isNodeHidden(d) &&
-          !d.parent?.data.collapsed &&
-          !d.parent?.parent?.data.collapsed
+          d.depth === 3 &&
+          !d.children &&
+          !hasHiddenChildren(d) &&
+          d.data.isAnomaly
         ) {
-          nodeGroup.append("text")
+          nodeGroup.insert("text", "text")
             .attr("class", "anomaly-warning")
             .attr("x", bbox.x - padding * 2.5 - 15)
-            .attr("y", d.depth === 3 ? bbox.y + bbox.height / 2 + 2 : bbox.y - padding / 2 + 8)
-            .attr("alignment-baseline", d.depth === 3 ? "middle" : "hanging")
-            .attr("font-size", Math.max(fontSize * 0.8, d.depth === 3 ? 14 : 18))
+            .attr("y", bbox.y + bbox.height / 2 + 2)
+            .attr("alignment-baseline", "middle")
+            .attr("font-size", Math.max(fontSize * 0.8, 14))
             .attr("fill", "#FFD100")
             .attr("text-anchor", "start")
             .style("cursor", "pointer")
-            .text("⚠️");
-        }
-        // Show warning for collapsed parent that is related to anomaly
-        else if (
-          showAnomalySymbols &&
-          (d.data as any).is_related_to_anomaly &&
-          d.data.collapsed &&
-          !d.parent?.data.collapsed
-        ) {
-          nodeGroup.append("text")
-            .attr("class", "anomaly-warning")
-            .attr("x", bbox.x - padding * 2.5 - 15)
-            .attr("y", d.depth === 3 ? bbox.y + bbox.height / 2 + 2 : bbox.y - padding / 2 + 8)
-            .attr("alignment-baseline", d.depth === 3 ? "middle" : "hanging")
-            .attr("font-size", Math.max(fontSize * 0.8, d.depth === 3 ? 14 : 18))
-            .attr("fill", "#FFD100")
-            .attr("text-anchor", "start")
-            .style("cursor", "pointer")
-            .text("⚠️");
+            .text("⚠️")
+            .append("title")
+            .text(d.data.anomalyReason || "Anomaly detected");
         }
       });
 
-    // search highlight matched node
     if (matchedNodeId) {
       const matched = root.descendants().find(
-        d => d.depth === 3 && (d.data as any).event_id === matchedNodeId
+        d => d.depth === 3 && d.data.event_id === matchedNodeId
       );
       if (matched) {
         const ancestorNodes = new Set<HierarchyNode<TreeNode>>();

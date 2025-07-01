@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import { Footer } from "@/components/footer";
-import { SequenceTreeNew } from "@/components/sequence_tree_new";
-import { SequenceTree } from "@/components/sequence_tree";
+//import { SequenceTreeNew } from "@/components/sequence_tree_new";
+import { SequenceTree } from "@/components/sequence_tree";/*
 import { TreeInfoPanel } from "@/components/tree_info_panel";
 import type { HierarchyNode } from "d3-hierarchy";
-import type { UnifiedTreeNode } from "@/components/unified_tree";
+import type { UnifiedTreeNode } from "@/components/unified_tree";*/
 /*
 import {
     Table,
@@ -361,7 +361,7 @@ export const VisualizeTable = () => {
     //const [templateDict, setTemplateDict] = useState<Record<string, string>>({});
     const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
     const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
-    const [hoveredNode, setHoveredNode] = useState<HierarchyNode<UnifiedTreeNode> | null>(null);
+    //const [hoveredNode, setHoveredNode] = useState<HierarchyNode<UnifiedTreeNode> | null>(null);
     //const [data, setData] = useState<CsvRow[]>([]);
     //const [loading, setLoading] = useState(true);
     //const [dropdownOptions, setDropdownOptions] = useState<CsvRow[]>([]);
