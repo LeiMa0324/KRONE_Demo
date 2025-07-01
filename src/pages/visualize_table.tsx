@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import { Footer } from "@/components/footer";
+//import { SequenceTreeNew } from "@/components/sequence_tree_new";
+import { SequenceTree } from "@/components/sequence_tree";/*
+import { TreeInfoPanel } from "@/components/tree_info_panel";
+import type { HierarchyNode } from "d3-hierarchy";
+import type { UnifiedTreeNode } from "@/components/unified_tree";*/
 /*
 import {
     Table,
@@ -10,7 +15,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"; */
-import { SequenceTree } from "@/components/sequence_tree";
 
 // CsvRow type for new output data
 /*
@@ -357,6 +361,7 @@ export const VisualizeTable = () => {
     //const [templateDict, setTemplateDict] = useState<Record<string, string>>({});
     const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
     const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
+    //const [hoveredNode, setHoveredNode] = useState<HierarchyNode<UnifiedTreeNode> | null>(null);
     //const [data, setData] = useState<CsvRow[]>([]);
     //const [loading, setLoading] = useState(true);
     //const [dropdownOptions, setDropdownOptions] = useState<CsvRow[]>([]);
@@ -403,9 +408,49 @@ export const VisualizeTable = () => {
     //const row = data.find((row) => row.seq_id === displayedOption);
 
     return (
-        <div className="flex flex-col min-h-screen pt-20">
-            <SequenceTree kroneDecompData={kroneDecompData} kroneDetectData={kroneDetectData} />
-            <Footer />
+        <div
+            style={{
+                minHeight: "100vh",
+                height: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+            }}
+        >
+            <div
+                style={{
+                    flex: "1 1 auto",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    paddingTop: "80px",
+                    paddingLeft: "20px",
+                    paddingRight: "20px",
+                    boxSizing: "border-box",
+                    overflow: "hidden",
+                }}
+            >
+                {/* Tree area */}
+                <div style={{
+                    flex: "1 1 0%",
+                    minWidth: 0,
+                    height: "100%",
+                    overflowX: "auto",
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    marginTop: 24
+                }}>
+                    <SequenceTree
+                        kroneDecompData={kroneDecompData}
+                        kroneDetectData={kroneDetectData}
+                    />
+                </div>
+                {/* Info panel */}
+
+            </div>
+            <div style={{ flex: "0 0 auto" }}>
+                <Footer />
+            </div>
         </div>
     );
 };

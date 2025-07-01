@@ -61,8 +61,8 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
       });
 
       const statuses = collectStatuses(node);
-      const normal = statuses.filter((s) => !s.is_anomaly).map((s) => s.event_id);
-      const abnormal = statuses.filter((s) => s.is_anomaly).map((s) => s.event_id);
+      const normal = statuses.filter((s) => !s.isAnomaly).map((s) => s.event_id);
+      const abnormal = statuses.filter((s) => s.isAnomaly).map((s) => s.event_id);
 
       return {
         title: "Root",
@@ -80,8 +80,8 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
 
     if (node.depth === 1 || node.depth === 2) {
       const statuses = collectStatuses(node);
-      const normal = statuses.filter((s) => !s.is_anomaly).map((s) => s.event_id);
-      const abnormal = statuses.filter((s) => s.is_anomaly).map((s) => s.event_id);
+      const normal = statuses.filter((s) => !s.isAnomaly).map((s) => s.event_id);
+      const abnormal = statuses.filter((s) => s.isAnomaly).map((s) => s.event_id);
       const actions = getHierarchyNodeChildren(node);
       const numActions = node.depth === 1 ? actions.length : undefined;
       const numStatuses =
@@ -109,8 +109,8 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
           <div><b>Log Key:</b> ${node.data.event_id || "N/A"}</div>
           <div><b>Log Template:</b> ${node.data.log_template || "N/A"}</div>
           <div><b>Anomaly:</b> ${
-            node.data.is_anomaly
-              ? node.data.anomaly_explanation || "No explanation"
+            node.data.isAnomaly
+              ? node.data.anomalyReason || "No explanation"
               : "Normal"
           }</div>
         `,
