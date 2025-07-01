@@ -277,6 +277,7 @@ export const VisualizeTree: React.FC = () => {
               matchedNodeId={matchedNodeId}
               setHoveredNode={setHoveredNode}
               showAnomalySymbols={true}
+              disableHoverHighlight={!!matchedNodeId}
             />
           )}
         </div>
