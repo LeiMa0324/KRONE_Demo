@@ -269,55 +269,57 @@ export const VizTree: React.FC<VizTreeProps> = ({
       });
 
     if (matchedNodeId) {
-      const matched = root.descendants().find(
-        d => d.depth === 3 && d.data.event_id === matchedNodeId
-      );
-      if (matched) {
-        const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
-        let current: HierarchyNode<TreeNode> | null = matched;
-        while (current) {
-          ancestorNodes.add(current);
-          current = current.parent;
-        }
-        const descendantNodes = new Set<HierarchyNode<TreeNode>>();
-        function collectDescendants(node: HierarchyNode<TreeNode>) {
-          descendantNodes.add(node);
-          if (node.children) node.children.forEach(collectDescendants);
-        }
-        collectDescendants(matched);
-
-        svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
-          .each(function (n) {
-            const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
-            select(this)
-              .attr("fill", isRelated ? "#003366" : "#000");
-            select(this.parentNode as Element).select("rect")
-              .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
-              .attr("stroke", linkBorderColor({ source: { depth: n.depth - 1 } }))
-              .attr("stroke-width", isRelated ? 5 : 2);
-          });
-
-        svg.selectAll<SVGPathElement, TreeLink>("path")
-          .attr("stroke", lnk => {
-            const isAncestorPath =
-              ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-              ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
-            const isDescendantPath =
-              descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-              descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
-            return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
-          })
-          .attr("stroke-width", lnk => {
-            const isAncestorPath =
-              ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-              ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
-            const isDescendantPath =
-              descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-              descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
-            return (isAncestorPath || isDescendantPath) ? 5 : 2;
-          });
-      }
+  const matched = root.descendants().find(
+    d =>
+      d.data.name === matchedNodeId ||
+      (d.data.event_id && d.data.event_id === matchedNodeId)
+  );
+  if (matched) {
+    const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+    let current: HierarchyNode<TreeNode> | null = matched;
+    while (current) {
+      ancestorNodes.add(current);
+      current = current.parent;
     }
+    const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+    function collectDescendants(node: HierarchyNode<TreeNode>) {
+      descendantNodes.add(node);
+      if (node.children) node.children.forEach(collectDescendants);
+    }
+    collectDescendants(matched);
+
+    svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
+      .each(function (n) {
+        const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+        select(this)
+          .attr("fill", isRelated ? "#003366" : "#000");
+        select(this.parentNode as Element).select("rect")
+          .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
+          .attr("stroke", linkBorderColor({ source: { depth: n.depth - 1 } }))
+          .attr("stroke-width", isRelated ? 5 : 2);
+      });
+
+    svg.selectAll<SVGPathElement, TreeLink>("path")
+      .attr("stroke", lnk => {
+        const isAncestorPath =
+          ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+          ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+        const isDescendantPath =
+          descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+          descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+        return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
+      })
+      .attr("stroke-width", lnk => {
+        const isAncestorPath =
+          ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+          ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+        const isDescendantPath =
+          descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+          descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+        return (isAncestorPath || isDescendantPath) ? 5 : 2;
+      });
+  }
+}
 
     function highlightText(
       this: SVGElement,
