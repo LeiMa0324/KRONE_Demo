@@ -73,49 +73,6 @@ function arraysEqual<T>(a: T[], b: T[]): boolean {
     return true;
 }
 
-function allEntitiesCollapsed(treeData: TreeNode | null): boolean {
-    if (!treeData?.children) return false;
-    return treeData.children.every(entity => entity.collapsed);
-}
-
-// Helper to check if all actions are collapsed
-function allActionsCollapsed(treeData: TreeNode | null): boolean {
-    if (!treeData?.children) return false;
-    return treeData.children.every(entity =>
-        entity.children?.every(action => action.collapsed) ?? false
-    );
-}
-
-function anyAnomalyEntityCollapsed(treeData: TreeNode | null, anomalyLevel: string, anomalySeg: string[]): boolean {
-    if (!treeData?.children) return false;
-    if (anomalyLevel === "entity") {
-        // For entity-level, check all entities whose children contain the anomaly segment
-        return treeData.children.some(entity =>
-            entity.collapsed &&
-            entity.children?.some(action =>
-                action.children?.some(status =>
-                    anomalySeg.includes((status.name.match(/\(([^)]+)\)$/) || [])[1])
-                )
-            )
-        );
-    }
-    return false;
-}
-
-// Returns true if any action node involved in the anomaly is collapsed
-function anyAnomalyActionCollapsed(treeData: TreeNode | null, anomalySeg: string[]): boolean {
-    if (!treeData?.children) return false;
-    // For action-level or status-level, check all actions whose children contain the anomaly segment
-    return treeData.children.some(entity =>
-        entity.children?.some(action =>
-            action.collapsed &&
-            action.children?.some(status =>
-                anomalySeg.includes((status.name.match(/\(([^)]+)\)$/) || [])[1])
-            )
-        )
-    );
-}
-
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode {
     const entities: TreeNode[] = [];
     const { entity_nodes_for_logkeys: e, action_nodes_for_logkeys: a, status_nodes_for_logkeys: s, seq } = data;
@@ -759,15 +716,15 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             });
         const anomalyRow = kroneDetectData.find(row => row.seq_id === selectedSeqId);
         const anomalySeg = anomalyRow?.anomaly_seg || [];
+        const anyVisibleAnomalyNode = root.descendants().some(
+            node => (node.data.isAnomaly) && !isNodeHidden(node)
+        );
+        
         if (
             multiLineAnomaly &&
             anomalyStartY !== Infinity &&
             anomalyEndY !== -Infinity &&
-            (
-                (anomalyLevelMulti === "entity") ||
-                (anomalyLevelMulti === "action" && !allEntitiesCollapsed(treeData) && !anyAnomalyEntityCollapsed(treeData, "entity", anomalySeg)) ||
-                (anomalyLevelMulti === "status" && !allEntitiesCollapsed(treeData) && !allActionsCollapsed(treeData) && !anyAnomalyEntityCollapsed(treeData, "entity", anomalySeg) && !anyAnomalyActionCollapsed(treeData, anomalySeg))
-            )
+            anyVisibleAnomalyNode
         ) {
             let highlightYStart = anomalyStartY;
             let highlightYEnd = anomalyEndY;
@@ -778,8 +735,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 const anomalyEntityNodes = root.descendants().filter(
                     node =>
                         node.depth === 1 &&
-                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
-                        !isNodeHidden(node)
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly)
                 ).sort((a, b) => a.x! - b.x!);
 
                 if (anomalyEntityNodes.length > 0) {
@@ -796,7 +752,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         highlightYEnd = lastEntityNode.x! + nodeHeight;
                     } else {
                         // Find the last action of the last entity
-                        const lastActionNodes = (lastEntityNode.children || []).filter(a => !isNodeHidden(a));
+                        const lastActionNodes = (lastEntityNode.children || []);
                         if (lastActionNodes.length > 0) {
                             const lastActionNode = lastActionNodes[lastActionNodes.length - 1];
                             if (lastActionNode.data.collapsed) {
@@ -840,16 +796,17 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 const anomalyActionNodes = root.descendants().filter(
                     node =>
                         node.depth === 2 &&
-                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
-                        !isNodeHidden(node)
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly)
                 ).sort((a, b) => a.x! - b.x!);
 
                 if (anomalyActionNodes.length > 0) {
+                    console.log(anomalyActionNodes);
                     const lastActionNode = anomalyActionNodes[anomalyActionNodes.length - 1];
+                    highlightYStart = anomalyActionNodes[0].x!;
                     if (lastActionNode.data.collapsed) {
                         const fontSize = getFontSize(2);
                         const nodeHeight = fontSize + getPadding(fontSize);
-                        highlightYStart = anomalyActionNodes[0].x!;
+                        
                         highlightYEnd = lastActionNode.x! + nodeHeight;
                     } else {
                         let minY = Infinity, maxY = -Infinity;
@@ -868,7 +825,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         if (minY !== Infinity && maxY !== -Infinity && maxNode) {
                             const fontSize = getFontSize(3);
                             const nodeHeight = fontSize + getPadding(fontSize);
-                            highlightYStart = minY;
                             highlightYEnd = maxY + nodeHeight;
                         }
                     }
@@ -883,8 +839,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 const anomalyEntityNodes = root.descendants().filter(
                     node =>
                         node.depth === 1 &&
-                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
-                        !isNodeHidden(node)
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly)
                 ).sort((a, b) => a.x! - b.x!);
 
                 if (anomalyEntityNodes && anomalyEntityNodes.length > 0) {
@@ -893,7 +848,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         rightX = colOffsets[1] + widestByDepth[1];
                     } else {
                         // Check last action of last entity
-                        const lastActionNodes = (lastEntityNode.children || []).filter(a => !isNodeHidden(a));
+                        const lastActionNodes = (lastEntityNode.children || []);
                         if (lastActionNodes.length > 0) {
                             const lastActionNode = lastActionNodes[lastActionNodes.length - 1];
                             if (lastActionNode.data.collapsed) {
@@ -913,8 +868,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 const anomalyActionNodes = root.descendants().filter(
                     node =>
                         node.depth === 2 &&
-                        (node.data.isAnomaly || node.data.isRelatedToAnomaly) &&
-                        !isNodeHidden(node)
+                        (node.data.isAnomaly || node.data.isRelatedToAnomaly)
                 ).sort((a, b) => a.x! - b.x!);
                 const lastActionNode = anomalyActionNodes[anomalyActionNodes.length - 1];
                 rightX = (lastActionNode && lastActionNode.data.collapsed)
