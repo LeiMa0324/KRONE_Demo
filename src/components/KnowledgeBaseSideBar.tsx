@@ -27,13 +27,13 @@ function SequenceUnitDisplay({ seq, allSequences, handleApproximateSearch }: Seq
     };
 
     return (
-        <div className={`flex flex-col ${isAnomalyChecked ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
-            <h1 className="font-WPIfont font-bold mb-1.5">{`${seq.seqType} Sequence`}</h1>
+        <div className={`flex flex-col ${getFinalPrediction() == "⚠️" ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
+            <h1 className="font-WPIfont font-bold mb-1.5">{`${seq.seqType} ${getFinalPrediction() == "⚠️" ? "Anomaly" : ""} Sequence`}</h1>
             <div className="flex">
                 <div className="flex flex-col mb-4 flex-1">
                     {seq.arr.map((element, index) => (
                         <div key={index} className="flex flex-col items-center">
-                            <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 ${
+                            <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${
                                 seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
                                 seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{element}</span>
                             {index < seq.arr.length - 1 && <ChevronDown className="text-neutral-500" />}
