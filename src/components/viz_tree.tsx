@@ -206,7 +206,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
     node.append("text")
       .attr("class", "node-label")
       .attr("dy", "0.31em")
-      .attr("x", (d: HierarchyNode<TreeNode>) => getFontSize(d.depth) * 0.2)      
+      .attr("x", (d: HierarchyNode<TreeNode>) => getFontSize(d.depth) * 0.2)
       .attr("text-anchor", "start")
       .text((d: HierarchyNode<TreeNode>) => d.data.name)
       .attr("fill", "#000")
@@ -227,12 +227,12 @@ export const VizTree: React.FC<VizTreeProps> = ({
           .attr("rx", radius).attr("ry", radius);
 
         // Collapse indicator (▶) if node is collapsed
-       if (
-        collapsible &&
-        d.data.collapsed === true &&
-        d.data.indexPath && // must be togglable
-        d.depth < 3
-      )  {
+        if (
+          collapsible &&
+          d.data.collapsed === true &&
+          d.data.indexPath && // must be togglable
+          d.depth < 3
+        ) {
           nodeGroup.insert("text", "text")
             .attr("class", "collapse-indicator")
             .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5)
@@ -287,7 +287,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
         collectDescendants(matched);
 
         svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
-          .each(function(n) {
+          .each(function (n) {
             const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
             select(this)
               .attr("fill", isRelated ? "#003366" : "#000");
@@ -338,7 +338,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
       collectDescendants(d);
 
       svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
-        .each(function(n) {
+        .each(function (n) {
           const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
           select(this)
             .attr("fill", isRelated ? "#003366" : "#000");

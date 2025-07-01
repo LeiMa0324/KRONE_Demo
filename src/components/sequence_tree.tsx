@@ -1,77 +1,24 @@
-import React, { useRef, useEffect, useState } from 'react';
-import type { KroneDecompRow, KroneDetectRow } from '@/pages/visualize_table';
-import { hierarchy, tree } from 'd3-hierarchy';
-import type { HierarchyNode, HierarchyLink } from 'd3-hierarchy';
-import { select } from 'd3-selection';
-import Papa from 'papaparse';
+import React, { useRef, useEffect, useState } from "react";
+import type { KroneDecompRow, KroneDetectRow } from "@/pages/visualize_table";
+import { hierarchy, tree } from "d3-hierarchy";
+import type { HierarchyNode, HierarchyLink } from "d3-hierarchy";
+import { select } from "d3-selection";
+import Papa from "papaparse";
+import {
+    addIndexPath,
+    toggleNodeByIndexPath,
+    setCollapseAtDepth,
+    isNodeHidden,
+    arraysEqual,
+    getFirstAnomalyReason,
+} from "../tree_utils";
 
 type SequenceTreeProps = {
     kroneDecompData: KroneDecompRow[];
     kroneDetectData: KroneDetectRow[];
 };
 
-type TreeNode = {
-    name: string;
-    children?: TreeNode[];
-    isAnomaly?: boolean;
-    anomalyReason?: string;
-    indexPath?: number[];
-    lineNumber?: number;
-    isRelatedToAnomaly?: boolean;
-    collapsed?: boolean;
-};
-
-function addIndexPath(node: TreeNode, path: number[] = []): void {
-    node.indexPath = path;
-    (node.children || []).forEach((c, i) => addIndexPath(c, [...path, i]));
-}
-
-function getFirstAnomalyReason(node: HierarchyNode<TreeNode>): string | undefined {
-    // Check direct children
-    if (node.children) {
-        for (const child of node.children) {
-            if (child.data.isAnomaly && child.data.anomalyReason) {
-                return child.data.anomalyReason;
-            }
-            // Check grandchildren
-            if (child.children) {
-                for (const grandchild of child.children) {
-                    if (grandchild.data.isAnomaly && grandchild.data.anomalyReason) {
-                        return grandchild.data.anomalyReason;
-                    }
-                }
-            }
-        }
-    }
-    return undefined;
-}
-
-function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
-    if (path.length === 0) return node;
-    const [currentIndex, ...remainingPath] = path;
-    if (!node.children || !node.children[currentIndex]) return node;
-    const updatedChildren = [...node.children];
-    if (remainingPath.length === 0) {
-        updatedChildren[currentIndex] = {
-            ...updatedChildren[currentIndex],
-            collapsed: !updatedChildren[currentIndex].collapsed,
-        };
-    } else {
-        updatedChildren[currentIndex] = toggleNodeByIndexPath(updatedChildren[currentIndex], remainingPath);
-    }
-    return {
-        ...node,
-        children: updatedChildren,
-    };
-}
-
-function arraysEqual<T>(a: T[], b: T[]): boolean {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
-}
+type TreeNode = import("../tree_utils").TreeNode;
 
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode {
     const entities: TreeNode[] = [];
@@ -100,7 +47,6 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode
             if (arraysEqual(seq.slice(i, i + anomalyLength), foundAnomaly.anomaly_seg)) {
                 for (let j = i; j < i + anomalyLength; j++) {
                     if (foundAnomaly.anomaly_level === "status") {
-                        
                         entities[j].children![0].children![0].isAnomaly = true;
                         entities[j].children![0].children![0].anomalyReason = foundAnomaly.anomaly_reason;
                         entities[j].children![0].isRelatedToAnomaly = true;
@@ -164,21 +110,9 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode
         }
         return node.isRelatedToAnomaly;
     }
-
-    // ...after merging logic, before return:
     propagateRelatedToAnomaly({ name: "Root", children: entities });
 
     return { name: "Root", children: entities };
-}
-
-// Helper: is this node or any ancestor collapsed?
-function isNodeHidden(node: HierarchyNode<TreeNode>): boolean {
-    let current = node.parent;
-    while (current) {
-        if (current.data.collapsed) return true;
-        current = current.parent;
-    }
-    return false;
 }
 
 export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData }) => {
@@ -216,14 +150,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             setLoading(true);
             const decomp = kroneDecompData[selectedIndex];
             const treeNode = toTreeNode(decomp, kroneDetectData);
-            if (kroneDetectData.filter(row => row.seq_id === decomp.seq_id).length > 0 &&
-                kroneDetectData.filter(row => row.seq_id === decomp.seq_id)[0].anomaly_seg.length > 1) {
+            const anomalyRow = kroneDetectData.find(row => row.seq_id === decomp.seq_id);
+            if (anomalyRow && anomalyRow.anomaly_seg.length > 1) {
                 setMultiLineAnomaly(true);
-                setAnomalyLevelMulti(kroneDetectData.filter(row => row.seq_id === decomp.seq_id)[0].anomaly_level || "Normal");
+                setAnomalyLevelMulti(anomalyRow.anomaly_level || "Normal");
             } else {
                 setMultiLineAnomaly(false);
             }
-            // Apply initial collapse state
             setCollapseAtDepth(treeNode, 1, entitiesCollapsed);
             setCollapseAtDepth(treeNode, 2, actionsCollapsed);
             addIndexPath(treeNode);
@@ -231,18 +164,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             setLoading(false);
         }
     }, [kroneDecompData, kroneDetectData, selectedIndex, actionsCollapsed, entitiesCollapsed]);
-
-    // Collapse/expand all entities or actions by toggling their collapsed property
-    function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cur = 1) {
-        if (!node.children) return;
-        if (cur === depth) {
-            node.children.forEach(child => {
-                child.collapsed = collapse;
-            });
-        } else {
-            node.children.forEach(c => setCollapseAtDepth(c, depth, collapse, cur + 1));
-        }
-    }
 
     useEffect(() => {
         if (!treeData) return;
@@ -259,7 +180,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         addIndexPath(treeData);
 
-        // Always use all children, never prune for collapse
         const root = hierarchy<TreeNode>(treeData, d => d.children);
 
         const baseFont = 28, minFont = 15, fontStep = 5, basePadding = 0.35, baseRadius = 0.25, depthSpacing = 14;
@@ -275,10 +195,9 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
         const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
 
-        const widestByDepth = [75, 0, 0, 0]
+        const widestByDepth = [75, 0, 0, 0];
         const tempSvg = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;").attr("font-family", font);
 
-        
         root.descendants().forEach(node => {
             const fontSize = getFontSize(node.depth);
             const tempText = tempSvg.append("text").attr("font-size", fontSize).attr("font-family", font).text(node.data.name);
@@ -304,12 +223,11 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             }
         }
         topAlign(root);
-        const minEntityGap = 50; // Adjust as needed
+        const minEntityGap = 50;
         const entityNodes = root.children || [];
         for (let i = 1; i < entityNodes.length; i++) {
             const prev = entityNodes[i - 1];
             const curr = entityNodes[i];
-            // If the gap is too small, push this entity and its subtree down
             if (curr.x! - prev.x! < minEntityGap) {
                 const offset = minEntityGap - (curr.x! - prev.x!);
                 function offsetSubtree(node: HierarchyNode<TreeNode>, delta: number) {
@@ -317,22 +235,18 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     if (node.children) node.children.forEach(child => offsetSubtree(child, delta));
                 }
                 offsetSubtree(curr, offset);
-                // Also update all subsequent entities
                 for (let j = i + 1; j < entityNodes.length; j++) {
                     offsetSubtree(entityNodes[j], offset);
                 }
             }
         }
 
-        const extraColSpacing = [0, 80, 60, 60]; // [root, entity, action, status] - adjust as needed
-
-        // Calculate cumulative x-offsets for each depth
+        const extraColSpacing = [0, 80, 60, 60];
         const colOffsets = [0];
         for (let i = 1; i < widestByDepth.length; i++) {
             colOffsets[i] = (colOffsets[i - 1] || 0) + widestByDepth[i - 1] + extraColSpacing[i];
         }
 
-        // Now, after tree layout, manually adjust y for each node:
         root.each(node => {
             node.y = colOffsets[node.depth];
         });
@@ -421,7 +335,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             }
         }
 
-        // Draw tree links (edges)
         svg.append("g")
             .attr("fill", "none")
             .attr("stroke-opacity", 0.4)
@@ -430,13 +343,11 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .data(root.links())
             .join("path")
             .attr("d", (d: HierarchyLink<TreeNode>) => {
-                // Always exit from the right edge of the source node and enter the left edge of the target node
                 const sourceWidth = widestByDepth[d.source.depth];
-                const sourceY = (d.source.y ?? 0) + sourceWidth - 20; // right edge of source
+                const sourceY = (d.source.y ?? 0) + sourceWidth - 20;
                 const sourceX = d.source.x;
-                const targetY = d.target.y ?? 0; // left edge of target
+                const targetY = d.target.y ?? 0;
                 const targetX = d.target.x;
-                // Horizontal-vertical-horizontal elbow
                 const midY = (sourceY + targetY) / 2;
                 return [
                     `M${sourceY},${sourceX}`,
@@ -448,7 +359,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .attr("stroke", linkBorderColor)
             .attr("opacity", d => (isNodeHidden(d.source) || isNodeHidden(d.target)) ? 0 : 1);
 
-        // Draw tree nodes (labels, rectangles, anomaly icons, log templates)
         const node = svg.append("g")
             .attr("stroke-linejoin", "round")
             .attr("stroke-width", 2)
@@ -479,89 +389,81 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     return updated;
                 });
             });
-        
 
+        function highlightText(this: SVGElement, _event: unknown, d: HierarchyNode<TreeNode>) {
+            const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+            let current: HierarchyNode<TreeNode> | null = d;
+            while (current) {
+                ancestorNodes.add(current);
+                current = current.parent;
+            }
+            const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+            function collectDescendants(node: HierarchyNode<TreeNode>) {
+                descendantNodes.add(node);
+                if (node.children) node.children.forEach(collectDescendants);
+            }
+            collectDescendants(d);
 
+            svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
+                .each(function (n) {
+                    const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+                    const isRelatedAnomaly = isRelated && (n.data.isAnomaly || n.data.isRelatedToAnomaly);
+                    select(this)
+                        .attr("fill",
+                            isRelatedAnomaly
+                                ? "#c8102e"
+                                : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222"))
+                        );
+                    select(this.parentNode as Element).selectAll("rect")
+                        .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
+                        .attr("stroke-width", isRelated ? 5 : 2);
+                });
 
-    function highlightText(this: SVGElement, _event: unknown, d: HierarchyNode<TreeNode>) {
-        const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
-        let current: HierarchyNode<TreeNode> | null = d;
-        while (current) {
-            ancestorNodes.add(current);
-            current = current.parent;
-        }
-        const descendantNodes = new Set<HierarchyNode<TreeNode>>();
-        function collectDescendants(node: HierarchyNode<TreeNode>) {
-            descendantNodes.add(node);
-            if (node.children) node.children.forEach(collectDescendants);
-        }
-        collectDescendants(d);
+            if (d.depth === 3 && typeof d.data.lineNumber === "number") {
+                svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
+                    .filter(function () {
+                        return +select(this).attr("data-line-number") === d.data.lineNumber;
+                    })
+                    .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#003366")
+                    .attr("font-weight", "bold");
+            } else if (d.depth === 2 || d.depth === 1) {
+                const lineNumbers: number[] = [];
+                d.descendants().forEach(n => {
+                    if (n.depth === 3 && typeof n.data.lineNumber === "number") {
+                        lineNumbers.push(n.data.lineNumber);
+                    }
+                });
+                svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
+                    .filter(function () {
+                        return lineNumbers.includes(+select(this).attr("data-line-number"));
+                    })
+                    .attr("fill", function (d) {
+                        return d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#003366";
+                    })
+                    .attr("font-weight", "bold");
+            }
 
-        svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
-            .each(function (n) {
-                const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
-                const isRelatedAnomaly = isRelated && (n.data.isAnomaly || n.data.isRelatedToAnomaly);
-                select(this)
-                    .attr("fill",
-                        isRelatedAnomaly
-                            ? "#c8102e"
-                            : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222"))
-                    );
-                select(this.parentNode as Element).selectAll("rect")
-                    .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
-                    .attr("stroke-width", isRelated ? 5 : 2);
-            });
-
-        // Highlight associated log template(s)
-        if (d.depth === 3 && typeof d.data.lineNumber === "number") {
-            // Status node: highlight by lineNumber
-            svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-                .filter(function() {
-                    return +select(this).attr("data-line-number") === d.data.lineNumber;
+            svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
+                .attr("stroke", lnk => {
+                    const isAncestorPath =
+                        ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    const isDescendantPath =
+                        descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
                 })
-                .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#003366")
-                .attr("font-weight", "bold");
-        } else if (d.depth === 2 || d.depth === 1) {
-            // Action or Entity: highlight all descendant status log templates
-            const lineNumbers: number[] = [];
-            d.descendants().forEach(n => {
-                if (n.depth === 3 && typeof n.data.lineNumber === "number") {
-                    lineNumbers.push(n.data.lineNumber);
-                }
-            });
-            svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-                .filter(function() {
-                    return lineNumbers.includes(+select(this).attr("data-line-number"));
-                })
-                .attr("fill", function(d) {
-                    // Only highlight red if this log template/status is actually anomalous or related
-                    return d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#003366";
-                })
-                .attr("font-weight", "bold");
+                .attr("stroke-width", lnk => {
+                    const isAncestorPath =
+                        ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    const isDescendantPath =
+                        descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+                        descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+                    return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
+                });
         }
 
-        svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
-            .attr("stroke", lnk => {
-                const isAncestorPath =
-                    ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                    ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
-                const isDescendantPath =
-                    descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                    descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
-                return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
-            })
-            .attr("stroke-width", lnk => {
-                const isAncestorPath =
-                    ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                    ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
-                const isDescendantPath =
-                    descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-                    descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
-                return (isAncestorPath || isDescendantPath) ? 5 : 1.5;
-            });
-        }
-
-        // In unhighlightText, reset log template highlights:
         function unhighlightText(this: SVGElement) {
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
                 .each(function (n) {
@@ -609,9 +511,9 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("rx", radius)
                     .attr("ry", radius);
                 if (d.children && d.children.length > 0 && d.data.collapsed && !d.parent?.data.collapsed) {
-                    nodeGroup.insert("text", "text") // insert before label
+                    nodeGroup.insert("text", "text")
                         .attr("class", "collapse-indicator")
-                        .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5) // node start + node width + some padding
+                        .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5)
                         .attr("y", bbox.y + bbox.height / 2 + 2)
                         .attr("alignment-baseline", "middle")
                         .attr("font-size", Math.max(fontSize * 0.8, 16))
@@ -707,19 +609,18 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .attr("fill", "#FFD100")
                         .attr("text-anchor", "start")
                         .style("cursor", "pointer")
-                        .text(!reason? "" : multiLineAnomaly ? "🚨" : "⚠️")
+                        .text(!reason ? "" : multiLineAnomaly ? "🚨" : "⚠️")
                         .on("mouseover", function (event) {
                             if (reason) setHoveredAnomaly({ explanation: reason, x: event.clientX, y: event.clientY });
                         })
                         .on("mouseout", function () { setHoveredAnomaly(null); });
                 }
             });
-        const anomalyRow = kroneDetectData.find(row => row.seq_id === selectedSeqId);
-        const anomalySeg = anomalyRow?.anomaly_seg || [];
+
         const anyVisibleAnomalyNode = root.descendants().some(
             node => (node.data.isAnomaly) && !isNodeHidden(node)
         );
-        
+
         if (
             multiLineAnomaly &&
             anomalyStartY !== Infinity &&
@@ -806,7 +707,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     if (lastActionNode.data.collapsed) {
                         const fontSize = getFontSize(2);
                         const nodeHeight = fontSize + getPadding(fontSize);
-                        
+
                         highlightYEnd = lastActionNode.x! + nodeHeight;
                     } else {
                         let minY = Infinity, maxY = -Infinity;
@@ -881,7 +782,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             const rectWidth = rightX - leftX;
 
             if (anomalyLevelMulti === "status") {
-                highlightYEnd += 15 }
+                highlightYEnd += 15
+            }
 
             svg.append("rect")
                 .attr("x", leftX - 20)
@@ -894,7 +796,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("pointer-events", "none")
                 .lower();
         }
-        node.each(function(d) {
+        node.each(function (d) {
+            const hidden = isNodeHidden(d);
+            select(this).selectAll("rect")
+                .attr("opacity", hidden ? 0 : 1)
+                .attr("pointer-events", hidden ? "none" : "auto");
+        });
+        node.each(function (d) {
             const hidden = isNodeHidden(d);
             select(this).selectAll("rect")
                 .attr("opacity", hidden ? 0 : 1)
