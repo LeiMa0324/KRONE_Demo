@@ -212,10 +212,6 @@ export const TreeControls: React.FC<ControlProps> = ({
             <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
             Collapse Actions
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
-            Collapse Statuses
-          </label>
         </div>
       </div>
       {/* Log Key Search Section */}

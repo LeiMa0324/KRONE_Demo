@@ -111,7 +111,10 @@ export const VizTree: React.FC<VizTreeProps> = ({
       if ((d.y ?? 0) > y1) y1 = d.y ?? 0;
     });
 
-    const width = y1 + 200;
+    let width = y1 + 200;
+    if (collapseEntities) {
+      width = y1 + widestByDepth[1] + 20;
+    }
     const minRootWidth = 400;
     const adjustedWidth = root.descendants().length === 1 ? minRootWidth : width;
     const height = x1 - x0 + BASE_FONT * 2;
