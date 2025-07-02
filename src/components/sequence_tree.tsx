@@ -11,6 +11,19 @@ import {
     isNodeHidden,
     arraysEqual,
     getFirstAnomalyReason,
+    ENTITY_BORDER,
+    ENTITY_FILL,
+    ACTION_BORDER,
+    STATUS_BORDER,
+    BASE_FONT,
+    DEPTH_SPACING,
+    getFontSize,
+    getPadding,
+    getRadius,
+    getCssVar,
+    linkBorderColor,
+    linkFillColor,
+    getWidestByDepth,
 } from "../tree_utils";
 
 type SequenceTreeProps = {
@@ -182,39 +195,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
         const root = hierarchy<TreeNode>(treeData, d => d.children);
 
-        const baseFont = 28, minFont = 15, fontStep = 5, basePadding = 0.35, baseRadius = 0.25, depthSpacing = 14;
-        const getFontSize = (d: number) => Math.max(baseFont - d * fontStep, minFont);
-        const getPadding = (f: number) => f * basePadding;
-        const getRadius = (f: number) => f * baseRadius;
-        const getCssVar = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-        const wpired = getCssVar('--color-WPIRed') || "#c8102e";
-        const wpigold = getCssVar('--color-WPIGold') || "#ffd100";
-        const wpigrey = getCssVar('--color-WPIGrey') || "#888";
         const font = getCssVar('--font-WPIfont') || "sans-serif";
-        const redBG = "#fde2e5", yellowBG = "#fff8e8", greyBG = "#ededed";
-        const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
-        const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
-
-        const widestByDepth = [75, 0, 0, 0];
-        const tempSvg = select(document.body).append("svg").attr("style", "position: absolute; visibility: hidden;").attr("font-family", font);
-
-        root.descendants().forEach(node => {
-            const fontSize = getFontSize(node.depth);
-            const tempText = tempSvg.append("text").attr("font-size", fontSize).attr("font-family", font).text(node.data.name);
-            const bbox = (tempText.node() as SVGTextElement).getBBox();
-            const labelWidth = bbox.width + getPadding(fontSize) * 2;
-            for (let i = 1; i < widestByDepth.length; i++) {
-                if (node.depth === i && labelWidth > widestByDepth[i]) {
-                    widestByDepth[i] = labelWidth;
-                }
-            }
-            tempText.remove();
-        });
-        tempSvg.remove();
+        const widestByDepth = getWidestByDepth(treeData, font);
 
         const entitySpacing = 22;
         const dy = Math.max(widestByDepth[1] + 40, widestByDepth[2] + 50);
-        tree<TreeNode>().nodeSize([entitySpacing, dy]).separation((a, b) => (Math.max(getFontSize(a.depth), getFontSize(b.depth)) + 8) / depthSpacing)(root);
+        tree<TreeNode>().nodeSize([entitySpacing, dy]).separation((a, b) => (Math.max(getFontSize(a.depth), getFontSize(b.depth)) + 8) / DEPTH_SPACING)(root);
 
         function topAlign(node: HierarchyNode<TreeNode>) {
             if (node.children && node.children.length > 0) {
@@ -285,28 +271,28 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const minRootWidth = 400;
         const visibleNodes = root.descendants().length;
         const adjustedWidth = visibleNodes === 1 ? minRootWidth : rightmost;
-        const height = x1 - x0 + baseFont * 2;
+        const height = x1 - x0 + BASE_FONT * 2;
 
         const svg = select(svgRef.current);
         svg.selectAll("*").remove();
         svg
             .attr("width", adjustedWidth + 120)
             .attr("height", height + 120)
-            .attr("viewBox", `${-80} ${x0 - baseFont} ${adjustedWidth + 120} ${height}`)
+            .attr("viewBox", `${-80} ${x0 - BASE_FONT} ${adjustedWidth + 120} ${height}`)
             .attr("style", "max-width: 100%; height: auto; font: 10px;")
             .attr("font-family", font);
 
         svg.append("text")
             .attr("x", 175)
-            .attr("y", x0 - baseFont)
+            .attr("y", x0 - BASE_FONT)
             .attr("font-size", 30)
             .attr("font-weight", "bold")
-            .attr("fill", wpired)
+            .attr("fill", ENTITY_BORDER)
             .style("pointer-events", "none")
             .text("Entity");
         svg.append("text")
             .attr("x", 775)
-            .attr("y", x0 - baseFont)
+            .attr("y", x0 - BASE_FONT)
             .attr("font-size", 30)
             .attr("font-weight", "bold")
             .attr("fill", "#000")
@@ -316,20 +302,20 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         if (!entitiesCollapsed) {
             svg.append("text")
                 .attr("x", 375)
-                .attr("y", x0 - baseFont)
+                .attr("y", x0 - BASE_FONT)
                 .attr("font-size", 30)
                 .attr("font-weight", "bold")
-                .attr("fill", wpigold)
+                .attr("fill", ACTION_BORDER)
                 .style("pointer-events", "none")
                 .text("Action");
 
             if (!actionsCollapsed) {
                 svg.append("text")
                     .attr("x", 575)
-                    .attr("y", x0 - baseFont)
+                    .attr("y", x0 - BASE_FONT)
                     .attr("font-size", 30)
                     .attr("font-weight", "bold")
-                    .attr("fill", wpigrey)
+                    .attr("fill", STATUS_BORDER)
                     .style("pointer-events", "none")
                     .text("Status");
             }
@@ -411,8 +397,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     select(this)
                         .attr("fill",
                             isRelatedAnomaly
-                                ? "#c8102e"
-                                : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222"))
+                                ? ENTITY_BORDER
+                                : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222"))
                         );
                     select(this.parentNode as Element).selectAll("rect")
                         .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
@@ -424,7 +410,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .filter(function () {
                         return +select(this).attr("data-line-number") === d.data.lineNumber;
                     })
-                    .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#003366")
+                    .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#003366")
                     .attr("font-weight", "bold");
             } else if (d.depth === 2 || d.depth === 1) {
                 const lineNumbers: number[] = [];
@@ -438,7 +424,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         return lineNumbers.includes(+select(this).attr("data-line-number"));
                     })
                     .attr("fill", function (d) {
-                        return d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#003366";
+                        return d.isAnomaly || d.isRelatedToAnomaly ? ENTITY_BORDER : "#003366";
                     })
                     .attr("font-weight", "bold");
             }
@@ -468,13 +454,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
                 .each(function (n) {
                     select(this)
-                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#c8102e" : "#222");
+                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222");
                     select(this.parentNode as Element).selectAll("rect")
                         .attr("fill", linkFillColor({ source: { depth: n.depth - 1 } }))
                         .attr("stroke-width", 2);
                 });
             svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? "#c8102e" : "#444")
+                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? ENTITY_BORDER : "#444")
                 .attr("font-weight", null);
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
                 .attr("stroke", linkBorderColor)
@@ -495,7 +481,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .attr("pointer-events", d => isNodeHidden(d) ? "none" : "auto")
             .attr("text-anchor", "start")
             .text(d => d.data.name)
-            .attr("fill", d => d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#222")
+            .attr("fill", d => d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222")
             .attr("font-size", d => getFontSize(d.depth))
             .each(function (this: SVGTextElement, d) {
                 const fontSize = getFontSize(d.depth), padding = getPadding(fontSize), radius = getRadius(fontSize);
@@ -556,7 +542,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .attr("y", bbox.y + bbox.height / 2 + 2)
                             .attr("alignment-baseline", "middle")
                             .attr("font-size", Math.max(fontSize * 0.8, 14))
-                            .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#c8102e" : "#444")
+                            .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#444")
                             .attr("text-anchor", "start")
                             .datum({
                                 ...d.data
@@ -632,7 +618,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
             // --- Special logic for entity-level multi-line anomalies ---
             if (anomalyLevelMulti === "entity") {
-                // Find all entity nodes in the anomaly segment, sorted by their x (vertical) position
                 const anomalyEntityNodes = root.descendants().filter(
                     node =>
                         node.depth === 1 &&
@@ -640,29 +625,21 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 ).sort((a, b) => a.x! - b.x!);
 
                 if (anomalyEntityNodes.length > 0) {
-                    // Start at the first entity
                     highlightYStart = anomalyEntityNodes[0].x!;
-
-                    // Find the last entity node
                     const lastEntityNode = anomalyEntityNodes[anomalyEntityNodes.length - 1];
-
-                    // If the last entity is collapsed, box ends at the last entity node
                     if (lastEntityNode.data.collapsed) {
                         const fontSize = getFontSize(1);
                         const nodeHeight = fontSize + getPadding(fontSize);
                         highlightYEnd = lastEntityNode.x! + nodeHeight;
                     } else {
-                        // Find the last action of the last entity
                         const lastActionNodes = (lastEntityNode.children || []);
                         if (lastActionNodes.length > 0) {
                             const lastActionNode = lastActionNodes[lastActionNodes.length - 1];
                             if (lastActionNode.data.collapsed) {
-                                // If last action is collapsed, box ends at last action node
                                 const fontSize = getFontSize(2);
                                 const nodeHeight = fontSize + getPadding(fontSize);
                                 highlightYEnd = lastActionNode.x! + nodeHeight;
                             } else {
-                                // Otherwise, box ends at the last status node under the last action
                                 let lastStatusNode: HierarchyNode<TreeNode> | null = null;
                                 (lastActionNode.children || []).forEach((statusNode: HierarchyNode<TreeNode>) => {
                                     if (!isNodeHidden(statusNode)) {
@@ -676,14 +653,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                                     const nodeHeight = fontSize + getPadding(fontSize);
                                     highlightYEnd = (lastStatusNode as HierarchyNode<TreeNode>).x! + nodeHeight;
                                 } else {
-                                    // Fallback to last action node if no status nodes
                                     const fontSize = getFontSize(2);
                                     const nodeHeight = fontSize + getPadding(fontSize);
                                     highlightYEnd = lastActionNode.x! + nodeHeight;
                                 }
                             }
                         } else {
-                            // Fallback to last entity node if no actions
                             const fontSize = getFontSize(1);
                             const nodeHeight = fontSize + getPadding(fontSize);
                             highlightYEnd = lastEntityNode.x! + nodeHeight;
@@ -692,7 +667,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 }
             }
 
-            // --- Special logic for action-level multi-line anomalies (unchanged) ---
             if (anomalyLevelMulti === "action") {
                 const anomalyActionNodes = root.descendants().filter(
                     node =>
@@ -701,7 +675,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 ).sort((a, b) => a.x! - b.x!);
 
                 if (anomalyActionNodes.length > 0) {
-                    console.log(anomalyActionNodes);
                     const lastActionNode = anomalyActionNodes[anomalyActionNodes.length - 1];
                     highlightYStart = anomalyActionNodes[0].x!;
                     if (lastActionNode.data.collapsed) {
@@ -732,11 +705,9 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 }
             }
 
-            // Calculate left and right edges to cover the correct columns
             let leftX: number, rightX: number;
             if (anomalyLevelMulti === "entity") {
                 leftX = colOffsets[1];
-                // Define anomalyEntityNodes in this scope
                 const anomalyEntityNodes = root.descendants().filter(
                     node =>
                         node.depth === 1 &&
@@ -748,7 +719,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     if (lastEntityNode.data.collapsed) {
                         rightX = colOffsets[1] + widestByDepth[1];
                     } else {
-                        // Check last action of last entity
                         const lastActionNodes = (lastEntityNode.children || []);
                         if (lastActionNodes.length > 0) {
                             const lastActionNode = lastActionNodes[lastActionNodes.length - 1];
@@ -850,7 +820,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             padding: "4px 12px",
                             borderRadius: 6,
                             border: "1px solid #ccc",
-                            background: entitiesCollapsed ? "#ffd100" : "#eee",
+                            background: entitiesCollapsed ? ACTION_BORDER : "#eee",
                             fontWeight: 600,
                             cursor: "pointer"
                         }}
@@ -865,7 +835,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             padding: "4px 12px",
                             borderRadius: 6,
                             border: "1px solid #ccc",
-                            background: actionsCollapsed ? "#ffd100" : "#eee",
+                            background: actionsCollapsed ? STATUS_BORDER : "#eee",
                             fontWeight: 600,
                             cursor: "pointer"
                         }}
@@ -884,8 +854,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             className='text-2xl'
                             style={{
                                 marginBottom: 8,
-                                color: anomalyLevel === "Normal" ? "#222" : "#c8102e",
-                                background: anomalyLevel === "Normal" ? "#e6fbe6" : "#fde2e5",
+                                color: anomalyLevel === "Normal" ? "#222" : ENTITY_BORDER,
+                                background: anomalyLevel === "Normal" ? "#e6fbe6" : ENTITY_FILL,
                                 borderRadius: 8,
                                 padding: "8px 16px",
                                 display: "inline-block"
