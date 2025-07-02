@@ -29,7 +29,7 @@ export type CsvRow = {
 };
 
 export const ENTITY_BORDER = "#c8102e";
-export const ACTION_BORDER = "#ffd100";
+export const ACTION_BORDER = "#eec000";
 export const STATUS_BORDER = "#888";
 export const ENTITY_FILL = "#fde2e5";
 export const ACTION_FILL = "#fff8e8";

@@ -5,7 +5,6 @@ import type { TreeNode } from "../tree_utils";
 import {
   addIndexPath,
   toggleNodeByIndexPath,
-  setCollapseAtDepth,
   isNodeHidden,
   BASE_FONT,
   getFontSize,
@@ -54,9 +53,6 @@ export const VizTree: React.FC<VizTreeProps> = ({
   useEffect(() => {
     if (!treeData) return;
     const cloned = JSON.parse(JSON.stringify(treeData)) as TreeNode;
-    setCollapseAtDepth(cloned, 1, collapseEntities);
-    setCollapseAtDepth(cloned, 2, collapseActions);
-    setCollapseAtDepth(cloned, 3, collapseStatuses);
     addIndexPath(cloned);
     setLocalTree(cloned);
   }, [treeData, collapseEntities, collapseActions, collapseStatuses]);
