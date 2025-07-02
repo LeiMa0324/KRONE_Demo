@@ -1,3 +1,6 @@
+import { hierarchy } from "d3-hierarchy";
+import { select } from "d3-selection";
+
 export type TreeNode = {
   name: string;
   children?: TreeNode[];
@@ -12,6 +15,7 @@ export type TreeNode = {
   log_template?: string;
   // Add any other fields needed by either tree
 };
+
 
 export type CsvRow = {
   entity_node_id?: string;
@@ -30,6 +34,12 @@ export const STATUS_BORDER = "#888";
 export const ENTITY_FILL = "#fde2e5";
 export const ACTION_FILL = "#fff8e8";
 export const STATUS_FILL = "#ededed";
+export const BASE_FONT = 28;
+export const MIN_FONT = 15;
+export const FONT_STEP = 5;
+export const BASE_PADDING = 0.35;
+export const BASE_RADIUS = 0.25;
+export const DEPTH_SPACING = 14;
 
 export function buildTree(rows: CsvRow[]): TreeNode {
   const root: TreeNode = { name: "Root", children: [] };
@@ -171,4 +181,46 @@ export function getFirstAnomalyReason(node: HierarchyNode<TreeNode>): string | u
     }
   }
   return undefined;
+}
+
+export function getFontSize(depth: number) {
+  return Math.max(BASE_FONT - depth * FONT_STEP, MIN_FONT);
+}
+export function getPadding(fontSize: number) {
+  return fontSize * BASE_PADDING;
+}
+export function getRadius(fontSize: number) {
+  return fontSize * BASE_RADIUS;
+}
+export function getCssVar(n: string) {
+  return getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+}
+
+export function linkBorderColor(d: { source: { depth: number } }) {
+  return [ENTITY_BORDER, ACTION_BORDER, STATUS_BORDER, "#000"][d.source.depth] || "#000";
+}
+export function linkFillColor(d: { source: { depth: number } }) {
+  return [ENTITY_FILL, ACTION_FILL, STATUS_FILL, "#fff"][d.source.depth] || "#fff";
+}
+
+export function getWidestByDepth(tree: TreeNode, font: string) {
+  const widestByDepth = [75, 0, 0, 0];
+  const root = hierarchy(tree, d => d.children);
+  const tempSvg = select(document.body).append("svg")
+    .attr("style", "position:absolute; visibility:hidden;").attr("font-family", font);
+
+  root.descendants().forEach((node) => {
+    const fontSize = getFontSize(node.depth);
+    const tempText = tempSvg.append("text")
+      .attr("font-size", fontSize)
+      .text(node.data.name);
+    const bbox = (tempText.node() as SVGTextElement).getBBox();
+    const labelWidth = bbox.width + getPadding(fontSize) * 2;
+    if (node.depth >= 1 && node.depth <= 3 && labelWidth > widestByDepth[node.depth]) {
+      widestByDepth[node.depth] = labelWidth;
+    }
+    tempText.remove();
+  });
+  tempSvg.remove();
+  return widestByDepth;
 }
