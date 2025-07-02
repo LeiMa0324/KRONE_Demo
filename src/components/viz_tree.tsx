@@ -7,6 +7,12 @@ import {
   toggleNodeByIndexPath,
   setCollapseAtDepth,
   isNodeHidden,
+  ENTITY_BORDER,
+  ENTITY_FILL,
+  ACTION_BORDER,
+  ACTION_FILL,
+  STATUS_BORDER,
+  STATUS_FILL
 } from "../tree_utils";
 
 type TreeLink = { source: HierarchyNode<TreeNode>; target: HierarchyNode<TreeNode> };
@@ -57,13 +63,9 @@ export const VizTree: React.FC<VizTreeProps> = ({
     if (!svgRef.current || !localTree) return;
 
     const getCssVar = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-    const wpired = getCssVar('--color-WPIRed') || "#c8102e";
-    const wpigold = getCssVar('--color-WPIGold') || "#ffd100";
-    const wpigrey = getCssVar('--color-WPIGrey') || "#888";
     const font = getCssVar('--font-WPIfont') || "sans-serif";
-    const redBG = "#fde2e5", yellowBG = "#fff8e8", greyBG = "#ededed";
-    const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
-    const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
+    const linkBorderColor = (d: { source: { depth: number } }) => [ENTITY_BORDER, ACTION_BORDER, STATUS_BORDER, "#000"][d.source.depth] || "#000";
+    const linkFillColor = (d: { source: { depth: number } }) => [ENTITY_FILL, ACTION_FILL, STATUS_FILL, "#fff"][d.source.depth] || "#fff";
 
     function childrenOrCollapsed(d: TreeNode) {
       if (d.collapsed) return undefined;

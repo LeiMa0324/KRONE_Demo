@@ -24,6 +24,13 @@ export type CsvRow = {
   [key: string]: string | undefined;
 };
 
+export const ENTITY_BORDER = "#c8102e";
+export const ACTION_BORDER = "#ffd100";
+export const STATUS_BORDER = "#888";
+export const ENTITY_FILL = "#fde2e5";
+export const ACTION_FILL = "#fff8e8";
+export const STATUS_FILL = "#ededed";
+
 export function buildTree(rows: CsvRow[]): TreeNode {
   const root: TreeNode = { name: "Root", children: [] };
   const entityMap: Record<string, TreeNode> = {};
