@@ -3,27 +3,28 @@ import type { HierarchyNode } from "d3-hierarchy";
 import type { TreeNode } from "../tree_utils";
 
 type TreeNodeWithChildren = TreeNode & {
-  _children?: TreeNode[];
-  children?: TreeNode[];
+  _children?: TreeNodeWithChildren[];
+  children?: TreeNodeWithChildren[];
 };
 
 type InfoPanelProps = {
   node: HierarchyNode<TreeNodeWithChildren> | null;
 };
 
-function getHierarchyNodeChildren(
-  node: HierarchyNode<TreeNodeWithChildren>
-): HierarchyNode<TreeNodeWithChildren>[] {
-  return (node.children as HierarchyNode<TreeNodeWithChildren>[]) ??
-    ((node as unknown as { _children?: HierarchyNode<TreeNodeWithChildren>[] })._children ?? []);
+function getAllDataChildren(data: TreeNodeWithChildren): TreeNodeWithChildren[] {
+  const children: TreeNodeWithChildren[] = [];
+  if (Array.isArray(data.children)) children.push(...data.children);
+  if (Array.isArray(data._children)) children.push(...data._children);
+  return children;
 }
 
-function collectStatuses(
-  n: HierarchyNode<TreeNodeWithChildren>,
+function collectStatusesFromData(
+  data: TreeNodeWithChildren,
+  depth = 0,
   arr: TreeNodeWithChildren[] = []
 ): TreeNodeWithChildren[] {
-  if (n.depth === 3 && n.data.event_id) arr.push(n.data);
-  getHierarchyNodeChildren(n).forEach(child => collectStatuses(child, arr));
+  if (depth === 3 && data.event_id) arr.push(data);
+  getAllDataChildren(data).forEach(child => collectStatusesFromData(child, depth + 1, arr));
   return arr;
 }
 
@@ -47,20 +48,20 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
     }
 
     if (node.depth === 0) {
-      const entities = getHierarchyNodeChildren(node);
+      const entities = getAllDataChildren(node.data);
       let numActions = 0,
         numStatuses = 0;
 
-      entities.forEach((entityNode) => {
-        const actions = getHierarchyNodeChildren(entityNode);
+      entities.forEach((entityData) => {
+        const actions = getAllDataChildren(entityData);
         numActions += actions.length;
-        actions.forEach((actionNode) => {
-          const statuses = getHierarchyNodeChildren(actionNode);
+        actions.forEach((actionData) => {
+          const statuses = getAllDataChildren(actionData);
           numStatuses += statuses.length;
         });
       });
 
-      const statuses = collectStatuses(node);
+      const statuses = collectStatusesFromData(node.data, 0);
       const normal = statuses.filter((s) => !s.isAnomaly).map((s) => s.event_id);
       const abnormal = statuses.filter((s) => s.isAnomaly).map((s) => s.event_id);
 
@@ -73,20 +74,20 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
           <div style="margin-top:4px;">
             <b>Normal Log Keys:</b> ${normal.length > 0 ? normal.join(", ") : "<i>None</i>"}
           </div>
-          <div><b>Abnormal Log Keys:</b> <span style="color:${wpired}">${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}</span></div>
+          <div><b>Abnormal Log Keys:</b> <span style="color:${abnormal.length > 0 ? wpired : '#000'}">${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}</span></div>
         `,
       };
     }
 
     if (node.depth === 1 || node.depth === 2) {
-      const statuses = collectStatuses(node);
+      const statuses = collectStatusesFromData(node.data, node.depth);
       const normal = statuses.filter((s) => !s.isAnomaly).map((s) => s.event_id);
       const abnormal = statuses.filter((s) => s.isAnomaly).map((s) => s.event_id);
-      const actions = getHierarchyNodeChildren(node);
+      const actions = getAllDataChildren(node.data);
       const numActions = node.depth === 1 ? actions.length : undefined;
       const numStatuses =
         node.depth === 2
-          ? getHierarchyNodeChildren(node).length
+          ? getAllDataChildren(node.data).length
           : undefined;
 
       return {
@@ -97,7 +98,7 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
           <div style="margin-top:4px;">
             <b>Normal Log Keys:</b> ${normal.length > 0 ? normal.join(", ") : "<i>None</i>"}
           </div>
-          <div><b>Abnormal Log Keys:</b> <span style="color:${wpired}">${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}</span></div>
+          <div><b>Abnormal Log Keys:</b> <span style="color:${abnormal.length > 0 ? wpired : '#000'}">${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}</span></div>
         `,
       };
     }
