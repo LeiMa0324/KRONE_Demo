@@ -32,6 +32,7 @@ export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
   function getNodeInfo(
     node: HierarchyNode<TreeNodeWithChildren> | null
   ): { title: string; content: string } {
+    console.log("Node data:", node?.data);
     const wpired =
       typeof window !== "undefined"
         ? getComputedStyle(document.documentElement)

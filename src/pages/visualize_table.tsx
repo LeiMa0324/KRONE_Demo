@@ -2,19 +2,10 @@ import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import { Footer } from "@/components/footer";
 //import { SequenceTreeNew } from "@/components/sequence_tree_new";
-import { SequenceTree } from "@/components/sequence_tree";/*
+import { SequenceTree } from "@/components/sequence_tree";
 import { TreeInfoPanel } from "@/components/tree_info_panel";
 import type { HierarchyNode } from "d3-hierarchy";
-import type { UnifiedTreeNode } from "@/components/unified_tree";*/
-/*
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"; */
+import type { TreeNode } from "@/tree_utils";
 
 // CsvRow type for new output data
 /*
@@ -361,6 +352,7 @@ export const VisualizeTable = () => {
     //const [templateDict, setTemplateDict] = useState<Record<string, string>>({});
     const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
     const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
+    const [hoveredNode, setHoveredNode] = useState<HierarchyNode<TreeNode> | null>(null);
     //const [hoveredNode, setHoveredNode] = useState<HierarchyNode<UnifiedTreeNode> | null>(null);
     //const [data, setData] = useState<CsvRow[]>([]);
     //const [loading, setLoading] = useState(true);
@@ -443,10 +435,21 @@ export const VisualizeTable = () => {
                     <SequenceTree
                         kroneDecompData={kroneDecompData}
                         kroneDetectData={kroneDetectData}
+                        setHoveredNode={setHoveredNode} // <-- pass setter
                     />
                 </div>
                 {/* Info panel */}
-
+                <div style={{
+                    flex: "0 0 25%",
+                    width: "25%",
+                    minWidth: 180,
+                    maxWidth: "30%",
+                    height: "100%",
+                    overflowY: "auto",
+                    marginLeft: 24
+                }}>
+                    <TreeInfoPanel node={hoveredNode} />
+                </div>
             </div>
             <div style={{ flex: "0 0 auto" }}>
                 <Footer />

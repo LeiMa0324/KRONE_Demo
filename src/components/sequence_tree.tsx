@@ -31,6 +31,7 @@ import {
 type SequenceTreeProps = {
     kroneDecompData: KroneDecompRow[];
     kroneDetectData: KroneDetectRow[];
+    setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void; // <-- add this
 };
 
 type TreeNode = import("../tree_utils").TreeNode;
@@ -59,8 +60,7 @@ function highlightLogTemplateParts(logTemplate: string, entityName: string, acti
     parts.sort((a, b) => b.text.length - a.text.length);
 
     // Build regex for all parts
-    const regex = new RegExp(parts.map(p => p.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|"), "g");
-
+    const regex = new RegExp(parts.map(p => p.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|"), "gi");
     // Split and wrap
     const result: { text: string, color?: string }[] = [];
     let lastIndex = 0;
@@ -70,7 +70,7 @@ function highlightLogTemplateParts(logTemplate: string, entityName: string, acti
             result.push({ text: logTemplate.slice(lastIndex, match.index) });
         }
         const matchedText = match[0];
-        const color = parts.find(p => p.text === matchedText)?.color;
+        const color = parts.find(p => p.text.toLowerCase() === matchedText.toLowerCase())?.color;
         result.push({ text: matchedText, color });
         lastIndex = regex.lastIndex;
     }
@@ -81,14 +81,21 @@ function highlightLogTemplateParts(logTemplate: string, entityName: string, acti
 }
 
 
-function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode {
+function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdToLogTemplate: Record<string, string>): TreeNode {
     const entities: TreeNode[] = [];
     const { entity_nodes_for_logkeys: e, action_nodes_for_logkeys: a, status_nodes_for_logkeys: s, seq } = data;
 
     for (let i = 0; i < e.length; i++) {
         const actions: TreeNode[] = [];
         const statuses: TreeNode[] = [];
-        statuses.push({ name: `${s[i]} (${seq[i]})`, lineNumber: i });
+        statuses.push({
+            name: `${s[i]} (${seq[i]})`,
+            lineNumber: i,
+            event_id: seq[i], // log key
+            log_template: eventIdToLogTemplate?.[seq[i]] || "", // log template if available
+            isAnomaly: false, // will be set later if needed
+            anomalyReason: "", // will be set later if needed
+        });
         actions.push({ name: a[i], children: statuses });
         entities.push({ name: e[i], children: actions });
     }
@@ -176,7 +183,7 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[]): TreeNode
     return { name: "Root", children: entities };
 }
 
-export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData }) => {
+export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData, setHoveredNode }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
@@ -210,7 +217,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         if (kroneDecompData.length && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
             setLoading(true);
             const decomp = kroneDecompData[selectedIndex];
-            const treeNode = toTreeNode(decomp, kroneDetectData);
+            const treeNode = toTreeNode(decomp, kroneDetectData, eventIdToLogTemplate);
             const anomalyRow = kroneDetectData.find(row => row.seq_id === decomp.seq_id);
             if (anomalyRow && anomalyRow.anomaly_seg.length > 1) {
                 setMultiLineAnomaly(true);
@@ -402,6 +409,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .attr("transform", d => `translate(${d.y},${d.x})`)
             .on("mouseover", function (event, d) {
                 if (!(this instanceof SVGElement)) return;
+                setHoveredNode?.(d);
                 highlightText.call(this, event, d);
                 if ((d.depth === 1 || d.depth === 2 || d.depth === 3) && d.data.isAnomaly && d.data.anomalyReason) {
                     setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
@@ -410,6 +418,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .on("mouseout", function () {
                 if (!(this instanceof SVGElement)) return;
                 unhighlightText.call(this);
+                setHoveredNode?.(null);
                 setHoveredAnomaly(null);
             })
             .on("click", function (event, d) {
