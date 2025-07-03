@@ -105,6 +105,13 @@ type SequenceScrollableProps = {
 };
 
 function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }: SequenceScrollableProps) {
+    if (!sequences || sequences.length === 0) {
+        return (
+            <div className="flex justify-center h-full p-4">
+                <span className="italic text-neutral-500">No Sequences</span>
+            </div>
+        );
+    }
     return (
         <div className="overflow-y-auto h-[calc(100vh-200px)] p-4">
             {sequences.slice(0, 1000).map((element, index) => (
