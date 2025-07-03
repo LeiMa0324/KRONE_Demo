@@ -2,6 +2,9 @@ import { Footer } from "@/components/footer";
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
 import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
+import { VizTree } from "@/components/viz_tree";
+import { buildTree } from "@/tree_utils";
+import type { TreeNode } from "@/tree_utils";
 
 export type KnowledgeBaseData = {
     entityDict: EntityDict;
@@ -195,8 +198,20 @@ export const KnowledgeBaseViz = () => {
 
     const [showSidebar, setShowSidebar] = useState(false);
 
+    const [treeData, setTreeData] = useState<TreeNode | null>(null);
+    const [hoveredNode, setHoveredNode] = useState<any>(null);
+
+    const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
+
     const toggleSidebar = () => {
         setShowSidebar(!showSidebar);
+    };
+
+    const handleNodeClick = (node: any) => {
+        if (node.data?.name) {
+            setSelectedQuery(node.data.name);
+            setShowSidebar(true);
+        }
     };
 
     useEffect(() => {
@@ -244,12 +259,36 @@ export const KnowledgeBaseViz = () => {
             .catch((error) => console.error("Error loading CSV files:", error));
     }, []);
 
+    useEffect(() => {
+        fetch("/Krone_Tree.csv")
+            .then(res => res.text())
+            .then(csvText => {
+                setTreeData(buildTree(Papa.parse(csvText, { header: true }).data as CSVRow[]));
+            });
+    }, []);
+
     return (
         <>
             <div className="pt-[4.5rem]"></div>
             <button onClick={toggleSidebar} className="bg-WPIRed text-white px-4 py-2 rounded">
                 Toggle Sidebar
             </button>
+            <div style={{ width: "100%", margin: "2rem auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
+                {treeData && (
+                    <VizTree
+                        treeData={treeData}
+                        collapseEntities={false}
+                        collapseActions={false}
+                        collapseStatuses={false}
+                        matchedNodeId={null}
+                        setHoveredNode={setHoveredNode}
+                        showAnomalySymbols={false}
+                        collapsible={false}
+                        disableHoverHighlight={true}
+                        onNodeClick={handleNodeClick}
+                    />
+                )}
+            </div>
             {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
                 <KnowledgeBaseSideBar
                     showSidebar={showSidebar}
@@ -257,7 +296,13 @@ export const KnowledgeBaseViz = () => {
                     trainingData={knowledgeStructures.trainingData}
                     testingData={knowledgeStructures.testingData}
                     allSequences={knowledgeStructures.allSequences}
-                    query={"blk_4"} // Example query
+                    query={
+                        selectedQuery
+                            ? selectedQuery === "Root"
+                                ? "ROOT"
+                                : selectedQuery
+                            : "blk_4"
+                    }
                 />
             )}
             <h1>Knowledge Base Visualization</h1>

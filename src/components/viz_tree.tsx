@@ -29,6 +29,7 @@ type VizTreeProps = {
   showAnomalySymbols?: boolean;
   collapsible?: boolean;
   disableHoverHighlight?: boolean;
+  onNodeClick?: (node: HierarchyNode<TreeNode>) => void;
 };
 
 type HierarchyNodeWithHiddenChildren<T> = HierarchyNode<T> & { _children?: HierarchyNode<T>[] };
@@ -47,6 +48,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
   showAnomalySymbols = true,
   collapsible = true,
   disableHoverHighlight = false,
+  onNodeClick,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [localTree, setLocalTree] = useState<TreeNode | null>(null);
@@ -172,6 +174,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
       })
       .on("click", function (event, d) {
         event.stopPropagation();
+        if (onNodeClick) onNodeClick(d);
         if (!collapsible) return;
         if (!d.data.indexPath) return;
         setLocalTree(prev => {
