@@ -21,14 +21,14 @@ function SequenceUnitDisplay({ seq, allSequences, handleApproximateSearch }: Seq
     }, [seq.isAnomaly, seq.explanation]);
 
     const getFinalPrediction = (): string => {
-        if (userSelection === "Abnormal") return "⚠️";
-        if (userSelection === "Normal") return "✔️";
-        return isAnomalyChecked ? "⚠️" : "✔️";
+        if (userSelection === "Abnormal") return "Abnormal";
+        if (userSelection === "Normal") return "Normal";
+        return isAnomalyChecked ? "Abnormal" : "Normal";
     };
 
     return (
-        <div className={`flex flex-col ${getFinalPrediction() == "⚠️" ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
-            <h1 className="font-WPIfont font-bold mb-1.5">{`${seq.seqType} ${getFinalPrediction() == "⚠️" ? "Anomaly" : ""} Sequence`}</h1>
+        <div className={`flex flex-col ${getFinalPrediction() == "Abnormal" ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
+            <h1 className="font-WPIfont font-bold mb-1.5">{`${seq.seqType} ${getFinalPrediction() == "Abnormal" ? "Anomaly" : ""} Sequence`}</h1>
             <div className="flex">
                 <div className="flex flex-col mb-4 flex-1">
                     {seq.arr.map((element, index) => (
@@ -52,8 +52,8 @@ function SequenceUnitDisplay({ seq, allSequences, handleApproximateSearch }: Seq
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td className="border px-4 py-2">LLM</td><td className="border px-4 py-2">{isAnomalyChecked ? "⚠️" : !isGTChecked ? "✔️" : "---"}</td></tr>
-                    <tr><td className="border px-4 py-2">Pattern Miner</td><td className="border px-4 py-2">{isGTChecked ? "✔️" : "---"}</td></tr>
+                    <tr><td className="border px-4 py-2">LLM</td><td className="border px-4 py-2">{isAnomalyChecked ? "Abnormal" : !isGTChecked ? "Normal" : "---"}</td></tr>
+                    <tr><td className="border px-4 py-2">Pattern Miner</td><td className="border px-4 py-2">{isGTChecked ? "Normal" : "---"}</td></tr>
                     <tr>
                         <td className="border px-4 py-2">Human</td>
                         <td className="border px-4 py-2">
@@ -70,7 +70,7 @@ function SequenceUnitDisplay({ seq, allSequences, handleApproximateSearch }: Seq
                     </tr>
                     <tr><td colSpan={2} className="bg-black h-1"></td></tr>
                     <tr><td className="border px-4 py-2 font-bold">Final Prediction:</td><td className="border px-4 py-2">{getFinalPrediction()}</td></tr>
-                    {isGTChecked && <tr><td className="border px-4 py-2 font-bold">Ground Truth:</td><td className="border px-4 py-2">✔️</td></tr>}
+                    {isGTChecked && <tr><td className="border px-4 py-2 font-bold">Ground Truth:</td><td className="border px-4 py-2"> Normal </td></tr>}
                 </tbody>
             </table>
             {seq.explanation && <><h1 className="font-WPIfont font-bold">Final Prediction Explanation</h1><p>{seq.explanation}</p></>}
@@ -194,7 +194,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     if (!showSidebar) return null;
 
     return (
-        <div className="fixed top-0 right-0 h-full w-112 bg-white border-l-8 border-l-WPIGrey text-black shadow-lg z-50 animate-slide-in-right-fast">
+        <div className="fixed top-0 right-0 h-full w-2/5 bg-white border-l-8 border-l-WPIGrey text-black shadow-lg z-50 animate-slide-in-right-fast">
             <div className="p-4 flex justify-between items-center">
                 <h2 className="text-xl font-bold font-WPIfont">Knowledge Base Sequences</h2>
                 <button onClick={toggleSidebar} className="text-neutral-400 hover:text-black hover:scale-110">
