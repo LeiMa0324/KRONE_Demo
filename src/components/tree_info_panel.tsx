@@ -144,6 +144,12 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
                     <span style={{ marginLeft: 6 }}>{node.data.log_template}</span>
                   </div>
                 )}
+                {node.data.event_id && (
+                  <div style={{ fontWeight: 400, fontSize: 15, color: "#555", marginTop: 6 }}>
+                    <span style={{ color: "#888" }}>Log key:</span>
+                    <span style={{ marginLeft: 6 }}>{node.data.event_id}</span>
+                  </div>
+                )}
               </>
             )}
             {node.depth === 0 && <>{node.data.name}</>}
