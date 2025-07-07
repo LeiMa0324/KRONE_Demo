@@ -59,8 +59,8 @@ export const TreeControls: React.FC<ControlProps> = ({
   setCollapseEntities,
   collapseActions,
   setCollapseActions,
-  collapseStatuses,
-  setCollapseStatuses,
+  // collapseStatuses,
+  // setCollapseStatuses,
   searchInput,
   setSearchInput,
   handleSearchSubmit,
@@ -166,22 +166,30 @@ export const TreeControls: React.FC<ControlProps> = ({
   const [statusDropdownPos, setStatusDropdownPos] = React.useState({left: 0, top: 0, width: 0});
 
   React.useLayoutEffect(() => {
-    if (entityInputRef.current) {
-      const rect = entityInputRef.current.getBoundingClientRect();
-      setEntityDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
+    function updatePositions() {
+      if (entityInputRef.current) {
+        const rect = entityInputRef.current.getBoundingClientRect();
+        setEntityDropdownPos({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width });
+      }
+      if (actionInputRef.current) {
+        const rect = actionInputRef.current.getBoundingClientRect();
+        setActionDropdownPos({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width });
+      }
+      if (statusInputRef.current) {
+        const rect = statusInputRef.current.getBoundingClientRect();
+        setStatusDropdownPos({ left: rect.left + window.scrollX, top: rect.bottom + window.scrollY, width: rect.width });
+      }
     }
-    if (actionInputRef.current) {
-      const rect = actionInputRef.current.getBoundingClientRect();
-      setActionDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
-    }
-    if (statusInputRef.current) {
-      const rect = statusInputRef.current.getBoundingClientRect();
-      setStatusDropdownPos({ left: rect.left, top: rect.bottom, width: rect.width });
-    }
+    updatePositions();
+    window.addEventListener("scroll", updatePositions, true);
+    window.addEventListener("resize", updatePositions);
+    return () => {
+      window.removeEventListener("scroll", updatePositions, true);
+      window.removeEventListener("resize", updatePositions);
+    };
   }, [
     selectedEntity, selectedAction, selectedStatus,
-    entities, actions, statuses,
-    window.innerWidth, window.innerHeight
+    entities, actions, statuses
   ]);
 
   return (
@@ -211,10 +219,6 @@ export const TreeControls: React.FC<ControlProps> = ({
           <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Switch checked={collapseActions} onCheckedChange={setCollapseActions} />
             Collapse Actions
-          </label>
-          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Switch checked={collapseStatuses} onCheckedChange={setCollapseStatuses} />
-            Collapse Statuses
           </label>
         </div>
       </div>

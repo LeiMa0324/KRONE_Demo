@@ -7,6 +7,14 @@ import {
   toggleNodeByIndexPath,
   setCollapseAtDepth,
   isNodeHidden,
+  BASE_FONT,
+  getFontSize,
+  getPadding,
+  getRadius,
+  getCssVar,
+  linkBorderColor,
+  linkFillColor,
+  getWidestByDepth,
 } from "../tree_utils";
 
 type TreeLink = { source: HierarchyNode<TreeNode>; target: HierarchyNode<TreeNode> };
@@ -20,7 +28,8 @@ type VizTreeProps = {
   setHoveredNode: (node: HierarchyNode<TreeNode> | null) => void;
   showAnomalySymbols?: boolean;
   collapsible?: boolean;
-  disableHoverHighlight?: boolean; // <-- add this line
+  disableHoverHighlight?: boolean;
+  onNodeClick?: (node: HierarchyNode<TreeNode>) => void;
 };
 
 type HierarchyNodeWithHiddenChildren<T> = HierarchyNode<T> & { _children?: HierarchyNode<T>[] };
@@ -38,7 +47,8 @@ export const VizTree: React.FC<VizTreeProps> = ({
   setHoveredNode,
   showAnomalySymbols = true,
   collapsible = true,
-  disableHoverHighlight = false, // <-- add this line
+  disableHoverHighlight = false,
+  onNodeClick,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [localTree, setLocalTree] = useState<TreeNode | null>(null);
@@ -56,49 +66,8 @@ export const VizTree: React.FC<VizTreeProps> = ({
   useEffect(() => {
     if (!svgRef.current || !localTree) return;
 
-    const getCssVar = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-    const wpired = getCssVar('--color-WPIRed') || "#c8102e";
-    const wpigold = getCssVar('--color-WPIGold') || "#ffd100";
-    const wpigrey = getCssVar('--color-WPIGrey') || "#888";
     const font = getCssVar('--font-WPIfont') || "sans-serif";
-    const redBG = "#fde2e5", yellowBG = "#fff8e8", greyBG = "#ededed";
-    const linkBorderColor = (d: { source: { depth: number } }) => [wpired, wpigold, wpigrey, "#000"][d.source.depth] || "#000";
-    const linkFillColor = (d: { source: { depth: number } }) => [redBG, yellowBG, greyBG, "#fff"][d.source.depth] || "#fff";
-
-    function childrenOrCollapsed(d: TreeNode) {
-      if (d.collapsed) return undefined;
-      return d.children;
-    }
-
-    function getWidestByDepth(tree: TreeNode) {
-      const widestByDepth = [75, 0, 0, 0];
-      const root = hierarchy(tree, d => d.children);
-      const tempSvg = select(document.body).append("svg")
-        .attr("style", "position:absolute; visibility:hidden;").attr("font-family", font);
-
-      root.descendants().forEach((node) => {
-        const fontSize = getFontSize(node.depth);
-        const tempText = tempSvg.append("text")
-          .attr("font-size", fontSize)
-          .text(node.data.name);
-        const bbox = (tempText.node() as SVGTextElement).getBBox();
-        const labelWidth = bbox.width + getPadding(fontSize) * 2;
-        if (node.depth >= 1 && node.depth <= 3 && labelWidth > widestByDepth[node.depth]) {
-          widestByDepth[node.depth] = labelWidth;
-        }
-        tempText.remove();
-      });
-      tempSvg.remove();
-      return widestByDepth;
-    }
-
-    const baseFont = 28, minFont = 15, fontStep = 5;
-    const basePadding = 0.25, baseRadius = 0.25;
-    const getFontSize = (depth: number) => Math.max(baseFont - depth * fontStep, minFont);
-    const getPadding = (fontSize: number) => fontSize * basePadding;
-    const getRadius = (fontSize: number) => fontSize * baseRadius;
-
-    const widestByDepth = getWidestByDepth(localTree);
+    const widestByDepth = getWidestByDepth(localTree, font);
 
     const extraColSpacing = [0, 60, 60, 60];
     const colOffsets = [0];
@@ -106,6 +75,11 @@ export const VizTree: React.FC<VizTreeProps> = ({
       colOffsets[i] = (colOffsets[i - 1] || 0) + widestByDepth[i - 1] + extraColSpacing[i];
     }
     const getYByDepth = (depth: number) => colOffsets[depth];
+
+    function childrenOrCollapsed(d: TreeNode) {
+      if (d.collapsed) return undefined;
+      return d.children;
+    }
 
     const root = hierarchy<TreeNode>(localTree, childrenOrCollapsed);
     (d3Tree<TreeNode>().nodeSize([40, 0]).separation(() => 1))(root);
@@ -139,17 +113,20 @@ export const VizTree: React.FC<VizTreeProps> = ({
       if ((d.y ?? 0) > y1) y1 = d.y ?? 0;
     });
 
-    const width = y1 + 200;
+    let width = y1 + 200;
+    if (collapseEntities) {
+      width = y1 + widestByDepth[1] + 20;
+    }
     const minRootWidth = 400;
     const adjustedWidth = root.descendants().length === 1 ? minRootWidth : width;
-    const height = x1 - x0 + baseFont * 2;
+    const height = x1 - x0 + BASE_FONT * 2;
 
     const svg = select(svgRef.current);
     svg.selectAll("*").remove();
     svg
       .attr("width", adjustedWidth + 35)
       .attr("height", height)
-      .attr("viewBox", `0 ${x0 - baseFont} ${adjustedWidth} ${height}`)
+      .attr("viewBox", `0 ${x0 - BASE_FONT} ${adjustedWidth} ${height}`)
       .attr("style", "max-width: 100%; height: auto; font: 10px;")
       .attr("font-family", font);
 
@@ -185,18 +162,19 @@ export const VizTree: React.FC<VizTreeProps> = ({
       .attr("pointer-events", d => isNodeHidden(d) ? "none" : "auto")
       .on("mouseover", function (event, d) {
         if (!(this instanceof SVGElement)) return;
-        if (disableHoverHighlight) return; // <-- add this line
+        if (disableHoverHighlight) return;
         highlightText.call(this, event, d);
         setHoveredNode(d);
       })
       .on("mouseout", function () {
         if (!(this instanceof SVGElement)) return;
-        if (disableHoverHighlight) return; // <-- add this line
+        if (disableHoverHighlight) return;
         unhighlightText.call(this);
         setHoveredNode(null);
       })
       .on("click", function (event, d) {
         event.stopPropagation();
+        if (onNodeClick) onNodeClick(d);
         if (!collapsible) return;
         if (!d.data.indexPath) return;
         setLocalTree(prev => {
@@ -234,7 +212,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
         if (
           collapsible &&
           d.data.collapsed === true &&
-          d.data.indexPath && // must be togglable
+          d.data.indexPath &&
           d.depth < 3
         ) {
           nodeGroup.insert("text", "text")
@@ -273,57 +251,57 @@ export const VizTree: React.FC<VizTreeProps> = ({
       });
 
     if (matchedNodeId) {
-  const matched = root.descendants().find(
-    d =>
-      d.data.name === matchedNodeId ||
-      (d.data.event_id && d.data.event_id === matchedNodeId)
-  );
-  if (matched) {
-    const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
-    let current: HierarchyNode<TreeNode> | null = matched;
-    while (current) {
-      ancestorNodes.add(current);
-      current = current.parent;
-    }
-    const descendantNodes = new Set<HierarchyNode<TreeNode>>();
-    function collectDescendants(node: HierarchyNode<TreeNode>) {
-      descendantNodes.add(node);
-      if (node.children) node.children.forEach(collectDescendants);
-    }
-    collectDescendants(matched);
+      const matched = root.descendants().find(
+        d =>
+          d.data.name === matchedNodeId ||
+          (d.data.event_id && d.data.event_id === matchedNodeId)
+      );
+      if (matched) {
+        const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
+        let current: HierarchyNode<TreeNode> | null = matched;
+        while (current) {
+          ancestorNodes.add(current);
+          current = current.parent;
+        }
+        const descendantNodes = new Set<HierarchyNode<TreeNode>>();
+        function collectDescendants(node: HierarchyNode<TreeNode>) {
+          descendantNodes.add(node);
+          if (node.children) node.children.forEach(collectDescendants);
+        }
+        collectDescendants(matched);
 
-    svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
-      .each(function (n) {
-        const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
-        select(this)
-          .attr("fill", isRelated ? "#003366" : "#000");
-        select(this.parentNode as Element).select("rect")
-          .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
-          .attr("stroke", linkBorderColor({ source: { depth: n.depth - 1 } }))
-          .attr("stroke-width", isRelated ? 5 : 2);
-      });
+        svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
+          .each(function (n) {
+            const isRelated = ancestorNodes.has(n) || descendantNodes.has(n);
+            select(this)
+              .attr("fill", isRelated ? "#003366" : "#000");
+            select(this.parentNode as Element).select("rect")
+              .attr("fill", isRelated ? "#B3D8FF" : linkFillColor({ source: { depth: n.depth - 1 } }))
+              .attr("stroke", linkBorderColor({ source: { depth: n.depth - 1 } }))
+              .attr("stroke-width", isRelated ? 5 : 2);
+          });
 
-    svg.selectAll<SVGPathElement, TreeLink>("path")
-      .attr("stroke", lnk => {
-        const isAncestorPath =
-          ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-          ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
-        const isDescendantPath =
-          descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-          descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
-        return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
-      })
-      .attr("stroke-width", lnk => {
-        const isAncestorPath =
-          ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-          ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
-        const isDescendantPath =
-          descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
-          descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
-        return (isAncestorPath || isDescendantPath) ? 5 : 2;
-      });
-  }
-}
+        svg.selectAll<SVGPathElement, TreeLink>("path")
+          .attr("stroke", lnk => {
+            const isAncestorPath =
+              ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            const isDescendantPath =
+              descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            return (isAncestorPath || isDescendantPath) ? "#B3D8FF" : linkBorderColor(lnk);
+          })
+          .attr("stroke-width", lnk => {
+            const isAncestorPath =
+              ancestorNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              ancestorNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            const isDescendantPath =
+              descendantNodes.has(lnk.source as HierarchyNode<TreeNode>) &&
+              descendantNodes.has(lnk.target as HierarchyNode<TreeNode>);
+            return (isAncestorPath || isDescendantPath) ? 5 : 2;
+          });
+      }
+    }
 
     function highlightText(
       this: SVGElement,
