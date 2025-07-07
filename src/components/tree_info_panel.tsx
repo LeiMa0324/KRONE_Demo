@@ -135,7 +135,17 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
           <>
             {node.depth === 1 && <>Entity: <b>{node.data.name}</b></>}
             {node.depth === 2 && <>Action: <b>{node.data.name}</b></>}
-            {node.depth === 3 && <>Status: <b>{node.data.name}</b></>}
+            {node.depth === 3 && (
+              <>
+                Status: <b>{node.data.name}</b>
+                {node.data.log_template && (
+                  <div style={{ fontWeight: 400, fontSize: 15, color: "#555", marginTop: 6 }}>
+                    <span style={{ color: "#888" }}>Log template:</span>
+                    <span style={{ marginLeft: 6 }}>{node.data.log_template}</span>
+                  </div>
+                )}
+              </>
+            )}
             {node.depth === 0 && <>{node.data.name}</>}
           </>
         )}
