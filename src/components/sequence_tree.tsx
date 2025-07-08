@@ -14,9 +14,7 @@ import {
     ENTITY_BORDER,
     ENTITY_FILL,
     ACTION_BORDER,
-    ACTION_FILL,
     STATUS_BORDER,
-    STATUS_FILL,
     BASE_FONT,
     DEPTH_SPACING,
     getFontSize,
@@ -26,6 +24,9 @@ import {
     linkBorderColor,
     linkFillColor,
     getWidestByDepth,
+    svgInit, 
+    svgLines,
+    svgNodes
 } from "../tree_utils";
 
 type SequenceTreeProps = {
@@ -328,14 +329,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const adjustedWidth = visibleNodes === 1 ? minRootWidth : rightmost;
         const height = x1 - x0 + BASE_FONT * 2;
 
-        const svg = select(svgRef.current);
-        svg.selectAll("*").remove();
-        svg
-            .attr("width", adjustedWidth + 120)
-            .attr("height", height + 120)
-            .attr("viewBox", `${-80} ${x0 - BASE_FONT} ${adjustedWidth + 120} ${height}`)
-            .attr("style", "max-width: 100%; height: auto; font: 10px;")
-            .attr("font-family", font);
+        let svg = svgInit(svgRef, adjustedWidth + 120, height + 120, font, -40, x0 - 40);
 
         svg.append("text")
             .attr("x", 175)
@@ -376,52 +370,26 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             }
         }
 
-        svg.append("g")
-            .attr("fill", "none")
-            .attr("stroke-opacity", 0.4)
-            .attr("stroke-width", 1.5)
-            .selectAll("path")
-            .data(root.links())
-            .join("path")
-            .attr("d", (d: HierarchyLink<TreeNode>) => {
-                const sourceWidth = widestByDepth[d.source.depth];
-                const sourceY = (d.source.y ?? 0) + sourceWidth - 20;
-                const sourceX = d.source.x;
-                const targetY = d.target.y ?? 0;
-                const targetX = d.target.x;
-                const midY = (sourceY + targetY) / 2;
-                return [
-                    `M${sourceY},${sourceX}`,
-                    `H${midY}`,
-                    `V${targetX}`,
-                    `H${targetY}`
-                ].join(" ");
-            })
-            .attr("stroke", linkBorderColor)
-            .attr("opacity", d => (isNodeHidden(d.source) || isNodeHidden(d.target)) ? 0 : 1);
-
-        const node = svg.append("g")
-            .attr("stroke-linejoin", "round")
-            .attr("stroke-width", 2)
-            .selectAll("g")
-            .data(root.descendants())
-            .join("g")
-            .attr("transform", d => `translate(${d.y},${d.x})`)
-            .on("mouseover", function (event, d) {
+        svg = svgLines(svg, root, widestByDepth);
+        
+        const node = svgNodes(
+            svg,
+            root,
+            function (this: SVGElement, event, d) {
                 if (!(this instanceof SVGElement)) return;
                 setHoveredNode?.(d);
                 highlightText.call(this, event, d);
                 if ((d.depth === 1 || d.depth === 2 || d.depth === 3) && d.data.isAnomaly && d.data.anomalyReason) {
                     setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
                 }
-            })
-            .on("mouseout", function () {
+            },
+            function (this: SVGElement) {
                 if (!(this instanceof SVGElement)) return;
                 unhighlightText.call(this);
                 setHoveredNode?.(null);
                 setHoveredAnomaly(null);
-            })
-            .on("click", function (event, d) {
+            },
+            function (event, d) {
                 event.stopPropagation();
                 const idx = d.data.indexPath;
                 if (!idx) return;
@@ -431,8 +399,10 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     addIndexPath(updated);
                     return updated;
                 });
-            });
-
+            }
+        );
+                
+            
         function highlightText(this: SVGElement, _event: unknown, d: HierarchyNode<TreeNode>) {
             const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
             let current: HierarchyNode<TreeNode> | null = d;
@@ -470,8 +440,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .each(function (n) {
                             const isCurrent = +select(this).attr("data-line-number") === d.data.lineNumber;
                             select(this)
-                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isCurrent ? "#003366" : "#444"))
-                                .attr("text-decoration", isCurrent ? "underline" : null);
+                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isCurrent ? "#000" : "#888"))
                         });
                 } else if (d.depth === 2 || d.depth === 1) {
                     const lineNumbers: number[] = [];
@@ -484,8 +453,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .each(function (n) {
                             const isRelated = lineNumbers.includes(+select(this).attr("data-line-number"));
                             select(this)
-                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isRelated ? "#003366" : "#444"))
-                                .attr("text-decoration", isRelated ? "underline" : null);
+                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isRelated ? "#000" : "#888"))
                         });
                 }
 
@@ -514,7 +482,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
                 .each(function (n) {
                     select(this)
-                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222");
+                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? ENTITY_BORDER : "#000");
                     // Only update the first rect (the node label background), not all rects in the group
                     const rects = select(this.parentNode as Element).selectAll("rect").nodes();
                     if (rects.length > 0) {
@@ -524,7 +492,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     }
                 });
             svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? ENTITY_BORDER : "#444")
+                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? ENTITY_BORDER : "#000")
                 .attr("text-decoration", null); // <-- remove underline
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
                 .attr("stroke", linkBorderColor)
@@ -537,17 +505,17 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         node.append("text")
             .attr("class", "node-label")
             .attr("dy", "0.31em")
-            .attr("x", d => {
+            .attr("x", (d: HierarchyNode<TreeNode>) => {
                 const fontSize = getFontSize(d.depth);
                 return (d.children ? -fontSize * 0.2 : fontSize * 0.2);
             })
-            .attr("opacity", d => isNodeHidden(d) ? 0 : 1)
-            .attr("pointer-events", d => isNodeHidden(d) ? "none" : "auto")
+            .attr("opacity", (d: HierarchyNode<TreeNode>) => isNodeHidden(d) ? 0 : 1)
+            .attr("pointer-events", (d: HierarchyNode<TreeNode>) => isNodeHidden(d) ? "none" : "auto")
             .attr("text-anchor", "start")
-            .text(d => d.data.name)
-            .attr("fill", d => d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222")
-            .attr("font-size", d => getFontSize(d.depth))
-            .each(function (this: SVGTextElement, d) {
+            .text((d: HierarchyNode<TreeNode>) => d.data.name)
+            .attr("fill", (d: HierarchyNode<TreeNode>) => d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222")
+            .attr("font-size", (d: HierarchyNode<TreeNode>) => getFontSize(d.depth))
+            .each(function (this: SVGTextElement, d: HierarchyNode<TreeNode>) {
                 const fontSize = getFontSize(d.depth), padding = getPadding(fontSize), radius = getRadius(fontSize);
                 const nodeGroup = select(this.parentNode as Element);
                 const bbox = this.getBBox();
@@ -584,108 +552,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .text("▶");
                 }
 
-                // ...inside .each(function (this: SVGTextElement, d) { ... }) for d.depth === 3...
-
-                if (d.depth === 3) {
-                    const eventId = /\(([^)]+)\)$/.exec(d.data.name)?.[1] || "";
-                    const logTemplate = eventIdToLogTemplate[eventId] || "";
-                    if (logTemplate) {
-                        const linePrefix = typeof d.data.lineNumber === "number" ? `${d.data.lineNumber}. ` : "";
-
-                        // Find parent action and entity names
-                        let actionName = "";
-                        let entityName = "";
-                        if (d.parent) {
-                            actionName = d.parent.data.name;
-                            if (d.parent.parent) {
-                                entityName = d.parent.parent.data.name;
-                            }
-                        }
-                        // Status name is the current node, but remove the sequence id in parentheses
-                        const statusName = d.data.name.replace(/\s*\([^)]+\)$/, "");
-
-                        // Highlight parts
-                        const highlightedParts = highlightLogTemplateParts(logTemplate, entityName, actionName, statusName);
-
-                        // Render with tspans
-                        const x = maxStatusLabelRight + getPadding(fontSize) * 2 + 15;
-                        const y = bbox.y + bbox.height / 2 + 2;
-                        const fontSizeLog = Math.max(fontSize * 0.8, 14);
-
-                        // Append the text element
-                        const logText = nodeGroup.append("text")
-                            .attr("class", "log-template-text")
-                            .attr("data-event-id", eventId)
-                            .attr("data-line-number", d.data.lineNumber || "")
-                            .attr("x", x)
-                            .attr("y", y)
-                            .attr("alignment-baseline", "middle")
-                            .attr("font-size", fontSizeLog)
-                            .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222")
-                            .attr("text-anchor", "start")
-                            .datum({
-                                ...d.data
-                            })
-                            .on("mouseover", function (event) {
-                                if (d.data.isAnomaly && d.data.anomalyReason) setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
-                            })
-                            .on("mouseout", function () { setHoveredAnomaly(null); });
-
-                        // Add line prefix as a tspan (not highlighted)
-                        logText.append("tspan")
-                            .text(linePrefix)
-                            .attr("fill", "#888");
-
-                        // Add tspans for each part, with a data-highlight attribute if it should be highlighted
-                        highlightedParts.forEach((part, i) => {
-                            logText.append("tspan")
-                                .text(part.text)
-                                .attr("class", part.color ? "log-highlight" : null)
-                                .attr("data-highlight-idx", part.color ? i : null)
-                        });
-
-                        // After rendering, add highlight rects behind the highlighted tspans
-                        setTimeout(() => {
-                            const group = nodeGroup.node();
-                            const textElem = logText.node();
-                            if (!group || !textElem) return;
-
-                            // Get all tspans (skip the line prefix)
-                            const tspans = logText.selectAll("tspan").nodes();
-
-                            tspans.forEach((tspan, i) => {
-                                // Skip the line prefix (first tspan)
-                                const newTspan = tspan as SVGTextContentElement;
-                                if (i === 0) {
-
-                                    return;
-                                }
-                                const part = highlightedParts[i - 1];
-                                if (!part.color) {
-
-                                    return;
-                                }
-                                // Get bbox relative to text
-                                const bbox = newTspan.getBBox();
-                                // The text's x/y is the anchor point
-                                const textX = +logText.attr("x");
-                                const textY = +logText.attr("y");
-                                select(group)
-                                    .insert("rect", () => textElem)
-                                    .attr("x", textX + bbox.x - 145)
-                                    .attr("y", textY + bbox.y - bbox.height / 2 - 1)
-                                    .attr("width", bbox.width + 4)
-                                    .attr("height", bbox.height + 10)
-                                    .attr("fill", part.color === ENTITY_BORDER ? ENTITY_FILL : part.color === ACTION_BORDER ? ACTION_FILL : STATUS_FILL)
-                                    .attr("rx", 3)
-                                    .attr("ry", 3)
-                                    .attr("opacity", 1);
-
-                            });
-                        }, 0);
-                    }
-                }
-
                 if (d.data.isAnomaly) {
                     const g = this.parentNode as SVGGElement;
                     const transform = g.getAttribute("transform");
@@ -707,6 +573,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .attr("alignment-baseline", d.depth === 3 ? "middle" : "hanging")
                             .attr("font-size", Math.max(fontSize * 0.8, d.depth === 3 ? 14 : 18))
                             .attr("fill", "#FFD100")
+                            .attr("font-weight", "bold")
                             .attr("text-anchor", "start")
                             .style("cursor", "pointer")
                             .text("⚠️")
@@ -898,17 +765,11 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("pointer-events", "none")
                 .lower();
         }
-        node.each(function (d) {
-            const hidden = isNodeHidden(d);
-            select(this).selectAll("rect")
-                .attr("opacity", hidden ? 0 : 1)
-                .attr("pointer-events", hidden ? "none" : "auto");
-        });
-        node.each(function (d) {
-            const hidden = isNodeHidden(d);
-            select(this).selectAll("rect")
-                .attr("opacity", hidden ? 0 : 1)
-                .attr("pointer-events", hidden ? "none" : "auto");
+        node.each(function (this: SVGGElement, d: HierarchyNode<TreeNode>) {
+            const hidden: boolean = isNodeHidden(d);
+            select(this).selectAll<SVGRectElement, unknown>("rect")
+            .attr("opacity", hidden ? 0 : 1)
+            .attr("pointer-events", hidden ? "none" : "auto");
         });
 
     }, [treeData, eventIdToLogTemplate, entitiesCollapsed, actionsCollapsed, multiLineAnomaly]);

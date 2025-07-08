@@ -5,7 +5,6 @@ import type { TreeNode } from "../tree_utils";
 import {
   addIndexPath,
   toggleNodeByIndexPath,
-  isNodeHidden,
   BASE_FONT,
   getFontSize,
   getPadding,
@@ -14,6 +13,9 @@ import {
   linkBorderColor,
   linkFillColor,
   getWidestByDepth,
+  svgInit,
+  svgLines,
+  svgNodes
 } from "../tree_utils";
 
 type TreeLink = { source: HierarchyNode<TreeNode>; target: HierarchyNode<TreeNode> };
@@ -117,58 +119,24 @@ export const VizTree: React.FC<VizTreeProps> = ({
     const adjustedWidth = root.descendants().length === 1 ? minRootWidth : width;
     const height = x1 - x0 + BASE_FONT * 2;
 
-    const svg = select(svgRef.current);
-    svg.selectAll("*").remove();
-    svg
-      .attr("width", adjustedWidth + 35)
-      .attr("height", height)
-      .attr("viewBox", `0 ${x0 - BASE_FONT} ${adjustedWidth} ${height}`)
-      .attr("style", "max-width: 100%; height: auto; font: 10px;")
-      .attr("font-family", font);
+    let svg = svgInit(svgRef, adjustedWidth, height, font, -20, x0);
+    svg = svgLines(svg, root, widestByDepth);
 
-    svg.append("g").attr("fill", "none").attr("stroke-width", 1.5)
-      .selectAll("path")
-      .data(root.links())
-      .join("path")
-      .attr("d", (d: { source: HierarchyNode<TreeNode>, target: HierarchyNode<TreeNode> }) => {
-        const sourceWidth = widestByDepth[d.source.depth];
-        const sourceY = (d.source.y ?? 0) + sourceWidth - 20;
-        const sourceX = d.source.x;
-        const targetY = d.target.y ?? 0;
-        const targetX = d.target.x;
-        const midY = (sourceY + targetY) / 2;
-        return [
-          `M${sourceY},${sourceX}`,
-          `H${midY}`,
-          `V${targetX}`,
-          `H${targetY}`
-        ].join(" ");
-      })
-      .attr("stroke", linkBorderColor)
-      .attr("opacity", d => (isNodeHidden(d.source) || isNodeHidden(d.target)) ? 0 : 1);
-
-    const node = svg.append("g")
-      .attr("stroke-linejoin", "round")
-      .attr("stroke-width", 2)
-      .selectAll("g")
-      .data(root.descendants())
-      .join("g")
-      .attr("transform", (d: HierarchyNode<TreeNode>) => `translate(${d.y},${d.x})`)
-      .attr("opacity", d => isNodeHidden(d) ? 0 : 1)
-      .attr("pointer-events", d => isNodeHidden(d) ? "none" : "auto")
-      .on("mouseover", function (event, d) {
+    const node = svgNodes(svg,
+      root,
+      function (this: SVGElement, event, d) {
         if (!(this instanceof SVGElement)) return;
         if (disableHoverHighlight) return;
         highlightText.call(this, event, d);
         setHoveredNode(d);
-      })
-      .on("mouseout", function () {
+      },
+      function (this: SVGElement) {
         if (!(this instanceof SVGElement)) return;
         if (disableHoverHighlight) return;
         unhighlightText.call(this);
         setHoveredNode(null);
-      })
-      .on("click", function (event, d) {
+      },
+      function (event, d) {
         event.stopPropagation();
         if (onNodeClick) onNodeClick(d);
         if (!collapsible) return;
@@ -179,7 +147,8 @@ export const VizTree: React.FC<VizTreeProps> = ({
           addIndexPath(updated);
           return updated;
         });
-      });
+      }
+    )
 
     node.append("text")
       .attr("class", "node-label")
@@ -301,7 +270,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
 
     function highlightText(
       this: SVGElement,
-      _event: React.MouseEvent<SVGTextElement, MouseEvent>,
+      _event: unknown,
       d: HierarchyNode<TreeNode>
     ) {
       const ancestorNodes = new Set<HierarchyNode<TreeNode>>();
