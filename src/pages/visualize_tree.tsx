@@ -199,6 +199,16 @@ export const VisualizeTree: React.FC = () => {
     }
   }
 
+  const staticRootNode = React.useMemo(() => {
+    if (!treeData) return null;
+    return {
+      data: treeData,
+      depth: 0,
+      parent: null,
+      children: (treeData.children || []).map(child => ({ data: child })),
+    } as unknown as HierarchyNode<TreeNode>;
+  }, [treeData]);
+
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -232,8 +242,17 @@ export const VisualizeTree: React.FC = () => {
           minWidth: 180,
           maxWidth: "30%",
           height: "100%",
-          overflowY: "auto"
+          overflowY: "auto",
+          paddingBottom: 200,
         }}>
+          <div style={{ marginBottom: 16 }}>
+            <TreeInfoPanel
+              node={staticRootNode}
+              title="Tree statistics"
+              hideNodeName={true}
+              sortLogKeys={true}
+            />
+          </div>
           <TreeControls
             {...{
               collapseEntities,

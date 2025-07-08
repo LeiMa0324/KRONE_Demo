@@ -2,167 +2,218 @@ import React from "react";
 import type { HierarchyNode } from "d3-hierarchy";
 import type { TreeNode } from "../tree_utils";
 
-type TreeNodeWithChildren = TreeNode & {
-  _children?: TreeNodeWithChildren[];
-  children?: TreeNodeWithChildren[];
+type TreeInfoPanelProps = {
+  node: HierarchyNode<TreeNode> | null;
+  title?: string;
+  hideNodeName?: boolean;
+  sortLogKeys?: boolean;
 };
 
-type InfoPanelProps = {
-  node: HierarchyNode<TreeNodeWithChildren> | null;
-};
-
-function getAllDataChildren(data: TreeNodeWithChildren): TreeNodeWithChildren[] {
-  const children: TreeNodeWithChildren[] = [];
-  if (Array.isArray(data.children)) children.push(...data.children);
-  if (Array.isArray(data._children)) children.push(...data._children);
-  return children;
-}
-
-function collectStatusesFromData(
-  data: TreeNodeWithChildren,
-  depth = 0,
-  arr: TreeNodeWithChildren[] = []
-): TreeNodeWithChildren[] {
-  if (depth === 3 && data.event_id) arr.push(data);
-  getAllDataChildren(data).forEach(child => collectStatusesFromData(child, depth + 1, arr));
-  return arr;
-}
-
-export const TreeInfoPanel: React.FC<InfoPanelProps> = ({ node }) => {
-  function getNodeInfo(
-    node: HierarchyNode<TreeNodeWithChildren> | null
-  ): { title: string; content: string } {
-    const wpired =
-      typeof window !== "undefined"
-        ? getComputedStyle(document.documentElement)
-            .getPropertyValue("--color-WPIRed")
-            .trim() || "#c00"
-        : "#c00";
-
-    if (!node) {
-      return {
-        title: "",
-        content:
-          '<div style="color:#888; text-align:center; padding:16px 0;">Hover on a node to see more details.</div>',
-      };
-    }
-
-    if (node.depth === 0) {
-      const entities = getAllDataChildren(node.data);
-      let numActions = 0,
-        numStatuses = 0;
-
-      entities.forEach((entityData) => {
-        const actions = getAllDataChildren(entityData);
-        numActions += actions.length;
-        actions.forEach((actionData) => {
-          const statuses = getAllDataChildren(actionData);
-          numStatuses += statuses.length;
-        });
-      });
-
-      const statuses = collectStatusesFromData(node.data, 0);
-      const normal = statuses.filter((s) => !s.isAnomaly).map((s) => s.event_id);
-      const abnormal = statuses.filter((s) => s.isAnomaly).map((s) => s.event_id);
-
-      return {
-        title: "Root",
-        content: `
-          <div><b># of Entities:</b> ${entities.length}</div>
-          <div><b># of Actions:</b> ${numActions}</div>
-          <div><b># of Statuses:</b> ${numStatuses}</div>
-          <div style="margin-top:4px;">
-            <b>Normal Log Keys:</b> ${normal.length > 0 ? normal.join(", ") : "<i>None</i>"}
-          </div>
-          <div><b>Abnormal Log Keys:</b> <span style="color:${abnormal.length > 0 ? wpired : '#000'}">${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}</span></div>
-        `,
-      };
-    }
-
-    if (node.depth === 1 || node.depth === 2) {
-      const statuses = collectStatusesFromData(node.data, node.depth);
-      const normal = statuses.filter((s) => !s.isAnomaly).map((s) => s.event_id);
-      const abnormal = statuses.filter((s) => s.isAnomaly).map((s) => s.event_id);
-      const actions = getAllDataChildren(node.data);
-      const numActions = node.depth === 1 ? actions.length : undefined;
-      const numStatuses =
-        node.depth === 2
-          ? getAllDataChildren(node.data).length
-          : undefined;
-
-      return {
-        title: `${node.depth === 1 ? "Entity" : "Action"}: ${node.data.name}`,
-        content: `
-          ${numActions !== undefined ? `<div><b># of Actions:</b> ${numActions}</div>` : ""}
-          ${numStatuses !== undefined ? `<div><b># of Statuses:</b> ${numStatuses}</div>` : ""}
-          <div style="margin-top:4px;">
-            <b>Normal Log Keys:</b> ${normal.length > 0 ? normal.join(", ") : "<i>None</i>"}
-          </div>
-          <div><b>Abnormal Log Keys:</b> <span style="color:${abnormal.length > 0 ? wpired : '#000'}">${abnormal.length > 0 ? abnormal.join(", ") : "<i>None</i>"}</span></div>
-        `,
-      };
-    }
-
-    if (node.depth === 3) {
-      return {
-        title: `Status: ${node.data.name}`,
-        content: `
-          <div><b>Log Key:</b> ${node.data.event_id || "N/A"}</div>
-          <div><b>Log Template:</b> ${node.data.log_template || "N/A"}</div>
-          <div><b>Anomaly:</b> ${
-            node.data.isAnomaly
-              ? node.data.anomalyReason || "No explanation"
-              : "Normal"
-          }</div>
-        `,
-      };
-    }
-
-    return { title: node.data.name, content: "" };
+export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
+  node,
+  title,
+  hideNodeName = false,
+  sortLogKeys = false,
+}) => {
+  if (!node) {
+    return (
+      <div
+        style={{
+          padding: "1.25rem",
+          background: "#fff",
+          borderRadius: 8,
+          color: "#888",
+          border: "1.5px solid #e0e0e0",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+          fontSize: 18,
+          minWidth: 0,
+        }}
+      >
+        No node selected
+      </div>
+    );
   }
 
-  const nodeInfo = getNodeInfo(node);
+  let numEntities = 0,
+    numActions = 0,
+    numStatuses = 0;
+  let normalLogKeys: string[] = [];
+  let abnormalLogKeys: string[] = [];
+
+  if (node.depth === 0) {
+    // Root node
+    numEntities = node.data.children?.length ?? 0;
+    for (const entity of node.data.children ?? []) {
+      numActions += entity.children?.length ?? 0;
+      for (const action of entity.children ?? []) {
+        numStatuses += action.children?.length ?? 0;
+        for (const status of action.children ?? []) {
+          if (status.event_id) {
+            if (status.isAnomaly) {
+              abnormalLogKeys.push(status.event_id);
+            } else {
+              normalLogKeys.push(status.event_id);
+            }
+          }
+        }
+      }
+    }
+  } else if (node.depth === 1) {
+    // Entity node
+    numActions = node.data.children?.length ?? 0;
+    for (const action of node.data.children ?? []) {
+      numStatuses += action.children?.length ?? 0;
+      for (const status of action.children ?? []) {
+        if (status.event_id) {
+          if (status.isAnomaly) {
+            abnormalLogKeys.push(status.event_id);
+          } else {
+            normalLogKeys.push(status.event_id);
+          }
+        }
+      }
+    }
+  } else if (node.depth === 2) {
+    // Action node
+    numStatuses = node.data.children?.length ?? 0;
+    for (const status of node.data.children ?? []) {
+      if (status.event_id) {
+        if (status.isAnomaly) {
+          abnormalLogKeys.push(status.event_id);
+        } else {
+          normalLogKeys.push(status.event_id);
+        }
+      }
+    }
+  } else if (node.depth === 3) {
+    // Status node
+    if (node.data.event_id) {
+      if (node.data.isAnomaly) {
+        abnormalLogKeys.push(node.data.event_id);
+      } else {
+        normalLogKeys.push(node.data.event_id);
+      }
+    }
+  }
+
+  if (sortLogKeys) {
+    normalLogKeys.sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+    abnormalLogKeys.sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+  }
 
   return (
     <div
       style={{
-        minWidth: 0,
-        width: "100%",
-        borderRadius: 8,
-        padding: "1rem",
-        fontSize: 18,
+        padding: "1.25rem",
         background: "#fff",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        zIndex: 10,
-        wordBreak: "break-word",
-        height: "100%",
-        boxSizing: "border-box",
+        borderRadius: 8,
+        marginBottom: 8,
+        border: "1.5px solid #e0e0e0",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+        minWidth: 0,
+        textAlign: "left",
       }}
     >
-      {nodeInfo.title && (
-        <div
-          style={{
-            fontWeight: "bold",
-            marginBottom: 8,
-            textAlign: "center",
-          }}
-        >
-          {nodeInfo.title}
-        </div>
-      )}
       <div
         style={{
-          fontSize: 16,
-          background: "#fff",
-          border: "1px solid #ccc",
-          borderRadius: 6,
-          minHeight: 80,
-          padding: 8,
-          textAlign: "left",
-          wordWrap: "break-word",
+          fontWeight: 700,
+          fontSize: 20,
+          marginBottom: 12,
+          letterSpacing: 0.2,
+          color: "#222",
+          textAlign: "center",
         }}
-        dangerouslySetInnerHTML={{ __html: nodeInfo.content }}
-      />
+      >
+        {title ? (
+          title
+        ) : (
+          !hideNodeName &&
+          <>
+            {node.depth === 1 && <>Entity: <b>{node.data.name}</b></>}
+            {node.depth === 2 && <>Action: <b>{node.data.name}</b></>}
+            {node.depth === 3 && (
+              <>
+                Status: <b>{node.data.name}</b>
+                {node.data.log_template && (
+                  <div style={{ fontWeight: 400, fontSize: 15, color: "#555", marginTop: 6 }}>
+                    <span style={{ color: "#888" }}>Log template:</span>
+                    <span style={{ marginLeft: 6 }}>{node.data.log_template}</span>
+                  </div>
+                )}
+                {node.data.event_id && (
+                  <div style={{ fontWeight: 400, fontSize: 15, color: "#555", marginTop: 6 }}>
+                    <span style={{ color: "#888" }}>Log key:</span>
+                    <span style={{ marginLeft: 6 }}>{node.data.event_id}</span>
+                  </div>
+                )}
+              </>
+            )}
+            {node.depth === 0 && <>{node.data.name}</>}
+          </>
+        )}
+      </div>
+      <div style={{ fontSize: 17, marginBottom: 8, color: "#333", textAlign: "left" }}>
+        {node.depth === 0 && (
+          <>
+            <div>
+              Entities: <b>{numEntities}</b>
+            </div>
+            <div>
+              Actions: <b>{numActions}</b>
+            </div>
+            <div>
+              Statuses: <b>{numStatuses}</b>
+            </div>
+          </>
+        )}
+        {node.depth === 1 && (
+          <>
+            <div>
+              Actions: <b>{numActions}</b>
+            </div>
+            <div>
+              Statuses: <b>{numStatuses}</b>
+            </div>
+          </>
+        )}
+        {node.depth === 2 && (
+          <>
+            <div>
+              Statuses: <b>{numStatuses}</b>
+            </div>
+          </>
+        )}
+      </div>
+      <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
+        <div>
+          <span style={{ color: "#4caf50", fontWeight: 500 }}>
+            Normal log keys:
+          </span>
+          <span style={{ marginLeft: 6 }}>
+            {normalLogKeys.length > 0 ? (
+              normalLogKeys.join(", ")
+            ) : (
+              <span style={{ color: "#aaa" }}>None</span>
+            )}
+          </span>
+        </div>
+        <div>
+          <span style={{ color: "#f44336", fontWeight: 500 }}>
+            Abnormal log keys:
+          </span>
+          <span style={{ marginLeft: 6 }}>
+            {abnormalLogKeys.length > 0 ? (
+              abnormalLogKeys.join(", ")
+            ) : (
+              <span style={{ color: "#aaa" }}>None</span>
+            )}
+          </span>
+        </div>
+      </div>
     </div>
   );
 };
