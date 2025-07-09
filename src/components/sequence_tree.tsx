@@ -37,51 +37,6 @@ type SequenceTreeProps = {
 
 type TreeNode = import("../tree_utils").TreeNode;
 
-function extractName(str: string) {
-    if (!str) return "";
-    const idx = str.lastIndexOf("_");
-    return idx !== -1 ? str.slice(0, idx) : str;
-}
-
-// Utility to highlight substrings in a log template
-function highlightLogTemplateParts(logTemplate: string, entityName: string, actionName: string, statusName: string) {
-    // Extract just the name part (before underscore)
-    const entityBase = extractName(entityName);
-    const actionBase = extractName(actionName);
-    const statusBase = extractName(statusName);
-
-    // Build a regex to match all three, longest first to avoid partial overlaps
-    const parts = [
-        { text: entityBase, color: ENTITY_BORDER },
-        { text: actionBase, color: ACTION_BORDER },
-        { text: statusBase, color: STATUS_BORDER }
-    ].filter(p => p.text);
-
-    // Sort by length descending to avoid partial matches
-    parts.sort((a, b) => b.text.length - a.text.length);
-
-    // Build regex for all parts
-    const regex = new RegExp(parts.map(p => p.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|"), "gi");
-    // Split and wrap
-    const result: { text: string, color?: string }[] = [];
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(logTemplate)) !== null) {
-        if (match.index > lastIndex) {
-            result.push({ text: logTemplate.slice(lastIndex, match.index) });
-        }
-        const matchedText = match[0];
-        const color = parts.find(p => p.text.toLowerCase() === matchedText.toLowerCase())?.color;
-        result.push({ text: matchedText, color });
-        lastIndex = regex.lastIndex;
-    }
-    if (lastIndex < logTemplate.length) {
-        result.push({ text: logTemplate.slice(lastIndex) });
-    }
-    return result;
-}
-
-
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdToLogTemplate: Record<string, string>): TreeNode {
     const entities: TreeNode[] = [];
     const { entity_nodes_for_logkeys: e, action_nodes_for_logkeys: a, status_nodes_for_logkeys: s, seq } = data;
