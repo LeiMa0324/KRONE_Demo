@@ -286,6 +286,7 @@ export const KnowledgeBaseViz = () => {
                         collapsible={false}
                         disableHoverHighlight={true}
                         onNodeClick={handleNodeClick}
+                        clickableNodes={true}
                     />
                 )}
             </div>
