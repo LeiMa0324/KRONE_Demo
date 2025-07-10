@@ -155,6 +155,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
 
 
     useEffect(() => {
+        if (initialSearchLogKey) return; // Don't overwrite if searching by logkeys
         const getSeq = (data: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences }) => {
             const { entityDict, actionDict, entitySequences } = data;
             if (query === "ROOT") return entitySequences;
@@ -164,7 +165,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         };
         setCurrentTrainingDisplay(getSeq(trainingData));
         setCurrentTestingDisplay(getSeq(testingData));
-    }, [trainingData, testingData, query]);
+    }, [trainingData, testingData, query, initialSearchLogKey]);
 
     useEffect(() => {
         if (showSidebar && initialSearchLogKey) {
@@ -173,6 +174,9 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             const results = exactSearch(allSequences, keys);
             setCurrentTrainingDisplay(results);
             setSelectedTab("train");
+            if (initialSearchLogKey === "") {
+                setSearchLogKey("");
+            }           
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey]);

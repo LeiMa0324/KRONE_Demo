@@ -1,5 +1,4 @@
 import { Footer } from "@/components/footer";
-import { useLocation } from "react-router-dom"; 
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
 import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
@@ -216,6 +215,8 @@ export const KnowledgeBaseViz = () => {
         if (node.data?.name) {
             setSelectedQuery(node.data.name);
             setShowSidebar(true);
+            setSearchLogKey("");
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
 
@@ -224,11 +225,13 @@ export const KnowledgeBaseViz = () => {
     const [searchLogKey, setSearchLogKey] = useState<string>("");
 
     useEffect(() => {
+        if (logkeysParam && !showSidebar) {
+            toggleSidebar();
+        }
         if (logkeysParam) {
-        setSearchLogKey(logkeysParam);
+            setSearchLogKey(logkeysParam);
         }
     }, [logkeysParam]);
-
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
