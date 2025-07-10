@@ -108,6 +108,7 @@ export const VisualizeTable = () => {
     const [kroneDecompData, setKroneDecompData] = useState<KroneDecompRow[]>([]);
     const [kroneDetectData, setKroneDetectData] = useState<KroneDetectRow[]>([]);
     const [hoveredNode, setHoveredNode] = useState<HierarchyNode<TreeNode> | null>(null);
+    const [multiLineAnomaly, setMultiLineAnomaly] = useState(false);
 
 
     useEffect(() => {
@@ -160,6 +161,8 @@ export const VisualizeTable = () => {
                             kroneDecompData={kroneDecompData}
                             kroneDetectData={kroneDetectData}
                             setHoveredNode={setHoveredNode}
+                            setMultiLineAnomaly={setMultiLineAnomaly}
+                            multiLineAnomaly={multiLineAnomaly}
                         />
                     </div>
                 </div>
@@ -172,7 +175,7 @@ export const VisualizeTable = () => {
                     height: "100%",
                     overflowY: "auto"
                 }}>
-                    <TreeInfoPanel node={hoveredNode} />
+                    <TreeInfoPanel node={hoveredNode} multiLineAnomaly={multiLineAnomaly} />
                 </div>
             </div>
             <div style={{ flex: "0 0 auto" }}>

@@ -7,6 +7,7 @@ type TreeInfoPanelProps = {
   title?: string;
   hideNodeName?: boolean;
   sortLogKeys?: boolean;
+  multiLineAnomaly?: boolean;
 };
 
 export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
@@ -14,6 +15,7 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   title,
   hideNodeName = false,
   sortLogKeys = false,
+  multiLineAnomaly = false,
 }) => {
   if (!node) {
     return (
@@ -37,8 +39,8 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   let numEntities = 0,
     numActions = 0,
     numStatuses = 0;
-  let normalLogKeys: string[] = [];
-  let abnormalLogKeys: string[] = [];
+  const normalLogKeys: string[] = [];
+  const abnormalLogKeys: string[] = [];
 
   if (node.depth === 0) {
     // Root node
@@ -188,32 +190,57 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
           </>
         )}
       </div>
-      <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
-        <div>
-          <span style={{ color: "#4caf50", fontWeight: 500 }}>
-            Normal log keys:
-          </span>
-          <span style={{ marginLeft: 6 }}>
-            {normalLogKeys.length > 0 ? (
-              normalLogKeys.join(", ")
-            ) : (
-              <span style={{ color: "#aaa" }}>None</span>
-            )}
-          </span>
+      {node.depth != 3 && (
+        <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
+          <div>
+            <span style={{ color: "#4caf50", fontWeight: 500 }}>
+              Normal log keys:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {normalLogKeys.length > 0 ? (
+                normalLogKeys.join(", ")
+              ) : (
+                <span style={{ color: "#aaa" }}>None</span>
+              )}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: "#f44336", fontWeight: 500 }}>
+              Abnormal log keys:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {abnormalLogKeys.length > 0 ? (
+                abnormalLogKeys.join(", ")
+              ) : (
+                <span style={{ color: "#aaa" }}>None</span>
+              )}
+            </span>
+          </div>
         </div>
-        <div>
-          <span style={{ color: "#f44336", fontWeight: 500 }}>
-            Abnormal log keys:
-          </span>
-          <span style={{ marginLeft: 6 }}>
-            {abnormalLogKeys.length > 0 ? (
-              abnormalLogKeys.join(", ")
-            ) : (
-              <span style={{ color: "#aaa" }}>None</span>
-            )}
-          </span>
-        </div>
-      </div>
+      )}
+
+      {node.data.isAnomaly && (
+        <>
+          <div>
+            <span style={{ color: "#f44336", fontWeight: 500 }}>
+              Anomaly Type:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {multiLineAnomaly? "Pattern" : "Template"}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: "#f44336", fontWeight: 500 }}>
+              Anomaly Reason:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {node.data.anomalyReason}
+            </span>
+          </div>
+        </>
+    )}
+
     </div>
+    
   );
 };

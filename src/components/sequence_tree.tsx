@@ -29,13 +29,17 @@ import {
     svgNodes
 } from "../tree_utils";
 
+import type { TreeNode } from "../tree_utils";
+
 type SequenceTreeProps = {
     kroneDecompData: KroneDecompRow[];
     kroneDetectData: KroneDetectRow[];
-    setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void; // <-- add this
+    setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void;
+    setMultiLineAnomaly: (isMultiLineAnomaly: boolean) => void;
+    multiLineAnomaly: boolean
 };
 
-type TreeNode = import("../tree_utils").TreeNode;
+
 
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdToLogTemplate: Record<string, string>): TreeNode {
     const entities: TreeNode[] = [];
@@ -139,17 +143,17 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdTo
     return { name: "Root", children: entities };
 }
 
-export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData, setHoveredNode }) => {
+export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData, setHoveredNode, setMultiLineAnomaly, multiLineAnomaly }) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
-    const [hoveredAnomaly, setHoveredAnomaly] = useState<{ explanation: string; x: number; y: number } | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [eventIdToLogTemplate, setEventIdToLogTemplate] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [entitiesCollapsed, setEntitiesCollapsed] = useState(true);
     const [actionsCollapsed, setActionsCollapsed] = useState(false);
-    const [multiLineAnomaly, setMultiLineAnomaly] = useState(false);
     const [anomalyLevelMulti, setAnomalyLevelMulti] = useState("Normal");
+
+    
 
     useEffect(() => {
         fetch("/structured_processes.csv")
@@ -285,6 +289,13 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const height = x1 - x0 + BASE_FONT * 2;
 
         let svg = svgInit(svgRef, adjustedWidth + 120, height + 120, font, -40, x0 - 40);
+        let hasVisibleAction = false;
+        let hasVisibleStatus = false;
+        root.each(node => {
+            if (node.depth === 2 && !isNodeHidden(node)) hasVisibleAction = true;
+            if (node.depth === 3 && !isNodeHidden(node)) hasVisibleStatus = true;
+        });
+
 
         svg.append("text")
             .attr("x", 175)
@@ -303,7 +314,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .style("pointer-events", "none")
             .text("Log Template");
 
-        if (!entitiesCollapsed) {
+        if (hasVisibleAction) {
             svg.append("text")
                 .attr("x", 375)
                 .attr("y", x0 - BASE_FONT)
@@ -312,17 +323,16 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("fill", ACTION_BORDER)
                 .style("pointer-events", "none")
                 .text("Action");
-
-            if (!actionsCollapsed) {
-                svg.append("text")
-                    .attr("x", 575)
-                    .attr("y", x0 - BASE_FONT)
-                    .attr("font-size", 30)
-                    .attr("font-weight", "bold")
-                    .attr("fill", STATUS_BORDER)
-                    .style("pointer-events", "none")
-                    .text("Status");
-            }
+        }
+        if (hasVisibleStatus) {
+            svg.append("text")
+                .attr("x", 575)
+                .attr("y", x0 - BASE_FONT)
+                .attr("font-size", 30)
+                .attr("font-weight", "bold")
+                .attr("fill", STATUS_BORDER)
+                .style("pointer-events", "none")
+                .text("Status");
         }
 
         svg = svgLines(svg, root, widestByDepth);
@@ -330,30 +340,18 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         const node = svgNodes(
             svg,
             root,
+            // mouseover
             function (this: SVGElement, event, d) {
-                if (!(this instanceof SVGElement)) return;
-                setHoveredNode?.(d);
                 highlightText.call(this, event, d);
-                if ((d.depth === 1 || d.depth === 2 || d.depth === 3) && d.data.isAnomaly && d.data.anomalyReason) {
-                    setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
-                }
             },
+            // mouseout
             function (this: SVGElement) {
-                if (!(this instanceof SVGElement)) return;
                 unhighlightText.call(this);
-                setHoveredNode?.(null);
-                setHoveredAnomaly(null);
             },
-            function (event, d) {
+            // click
+            function (this: SVGElement, event, d) {
                 event.stopPropagation();
-                const idx = d.data.indexPath;
-                if (!idx) return;
-                setTreeData(prev => {
-                    if (!prev) return null;
-                    const updated = toggleNodeByIndexPath(prev, idx);
-                    addIndexPath(updated);
-                    return updated;
-                });
+                setHoveredNode?.(d);
             }
         );
                 
@@ -483,28 +481,82 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     .attr("stroke", () => linkBorderColor({ source: { depth: d.depth - 1 } }))
                     .attr("rx", radius)
                     .attr("ry", radius);
-                if (d.children && d.children.length > 0 && d.data.collapsed && !d.parent?.data.collapsed) {
-                    nodeGroup.insert("text", "text")
-                        .attr("class", "collapse-indicator")
-                        .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5)
-                        .attr("y", bbox.y + bbox.height / 2 + 2)
-                        .attr("alignment-baseline", "middle")
-                        .attr("font-size", Math.max(fontSize * 0.8, 16))
-                        .attr("fill", "#888")
-                        .on("click", function (event: MouseEvent) {
-                            event.stopPropagation();
-                            const idx = d.data.indexPath;
-                            if (!idx) return;
-                            setTreeData(prev => {
-                                if (!prev) return null;
-                                const updated = toggleNodeByIndexPath(prev, idx);
-                                addIndexPath(updated);
-                                return updated;
-                            });
-                        })
-                        .attr("text-anchor", "start")
-                        .style("cursor", "pointer")
-                        .text("▶");
+                if (d.children && d.children.length > 0 && !d.parent?.data.collapsed) {
+                    // If node is collapsed, show ▶ (expand)
+                    if (d.data.collapsed) {
+                        nodeGroup.insert("text", "text")
+                            .attr("class", "collapse-indicator")
+                            .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5)
+                            .attr("y", bbox.y + bbox.height / 2 + 2)
+                            .attr("alignment-baseline", "middle")
+                            .attr("font-size", Math.max(fontSize * 0.8, 16))
+                            .attr("fill", "#888")
+                            .on("click", function (event: MouseEvent) {
+                                event.stopPropagation();
+                                const idx = d.data.indexPath;
+                                if (!idx) return;
+                                setTreeData(prev => {
+                                    if (!prev) return null;
+                                    const updated = toggleNodeByIndexPath(prev, idx);
+                                    addIndexPath(updated);
+                                    return updated;
+                                });
+                            })
+                            .attr("text-anchor", "start")
+                            .style("cursor", "pointer")
+                            .text("▶");
+                    } else if (!(d.data.name === "Root")) {
+                        // If node is expanded, show ▼ (collapse)
+                        nodeGroup.insert("text", "text")
+                            .attr("class", "collapse-indicator")
+                            .attr("x", (bbox.x - padding) + widestByDepth[d.depth] + padding * 1.5)
+                            .attr("y", bbox.y + bbox.height / 2 + 2)
+                            .attr("alignment-baseline", "middle")
+                            .attr("font-size", Math.max(fontSize * 0.8, 16))
+                            .attr("fill", "#888")
+                            .on("click", function (event: MouseEvent) {
+                                event.stopPropagation();
+                                const idx = d.data.indexPath;
+                                if (!idx) return;
+                                setTreeData(prev => {
+                                    if (!prev) return null;
+                                    const updated = toggleNodeByIndexPath(prev, idx);
+                                    addIndexPath(updated);
+                                    return updated;
+                                });
+                            })
+                            .attr("text-anchor", "start")
+                            .style("cursor", "pointer")
+                            .text("◀");
+                    }
+                }
+
+                // ...inside node.append("text").each(function (this: SVGTextElement, d: HierarchyNode<TreeNode>) { ... })...
+                if (d.depth === 3) {
+                    const eventId = /\(([^)]+)\)$/.exec(d.data.name)?.[1] || "";
+                    const logTemplate = eventIdToLogTemplate[eventId] || "";
+                    if (logTemplate) {
+                        const linePrefix = typeof d.data.lineNumber === "number" ? `${d.data.lineNumber}. ` : "";
+                        const x = maxStatusLabelRight + getPadding(fontSize) * 2 + 15;
+                        const y = bbox.y + bbox.height / 2 + 2;
+                        const fontSizeLog = Math.max(fontSize * 0.8, 14);
+
+                        // Render the log template as plain text (no tspans, no highlights)
+                        nodeGroup.append("text")
+                            .attr("class", "log-template-text")
+                            .attr("data-event-id", eventId)
+                            .attr("data-line-number", d.data.lineNumber || "")
+                            .attr("x", x)
+                            .attr("y", y)
+                            .attr("alignment-baseline", "middle")
+                            .attr("font-size", fontSizeLog)
+                            .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#F00" : "#000")
+                            .attr("text-anchor", "start")
+                            .datum({
+                                ...d.data
+                            })
+                            .text(linePrefix + logTemplate);
+                    }
                 }
 
                 if (d.data.isAnomaly) {
@@ -532,10 +584,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .attr("text-anchor", "start")
                             .style("cursor", "pointer")
                             .text("⚠️")
-                            .on("mouseover", function (event) {
-                                if (d.data.anomalyReason) setHoveredAnomaly({ explanation: d.data.anomalyReason, x: event.clientX, y: event.clientY });
-                            })
-                            .on("mouseout", function () { setHoveredAnomaly(null); });
                     }
                 }
                 else if (d.data.isRelatedToAnomaly && d.data.collapsed && !d.parent?.data.collapsed) {
@@ -550,10 +598,6 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .attr("text-anchor", "start")
                         .style("cursor", "pointer")
                         .text(!reason ? "" : multiLineAnomaly ? "🚨" : "⚠️")
-                        .on("mouseover", function (event) {
-                            if (reason) setHoveredAnomaly({ explanation: reason, x: event.clientX, y: event.clientY });
-                        })
-                        .on("mouseout", function () { setHoveredAnomaly(null); });
                 }
             });
 
@@ -818,42 +862,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                                 {anomalyLevel}
                             </h3>
                         </div>
-                        <>
-                            <svg ref={svgRef} />
-                            {hoveredAnomaly && (
-                                <div
-                                    style={{
-                                        position: "fixed",
-                                        background: "white",
-                                        color: "#222",
-                                        border: "1px solid #ccc",
-                                        borderRadius: 8,
-                                        padding: "1rem",
-                                        zIndex: 100,
-                                        maxWidth: 400,
-                                        boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-                                        pointerEvents: "none",
-                                        left: (() => {
-                                            const { innerWidth } = window;
-                                            let left = hoveredAnomaly.x + 30;
-                                            const width = 300;
-                                            if (left + width > innerWidth) left = innerWidth - width - 16;
-                                            return left;
-                                        })(),
-                                        top: (() => {
-                                            const { innerHeight } = window;
-                                            let top = hoveredAnomaly.y;
-                                            const height = 100;
-                                            if (top + height > innerHeight) top = innerHeight - height - 16;
-                                            return top;
-                                        })(),
-                                    }}
-                                >
-                                    <strong>Anomaly Explanation</strong>
-                                    <div style={{ marginTop: 8 }}>{hoveredAnomaly.explanation}</div>
-                                </div>
-                            )}
-                        </>
+                        <svg ref={svgRef} />
                     </>
                 )}
             </div>
