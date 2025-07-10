@@ -173,10 +173,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             const keys = initialSearchLogKey.split(",").map((k) => k.trim());
             const results = exactSearch(allSequences, keys);
             setCurrentTrainingDisplay(results);
-            setSelectedTab("train");
-            if (initialSearchLogKey === "") {
-                setSearchLogKey("");
-            }           
+            setSelectedTab("train");   
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey]);

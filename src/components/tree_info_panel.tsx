@@ -206,7 +206,7 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
           </>
         )}
       </div>
-      {node.depth != 3 && (
+      {node.depth != 3 && !includeKnowledgeBaseButton && (
         <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
           <div>
             <span style={{ color: "#4caf50", fontWeight: 500 }}>

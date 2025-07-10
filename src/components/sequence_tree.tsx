@@ -377,8 +377,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     select(this)
                         .attr("fill",
                             isRelatedAnomaly
-                                ? ENTITY_BORDER
-                                : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222"))
+                                ? "#F00"
+                                : (isRelated ? "#003366" : (n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#F00" : "#222"))
                         );
                     const rects = select(this.parentNode as Element).selectAll("rect").nodes();
                     if (rects.length > 0) {
@@ -393,7 +393,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .each(function (n) {
                             const isCurrent = +select(this).attr("data-line-number") === d.data.lineNumber;
                             select(this)
-                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isCurrent ? "#000" : "#888"))
+                                //.attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isCurrent ? "#000" : "#888"))
+                                .attr("font-weight", isCurrent ? "bold" : "normal")
                         });
                 } else if (d.depth === 2 || d.depth === 1) {
                     const lineNumbers: number[] = [];
@@ -406,7 +407,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         .each(function (n) {
                             const isRelated = lineNumbers.includes(+select(this).attr("data-line-number"));
                             select(this)
-                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isRelated ? "#000" : "#888"))
+                                .attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? "#F00" : (isRelated ? "#000" : "#888"))
                         });
                 }
 
@@ -435,7 +436,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             svg.selectAll<SVGTextElement, HierarchyNode<TreeNode>>("text.node-label")
                 .each(function (n) {
                     select(this)
-                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? ENTITY_BORDER : "#000");
+                        .attr("fill", n.data.isAnomaly || n.data.isRelatedToAnomaly ? "#F00" : "#000");
                     // Only update the first rect (the node label background), not all rects in the group
                     const rects = select(this.parentNode as Element).selectAll("rect").nodes();
                     if (rects.length > 0) {
@@ -445,8 +446,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     }
                 });
             svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? ENTITY_BORDER : "#000")
-                .attr("text-decoration", null); // <-- remove underline
+                .attr("fill", d => d.isAnomaly || d.isRelatedToAnomaly ? "#F00" : "#000")
+                .attr("font-weight", "normal");
             svg.selectAll<SVGPathElement, HierarchyLink<TreeNode>>("path")
                 .attr("stroke", linkBorderColor)
                 .attr("stroke-width", 1.5);
@@ -466,7 +467,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             .attr("pointer-events", (d: HierarchyNode<TreeNode>) => isNodeHidden(d) ? "none" : "auto")
             .attr("text-anchor", "start")
             .text((d: HierarchyNode<TreeNode>) => d.data.name)
-            .attr("fill", (d: HierarchyNode<TreeNode>) => d.data.isAnomaly || d.data.isRelatedToAnomaly ? ENTITY_BORDER : "#222")
+            .attr("fill", (d: HierarchyNode<TreeNode>) => d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#F00" : "#222")
             .attr("font-size", (d: HierarchyNode<TreeNode>) => getFontSize(d.depth))
             .each(function (this: SVGTextElement, d: HierarchyNode<TreeNode>) {
                 const fontSize = getFontSize(d.depth), padding = getPadding(fontSize), radius = getRadius(fontSize);
@@ -541,8 +542,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                         const y = bbox.y + bbox.height / 2 + 2;
                         const fontSizeLog = Math.max(fontSize * 0.8, 14);
 
-                        // Render the log template as plain text (no tspans, no highlights)
-                        nodeGroup.append("text")
+                        // Render the log template with a lighter line number prefix
+                        const logText = nodeGroup.append("text")
                             .attr("class", "log-template-text")
                             .attr("data-event-id", eventId)
                             .attr("data-line-number", d.data.lineNumber || "")
@@ -554,8 +555,16 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .attr("text-anchor", "start")
                             .datum({
                                 ...d.data
-                            })
-                            .text(linePrefix + logTemplate);
+                            });
+
+                        if (linePrefix) {
+                            logText.append("tspan")
+                                .attr("fill", "#999") // Lighter color for the number
+                                .text(linePrefix);
+                        }
+                        logText.append("tspan")
+                            .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#F00" : "#000")
+                            .text(logTemplate);
                     }
                 }
 
@@ -852,7 +861,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                                 className='text-2xl'
                                 style={{
                                     marginBottom: 8,
-                                    color: anomalyLevel === "Normal" ? "#222" : ENTITY_BORDER,
+                                    color: anomalyLevel === "Normal" ? "#222" : "#F00",
                                     background: anomalyLevel === "Normal" ? "#e6fbe6" : ENTITY_FILL,
                                     borderRadius: 8,
                                     padding: "8px 16px",

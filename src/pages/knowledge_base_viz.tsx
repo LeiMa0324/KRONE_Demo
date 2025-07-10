@@ -5,6 +5,7 @@ import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
 import { VizTree } from "@/components/viz_tree";
 import { buildTree } from "@/tree_utils";
 import type { TreeNode } from "@/tree_utils";
+import { tree } from "d3-hierarchy";
 
 export type KnowledgeBaseData = {
     entityDict: EntityDict;
@@ -293,6 +294,8 @@ export const KnowledgeBaseViz = () => {
             </button>
             <div style={{ width: "100%", margin: "2rem auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
                 {treeData && (
+                    <>
+                    {console.log("Tree Data:", treeData)}
                     <VizTree
                         treeData={treeData}
                         collapseEntities={false}
@@ -305,6 +308,7 @@ export const KnowledgeBaseViz = () => {
                         disableHoverHighlight={true}
                         onNodeClick={handleNodeClick}
                     />
+                    </>
                 )}
             </div>
             {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
