@@ -8,7 +8,22 @@ type TreeInfoPanelProps = {
   hideNodeName?: boolean;
   sortLogKeys?: boolean;
   multiLineAnomaly?: boolean;
+  includeKnowledgeBaseButton?: boolean
 };
+
+function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
+  if (!node) return [];
+  if (node.depth === 3 && node.data.event_id) return [node.data.event_id];
+  const keys: string[] = [];
+  function collect(n: HierarchyNode<TreeNode>) {
+    if (n.depth === 3 && n.data.event_id) {
+      keys.push(n.data.event_id);
+    }
+    if (n.children) n.children.forEach(collect);
+  }
+  collect(node);
+  return keys;
+}
 
 export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   node,
@@ -16,6 +31,7 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   hideNodeName = false,
   sortLogKeys = false,
   multiLineAnomaly = false,
+  includeKnowledgeBaseButton = false,
 }) => {
   if (!node) {
     return (
@@ -238,6 +254,29 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
             </span>
           </div>
         </>
+    )}
+    {includeKnowledgeBaseButton && (
+      <button
+        style={{
+          marginTop: 16,
+          padding: "10px 18px",
+          background: "#c8102e",
+          color: "#fff",
+          border: "none",
+          borderRadius: 6,
+          fontWeight: 600,
+          fontSize: 16,
+          cursor: "pointer"
+        }}
+        onClick={() => {
+          const logKeys = getLogKeySubsequence(node);
+          if (logKeys.length === 0) return;
+          // Navigate to knowledge base page with logkeys as query param
+          window.location.href = `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]`;
+        }}
+      >
+        Search in Knowledge Base
+      </button>
     )}
 
     </div>

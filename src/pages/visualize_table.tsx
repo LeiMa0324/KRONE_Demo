@@ -175,7 +175,7 @@ export const VisualizeTable = () => {
                     height: "100%",
                     overflowY: "auto"
                 }}>
-                    <TreeInfoPanel node={hoveredNode} multiLineAnomaly={multiLineAnomaly} />
+                    <TreeInfoPanel node={hoveredNode} multiLineAnomaly={multiLineAnomaly} includeKnowledgeBaseButton={true}/>
                 </div>
             </div>
             <div style={{ flex: "0 0 auto" }}>

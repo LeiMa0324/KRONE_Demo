@@ -1,4 +1,5 @@
 import { Footer } from "@/components/footer";
+import { useLocation } from "react-router-dom"; 
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
 import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
@@ -37,6 +38,10 @@ export type CSVRow = {
     path_summary?: string; // Added path_summary field
     path_pred?: string; // Added path_pred field for isAnomaly
 };
+
+function useQuery() {
+  return new URLSearchParams(window.location.search);
+}
 
 function parseListField(field: string): string[] {
     if (!field || field.trim() === "") return [];
@@ -214,6 +219,16 @@ export const KnowledgeBaseViz = () => {
         }
     };
 
+    const query = useQuery();
+    const logkeysParam = query.get("logkeys");
+    const [searchLogKey, setSearchLogKey] = useState<string>("");
+
+    useEffect(() => {
+        if (logkeysParam) {
+        setSearchLogKey(logkeysParam);
+        }
+    }, [logkeysParam]);
+
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
@@ -303,6 +318,7 @@ export const KnowledgeBaseViz = () => {
                                 : selectedQuery
                             : "blk_4"
                     }
+                    initialSearchLogKey={searchLogKey}
                 />
             )}
             <h1>Knowledge Base Visualization</h1>
