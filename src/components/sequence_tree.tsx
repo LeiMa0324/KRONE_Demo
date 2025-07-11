@@ -354,6 +354,17 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 setHoveredNode?.(d);
             }
         );
+        node.on("dblclick", function (event: React.MouseEvent<SVGGElement, MouseEvent>, d: HierarchyNode<TreeNode>) {
+                event.stopPropagation();
+                const idx = d.data.indexPath;
+                if (!idx) return;
+                setTreeData(prev => {
+                    if (!prev) return null;
+                    const updated = toggleNodeByIndexPath(prev, idx);
+                    addIndexPath(updated);
+                    return updated;
+                });
+            })
                 
             
         function highlightText(this: SVGElement, _event: unknown, d: HierarchyNode<TreeNode>) {
@@ -390,7 +401,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
                 if (d.depth === 3 && typeof d.data.lineNumber === "number") {
                     svg.selectAll<SVGTextElement, TreeNode>("text.log-template-text")
-                        .each(function (n) {
+                        .each(function () {
                             const isCurrent = +select(this).attr("data-line-number") === d.data.lineNumber;
                             select(this)
                                 //.attr("fill", n.isAnomaly || n.isRelatedToAnomaly ? ENTITY_BORDER : (isCurrent ? "#000" : "#888"))
@@ -553,6 +564,35 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             .attr("font-size", fontSizeLog)
                             .attr("fill", d.data.isAnomaly || d.data.isRelatedToAnomaly ? "#F00" : "#000")
                             .attr("text-anchor", "start")
+                            .style("cursor", d.parent?.data.collapsed ? "pointer" : "default")
+                            .on("click", function (event) {
+                                // Only uncollapse if parent is collapsed
+                                console.log(d)
+                                if (d.parent?.data.collapsed) {
+                                    event.stopPropagation();
+                                    // Toggle the collapsed state of the parent node
+                                    const idx = d.parent.data.indexPath;
+                                    if (!idx) return;
+                                    setTreeData(prev => {
+                                        if (!prev) return null;
+                                        const updated = toggleNodeByIndexPath(prev, idx);
+                                        addIndexPath(updated);
+                                        return updated;
+                                    });
+                                }
+                                if (d.parent?.parent?.data.collapsed) {
+                                    event.stopPropagation();
+                                    // Toggle the collapsed state of the grandparent node
+                                    const idx = d.parent.parent.data.indexPath;
+                                    if (!idx) return;
+                                    setTreeData(prev => {
+                                        if (!prev) return null;
+                                        const updated = toggleNodeByIndexPath(prev, idx);
+                                        addIndexPath(updated);
+                                        return updated;
+                                    });
+                                }
+                            })
                             .datum({
                                 ...d.data
                             });

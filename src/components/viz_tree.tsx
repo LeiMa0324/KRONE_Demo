@@ -31,6 +31,7 @@ type VizTreeProps = {
   collapsible?: boolean;
   disableHoverHighlight?: boolean;
   onNodeClick?: (node: HierarchyNode<TreeNode>) => void;
+  clickableNodes?: boolean;
 };
 
 type HierarchyNodeWithHiddenChildren<T> = HierarchyNode<T> & { _children?: HierarchyNode<T>[] };
@@ -50,6 +51,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
   collapsible = true,
   disableHoverHighlight = false,
   onNodeClick,
+  clickableNodes = false,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [localTree, setLocalTree] = useState<TreeNode | null>(null);
@@ -147,9 +149,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
           addIndexPath(updated);
           return updated;
         });
-      }
-    )
-
+      });
     node.append("text")
       .attr("class", "node-label")
       .attr("dy", "0.31em")
@@ -164,14 +164,35 @@ export const VizTree: React.FC<VizTreeProps> = ({
         const radius = getRadius(fontSize);
         const nodeGroup = select(this.parentNode as Element);
         const bbox = this.getBBox();
-        nodeGroup.insert("rect", "text")
+        const rect = nodeGroup.insert("rect", "text")
           .attr("x", bbox.x - padding)
           .attr("y", bbox.y - padding / 2)
           .attr("width", widestByDepth[d.depth])
           .attr("height", bbox.height + padding)
           .attr("fill", linkFillColor({ source: { depth: d.depth - 1 } }))
           .attr("stroke", linkBorderColor({ source: { depth: d.depth - 1 } }))
-          .attr("rx", radius).attr("ry", radius);
+          .attr("rx", radius).attr("ry", radius)
+          .style("cursor", clickableNodes ? "pointer" : "default");
+
+        if (clickableNodes) {
+          nodeGroup
+            .on("mouseover.button", function () {
+              select(this).select("rect")
+                .attr("filter", "brightness(0.85)");
+            })
+            .on("mouseout.button", function () {
+              select(this).select("rect")
+                .attr("filter", null);
+            })
+            .on("mousedown.button", function () {
+              select(this).select("rect")
+                .attr("filter", "brightness(0.75)");
+            })
+            .on("mouseup.button", function () {
+              select(this).select("rect")
+                .attr("filter", "brightness(0.85)");
+            });
+        }
 
         // Collapse indicator (▶) if node is collapsed
         if (

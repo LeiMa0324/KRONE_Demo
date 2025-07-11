@@ -8,7 +8,7 @@ type TreeInfoPanelProps = {
   hideNodeName?: boolean;
   sortLogKeys?: boolean;
   multiLineAnomaly?: boolean;
-  includeKnowledgeBaseButton?: boolean
+  isSequencePanel?: boolean
 };
 
 function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
@@ -31,7 +31,7 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   hideNodeName = false,
   sortLogKeys = false,
   multiLineAnomaly = false,
-  includeKnowledgeBaseButton = false,
+  isSequencePanel = false,
 }) => {
   if (!node) {
     return (
@@ -156,6 +156,9 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
             {node.depth === 3 && (
               <>
                 Status: <b>{node.data.name}</b>
+                {isSequencePanel && (
+                  <h2 className="font-bold">Node Information</h2>
+                )}
                 {node.data.log_template && (
                   <div style={{ fontWeight: 400, fontSize: 15, color: "#555", marginTop: 6 }}>
                     <span style={{ color: "#888" }}>Log template:</span>
@@ -206,7 +209,7 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
           </>
         )}
       </div>
-      {node.depth != 3 && !includeKnowledgeBaseButton && (
+      {node.depth != 3 && !isSequencePanel && (
         <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
           <div>
             <span style={{ color: "#4caf50", fontWeight: 500 }}>
@@ -255,28 +258,35 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
           </div>
         </>
     )}
-    {includeKnowledgeBaseButton && (
-      <button
-        style={{
-          marginTop: 16,
-          padding: "10px 18px",
-          background: "#c8102e",
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          fontWeight: 600,
-          fontSize: 16,
-          cursor: "pointer"
-        }}
-        onClick={() => {
-          const logKeys = getLogKeySubsequence(node);
-          if (logKeys.length === 0) return;
-          // Navigate to knowledge base page with logkeys as query param
-          window.location.href = `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]`;
-        }}
-      >
-        Search in Knowledge Base
-      </button>
+    {isSequencePanel && (
+      <>
+        <h2 className="font-bold">Sequence Info</h2>
+        <div>
+          <span style={{fontWeight: 500 }}>Log Sequence:</span>
+          <span>[{ getLogKeySubsequence(node).join(",")}]</span>
+        </div>
+        <button
+          style={{
+            marginTop: 16,
+            padding: "10px 18px",
+            background: "#c8102e",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            fontWeight: 600,
+            fontSize: 16,
+            cursor: "pointer"
+          }}
+          onClick={() => {
+            const logKeys = getLogKeySubsequence(node);
+            if (logKeys.length === 0) return;
+            // Navigate to knowledge base page with logkeys as query param
+            window.location.href = `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]`;
+          }}
+        >
+          Search Sequence in Knowledge Base
+        </button>
+      </>
     )}
 
     </div>
