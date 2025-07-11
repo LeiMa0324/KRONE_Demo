@@ -1,5 +1,6 @@
 import { hierarchy } from "d3-hierarchy";
 import { select } from "d3-selection";
+import type { HierarchyLink, HierarchyNode } from "d3-hierarchy";
 
 export type TreeNode = {
   name: string;
@@ -29,7 +30,7 @@ export type CsvRow = {
 };
 
 export const ENTITY_BORDER = "#c8102e";
-export const ACTION_BORDER = "#ffd100";
+export const ACTION_BORDER = "#eec000";
 export const STATUS_BORDER = "#888";
 export const ENTITY_FILL = "#fde2e5";
 export const ACTION_FILL = "#fff8e8";
@@ -103,9 +104,7 @@ export function expandAtDepth(node: TreeNode, targetDepth: number, currentDepth 
   }
 }
 
-import type { HierarchyNode } from "d3-hierarchy";
 
-// --- Shared TreeNode type ---
 
 // --- Add indexPath recursively ---
 export function addIndexPath(node: TreeNode, path: number[] = []): void {
@@ -155,7 +154,7 @@ export function isNodeHidden(node: HierarchyNode<TreeNode>): boolean {
   return false;
 }
 
-// --- Optionally: arraysEqual (used in sequence_tree) ---
+
 export function arraysEqual<T>(a: T[], b: T[]): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
@@ -164,7 +163,6 @@ export function arraysEqual<T>(a: T[], b: T[]): boolean {
   return true;
 }
 
-// --- Optionally: getFirstAnomalyReason (used in sequence_tree) ---
 export function getFirstAnomalyReason(node: HierarchyNode<TreeNode>): string | undefined {
   if (node.children) {
     for (const child of node.children) {
@@ -223,4 +221,67 @@ export function getWidestByDepth(tree: TreeNode, font: string) {
   });
   tempSvg.remove();
   return widestByDepth;
+}
+
+export function svgInit(svgRef: React.RefObject<SVGSVGElement | null>, width: number, height: number, font: string, viewBoxParam: number, x0: number) {
+  const svg = select(svgRef.current);
+  svg.selectAll("*").remove();
+  svg
+      .attr("width", width)
+      .attr("height", height)
+      .attr("viewBox", `${viewBoxParam} ${x0 - BASE_FONT} ${width} ${height}`)
+      .attr("style", "max-width: 100%; height: auto; font: 10px;")
+      .attr("font-family", font);
+
+  return svg;
+}
+
+export function svgLines(
+    svg: Selection<SVGSVGElement | null, unknown, null, undefined>, 
+    root: HierarchyNode<TreeNode>, 
+    widestByDepth: number[], ) 
+  {
+  svg.append("g")
+      .attr("fill", "none")
+      .attr("stroke-width", 1.5)
+      .selectAll("path")
+      .data(root.links())
+      .join("path")
+      .attr("d", (d: HierarchyLink<TreeNode>) => {
+          const sourceWidth = widestByDepth[d.source.depth];
+          const sourceY = (d.source.y ?? 0) + sourceWidth - 20;
+          const sourceX = d.source.x;
+          const targetY = d.target.y ?? 0;
+          const targetX = d.target.x;
+          const midY = (sourceY + targetY) / 2;
+          return [
+              `M${sourceY},${sourceX}`,
+              `H${midY}`,
+              `V${targetX}`,
+              `H${targetY}`
+          ].join(" ");
+      })
+      .attr("stroke", linkBorderColor)
+      .attr("opacity", (d: HierarchyLink<TreeNode>)  => (isNodeHidden(d.source) || isNodeHidden(d.target)) ? 0 : 1);
+
+  return svg;
+}
+
+export function svgNodes(
+    svg: Selection<SVGSVGElement | null, unknown, null, undefined>, 
+    root: HierarchyNode<TreeNode>,
+    mouseoverHandler: (event: MouseEvent, d: HierarchyNode<TreeNode>) => void,
+    mouseoutHandler: (event: MouseEvent, d: HierarchyNode<TreeNode>) => void,
+    clickHandler: (event: MouseEvent, d: HierarchyNode<TreeNode>) => void)
+  {
+  return svg.append("g")
+    .attr("stroke-linejoin", "round")
+    .attr("stroke-width", 2)
+    .selectAll("g")
+    .data(root.descendants())
+    .join("g")
+    .attr("transform", (d: HierarchyNode<TreeNode>) => `translate(${d.y},${d.x})`)
+    .on("mouseover", mouseoverHandler)
+    .on("mouseout", mouseoutHandler)
+    .on("click", clickHandler)
 }

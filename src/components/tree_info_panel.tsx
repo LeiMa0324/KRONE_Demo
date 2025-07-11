@@ -7,13 +7,31 @@ type TreeInfoPanelProps = {
   title?: string;
   hideNodeName?: boolean;
   sortLogKeys?: boolean;
+  multiLineAnomaly?: boolean;
+  isSequencePanel?: boolean
 };
+
+function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
+  if (!node) return [];
+  if (node.depth === 3 && node.data.event_id) return [node.data.event_id];
+  const keys: string[] = [];
+  function collect(n: HierarchyNode<TreeNode>) {
+    if (n.depth === 3 && n.data.event_id) {
+      keys.push(n.data.event_id);
+    }
+    if (n.children) n.children.forEach(collect);
+  }
+  collect(node);
+  return keys;
+}
 
 export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   node,
   title,
   hideNodeName = false,
   sortLogKeys = false,
+  multiLineAnomaly = false,
+  isSequencePanel = false,
 }) => {
   if (!node) {
     return (
@@ -138,6 +156,9 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
             {node.depth === 3 && (
               <>
                 Status: <b>{node.data.name}</b>
+                {isSequencePanel && (
+                  <h2 className="font-bold">Node Information</h2>
+                )}
                 {node.data.log_template && (
                   <div style={{ fontWeight: 400, fontSize: 15, color: "#555", marginTop: 6 }}>
                     <span style={{ color: "#888" }}>Log template:</span>
@@ -188,32 +209,87 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
           </>
         )}
       </div>
-      <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
-        <div>
-          <span style={{ color: "#4caf50", fontWeight: 500 }}>
-            Normal log keys:
-          </span>
-          <span style={{ marginLeft: 6 }}>
-            {normalLogKeys.length > 0 ? (
-              normalLogKeys.join(", ")
-            ) : (
-              <span style={{ color: "#aaa" }}>None</span>
-            )}
-          </span>
+      {node.depth != 3 && !isSequencePanel && (
+        <div style={{ fontSize: 16, marginTop: 10, textAlign: "left" }}>
+          <div>
+            <span style={{ color: "#4caf50", fontWeight: 500 }}>
+              Normal log keys:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {normalLogKeys.length > 0 ? (
+                normalLogKeys.join(", ")
+              ) : (
+                <span style={{ color: "#aaa" }}>None</span>
+              )}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: "#f44336", fontWeight: 500 }}>
+              Abnormal log keys:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {abnormalLogKeys.length > 0 ? (
+                abnormalLogKeys.join(", ")
+              ) : (
+                <span style={{ color: "#aaa" }}>None</span>
+              )}
+            </span>
+          </div>
         </div>
+      )}
+
+      {node.data.isAnomaly && (
+        <>
+          <div>
+            <span style={{ color: "#f44336", fontWeight: 500 }}>
+              Anomaly Type:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {multiLineAnomaly? "Pattern" : "Template"}
+            </span>
+          </div>
+          <div>
+            <span style={{ color: "#f44336", fontWeight: 500 }}>
+              Anomaly Reason:
+            </span>
+            <span style={{ marginLeft: 6 }}>
+              {node.data.anomalyReason}
+            </span>
+          </div>
+        </>
+    )}
+    {isSequencePanel && (
+      <>
+        <h2 className="font-bold">Sequence Info</h2>
         <div>
-          <span style={{ color: "#f44336", fontWeight: 500 }}>
-            Abnormal log keys:
-          </span>
-          <span style={{ marginLeft: 6 }}>
-            {abnormalLogKeys.length > 0 ? (
-              abnormalLogKeys.join(", ")
-            ) : (
-              <span style={{ color: "#aaa" }}>None</span>
-            )}
-          </span>
+          <span style={{fontWeight: 500 }}>Log Sequence:</span>
+          <span>[{ getLogKeySubsequence(node).join(",")}]</span>
         </div>
-      </div>
+        <button
+          style={{
+            marginTop: 16,
+            padding: "10px 18px",
+            background: "#c8102e",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            fontWeight: 600,
+            fontSize: 16,
+            cursor: "pointer"
+          }}
+          onClick={() => {
+            const logKeys = getLogKeySubsequence(node);
+            if (logKeys.length === 0) return;
+            // Navigate to knowledge base page with logkeys as query param
+            window.location.href = `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]`;
+          }}
+        >
+          Search Sequence in Knowledge Base
+        </button>
+      </>
+    )}
+
     </div>
+    
   );
 };

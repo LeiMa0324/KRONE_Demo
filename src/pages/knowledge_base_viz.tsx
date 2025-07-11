@@ -38,6 +38,10 @@ export type CSVRow = {
     path_pred?: string; // Added path_pred field for isAnomaly
 };
 
+function useQuery() {
+  return new URLSearchParams(window.location.search);
+}
+
 function parseListField(field: string): string[] {
     if (!field || field.trim() === "") return [];
     return field.split(",").map((s) => s.trim()).filter(Boolean);
@@ -211,9 +215,23 @@ export const KnowledgeBaseViz = () => {
         if (node.data?.name) {
             setSelectedQuery(node.data.name);
             setShowSidebar(true);
+            setSearchLogKey("");
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
     };
 
+    const query = useQuery();
+    const logkeysParam = query.get("logkeys");
+    const [searchLogKey, setSearchLogKey] = useState<string>("");
+
+    useEffect(() => {
+        if (logkeysParam && !showSidebar) {
+            toggleSidebar();
+        }
+        if (logkeysParam) {
+            setSearchLogKey(logkeysParam);
+        }
+    }, [logkeysParam]);
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
@@ -275,6 +293,8 @@ export const KnowledgeBaseViz = () => {
             </button>
             <div style={{ width: "100%", margin: "2rem auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
                 {treeData && (
+                    <>
+                    {console.log("Tree Data:", treeData)}
                     <VizTree
                         treeData={treeData}
                         collapseEntities={false}
@@ -287,6 +307,7 @@ export const KnowledgeBaseViz = () => {
                         onNodeClick={handleNodeClick}
                         clickableNodes={true}
                     />
+                    </>
                 )}
             </div>
             {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
@@ -303,6 +324,7 @@ export const KnowledgeBaseViz = () => {
                                 : selectedQuery
                             : "blk_4"
                     }
+                    initialSearchLogKey={searchLogKey}
                 />
             )}
             <h1>Knowledge Base Visualization</h1>
