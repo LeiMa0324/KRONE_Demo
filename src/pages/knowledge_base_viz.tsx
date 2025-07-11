@@ -203,7 +203,6 @@ export const KnowledgeBaseViz = () => {
     const [showSidebar, setShowSidebar] = useState(false);
 
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
-    const [hoveredNode, setHoveredNode] = useState<any>(null);
 
     const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
 
@@ -211,7 +210,8 @@ export const KnowledgeBaseViz = () => {
         setShowSidebar(!showSidebar);
     };
 
-    const handleNodeClick = (node: any) => {
+    const handleNodeClick = (node: { data: TreeNode }) => {
+    console.log("Clicked node:", node);
         if (node.data?.name) {
             setSelectedQuery(node.data.name);
             setShowSidebar(true);
@@ -301,7 +301,6 @@ export const KnowledgeBaseViz = () => {
                         collapseActions={false}
                         collapseStatuses={false}
                         matchedNodeId={null}
-                        setHoveredNode={setHoveredNode}
                         showAnomalySymbols={false}
                         collapsible={false}
                         disableHoverHighlight={true}

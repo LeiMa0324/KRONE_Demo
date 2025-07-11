@@ -26,7 +26,7 @@ type VizTreeProps = {
   collapseActions: boolean;
   collapseStatuses: boolean;
   matchedNodeId: string | null;
-  setHoveredNode: (node: HierarchyNode<TreeNode> | null) => void;
+  setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void;
   showAnomalySymbols?: boolean;
   collapsible?: boolean;
   disableHoverHighlight?: boolean;
@@ -130,15 +130,15 @@ export const VizTree: React.FC<VizTreeProps> = ({
         if (!(this instanceof SVGElement)) return;
         if (disableHoverHighlight) return;
         highlightText.call(this, event, d);
-        setHoveredNode(d);
-      },
-      function (this: SVGElement) {
+        if (setHoveredNode) setHoveredNode(d);
+      })
+      .on("mouseout", function () {
         if (!(this instanceof SVGElement)) return;
         if (disableHoverHighlight) return;
         unhighlightText.call(this);
-        setHoveredNode(null);
-      },
-      function (event, d) {
+        if (setHoveredNode) setHoveredNode(null);
+      })
+      .on("click", function (event, d) {
         event.stopPropagation();
         if (onNodeClick) onNodeClick(d);
         if (!collapsible) return;
@@ -164,7 +164,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
         const radius = getRadius(fontSize);
         const nodeGroup = select(this.parentNode as Element);
         const bbox = this.getBBox();
-        const rect = nodeGroup.insert("rect", "text")
+        nodeGroup.insert("rect", "text")
           .attr("x", bbox.x - padding)
           .attr("y", bbox.y - padding / 2)
           .attr("width", widestByDepth[d.depth])
