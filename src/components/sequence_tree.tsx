@@ -354,7 +354,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 setHoveredNode?.(d);
             }
         );
-        node.on("dblclick", function (event: React.MouseEvent<SVGGElement, MouseEvent>, d: HierarchyNode<TreeNode>) {
+        node.on("dblclick", function (event: any, d) {
                 event.stopPropagation();
                 const idx = d.data.indexPath;
                 if (!idx) return;
@@ -848,7 +848,11 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                             style={{ minWidth: 120 }}
                         >
                             {kroneDecompData.map(row => (
-                                <option key={row.seq_id} value={row.seq_id}>{row.seq_id}</option>
+                                <option key={row.seq_id} value={row.seq_id}
+                                    style={{color: kroneDetectData.find(r => r.seq_id === row.seq_id) ? "#F00" : "#000"}}
+                                >
+                                    {row.seq_id}
+                                </option>
                             ))}
                         </select>
                     </label>
