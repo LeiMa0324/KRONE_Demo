@@ -263,7 +263,7 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
         <h2 className="font-bold">Sequence Info</h2>
         <div>
           <span style={{fontWeight: 500 }}>Log Sequence:</span>
-          <span>[{ getLogKeySubsequence(node).join(",")}]</span>
+          <p>[{ getLogKeySubsequence(node).join(", ")}]</p>
         </div>
         <button
           style={{
