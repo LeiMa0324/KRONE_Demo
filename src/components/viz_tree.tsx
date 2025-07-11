@@ -124,21 +124,22 @@ export const VizTree: React.FC<VizTreeProps> = ({
     let svg = svgInit(svgRef, adjustedWidth, height, font, -20, x0);
     svg = svgLines(svg, root, widestByDepth);
 
-    const node = svgNodes(svg,
+    const node = svgNodes(
+      svg,
       root,
       function (this: SVGElement, event, d) {
         if (!(this instanceof SVGElement)) return;
         if (disableHoverHighlight) return;
         highlightText.call(this, event, d);
         if (setHoveredNode) setHoveredNode(d);
-      })
-      .on("mouseout", function () {
+      },
+      function (this: SVGElement, event, d) {
         if (!(this instanceof SVGElement)) return;
         if (disableHoverHighlight) return;
         unhighlightText.call(this);
         if (setHoveredNode) setHoveredNode(null);
-      })
-      .on("click", function (event, d) {
+      },
+      function (event, d) {
         event.stopPropagation();
         if (onNodeClick) onNodeClick(d);
         if (!collapsible) return;
@@ -149,7 +150,8 @@ export const VizTree: React.FC<VizTreeProps> = ({
           addIndexPath(updated);
           return updated;
         });
-      });
+      }
+    );
     node.append("text")
       .attr("class", "node-label")
       .attr("dy", "0.31em")

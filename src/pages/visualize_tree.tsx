@@ -1,12 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { csv } from "d3-fetch";
 import { hierarchy } from "d3-hierarchy";
 import type { HierarchyNode } from "d3-hierarchy";
 import { buildTree } from "../tree_utils";
+import { 
+  findStatusNode,
+  findNodeId, 
+} from "../viz_tree_utils";
 import type { TreeNode } from "../tree_utils";
-import { TreeControls } from "../components/viz_tree_controls";
-import { VizTree } from "../components/viz_tree";
-import { TreeInfoPanel } from "../components/tree_info_panel";
+import { TreeControls } from "../components/viz_tree/control_panel/viz_tree_controls";
+import { VizTree } from "../components/viz_tree/viz_tree";
+import { TreeInfoPanel } from "../components/viz_tree/tree_info_panel";
 import { Footer } from "@/components/footer";
 
 export const VisualizeTree: React.FC = () => {
@@ -25,27 +29,23 @@ export const VisualizeTree: React.FC = () => {
   const [searchMode, setSearchMode] = useState<"logKey" | "sequence" | null>(null);
 
   useEffect(() => {
-    csv("/Krone_Tree.csv").then(rows => {
-      setTreeData(buildTree(rows));
-    });
+    csv("/Krone_Tree.csv").then(rows => setTreeData(buildTree(rows)));
   }, []);
 
   useEffect(() => {
     if (searchMode !== "logKey") return;
-    if (!treeData || !searchValue) { setMatchedNodeId(null); return; }
-    function findStatusNode(node: TreeNode): string | null {
-      if (node.event_id === searchValue) return node.event_id;
-      for (const child of node.children || node._children || []) {
-        const found = findStatusNode(child);
-        if (found) return found;
-      }
-      return null;
+    if (!treeData || !searchValue) {
+      setMatchedNodeId(null);
+      return;
     }
-    setMatchedNodeId(findStatusNode(treeData));
+    setMatchedNodeId(findStatusNode(treeData, searchValue));
   }, [searchValue, treeData, searchMode]);
 
   useEffect(() => {
-    if (!treeData || !matchedNodeId) { setMatchedNodeObj(null); return; }
+    if (!treeData || !matchedNodeId) {
+      setMatchedNodeObj(null);
+      return;
+    }
     const root = hierarchy(treeData, d => d.children || d._children);
     let found: HierarchyNode<TreeNode> | null = null;
     root.each(node => {
@@ -61,7 +61,6 @@ export const VisualizeTree: React.FC = () => {
 
   function handleSearchSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // Clear sequence search state
     setSelectedEntity(null);
     setSelectedAction(null);
     setSelectedStatus(null);
@@ -83,123 +82,25 @@ export const VisualizeTree: React.FC = () => {
 
   function handlePathSearch(entity: string, action: string, status: string) {
     setSearchMode("sequence");
+    setSearchInput("");
+    setSearchValue("");
     if (!treeData) return;
 
-    // If only entity is selected
-    if (entity && !action && !status) {
-      setSearchValue(entity);
-      setMatchedNodeId(entity);
-      setMatchedNodeObj(null);
-      return;
-    }
+    let foundId: string | null = null;
+    if (entity && !action && !status) foundId = entity;
+    else if (entity && action && !status) foundId = action;
+    else if (entity && !action && status) foundId = findNodeId(treeData, entity, undefined, status);
+    else if (entity && action && status) foundId = findNodeId(treeData, entity, action, status);
+    else if (!entity && action && !status) foundId = action;
+    else if (!entity && !action && status) foundId = findNodeId(treeData, undefined, undefined, status);
+    else if (!entity && action && status) foundId = findNodeId(treeData, undefined, action, status);
 
-    // If entity and action are selected
-    if (entity && action && !status) {
-      setSearchValue(action);
-      setMatchedNodeId(action);
-      setMatchedNodeObj(null);
-      return;
-    }
-
-    // If entity and status are selected (but no action)
-    if (entity && !action && status) {
-      let foundId: string | null = null;
-      for (const entityNode of treeData.children || []) {
-        if (entityNode.name !== entity) continue;
-        for (const actionNode of entityNode.children || []) {
-          for (const statusNode of actionNode.children || []) {
-            if (statusNode.name === status && statusNode.event_id) {
-              foundId = statusNode.event_id;
-              break;
-            }
-          }
-          if (foundId) break;
-        }
-        if (foundId) break;
-      }
-      setSearchValue(foundId ?? "");
-      setMatchedNodeId(foundId);
-      if (!foundId) setMatchedNodeObj(null);
-      return;
-    }
-
-    // If entity, action, and status are selected
-    if (entity && action && status) {
-      let foundId: string | null = null;
-      for (const entityNode of treeData.children || []) {
-        if (entityNode.name !== entity) continue;
-        for (const actionNode of entityNode.children || []) {
-          if (actionNode.name !== action) continue;
-          for (const statusNode of actionNode.children || []) {
-            if (statusNode.name === status && statusNode.event_id) {
-              foundId = statusNode.event_id;
-              break;
-            }
-          }
-          if (foundId) break;
-        }
-        if (foundId) break;
-      }
-      setSearchValue(foundId ?? "");
-      setMatchedNodeId(foundId);
-      if (!foundId) setMatchedNodeObj(null);
-      return;
-    }
-
-    // If only action is selected (search all actions)
-    if (!entity && action && !status) {
-      setSearchValue(action);
-      setMatchedNodeId(action);
-      setMatchedNodeObj(null);
-      return;
-    }
-
-    // If only status is selected (search all statuses)
-    if (!entity && !action && status) {
-      // Find the first status node with this name
-      let foundId: string | null = null;
-      for (const entityNode of treeData.children || []) {
-        for (const actionNode of entityNode.children || []) {
-          for (const statusNode of actionNode.children || []) {
-            if (statusNode.name === status && statusNode.event_id) {
-              foundId = statusNode.event_id;
-              break;
-            }
-          }
-          if (foundId) break;
-        }
-        if (foundId) break;
-      }
-      setSearchValue(foundId ?? "");
-      setMatchedNodeId(foundId);
-      if (!foundId) setMatchedNodeObj(null);
-      return;
-    }
-
-    // If action and status are selected (but no entity)
-    if (!entity && action && status) {
-      let foundId: string | null = null;
-      for (const entityNode of treeData.children || []) {
-        for (const actionNode of entityNode.children || []) {
-          if (actionNode.name !== action) continue;
-          for (const statusNode of actionNode.children ?? []) {
-            if (statusNode.name === status && statusNode.event_id) {
-              foundId = statusNode.event_id;
-              break;
-            }
-          }
-          if (foundId) break;
-        }
-        if (foundId) break;
-      }
-      setSearchValue(foundId ?? "");
-      setMatchedNodeId(foundId);
-      if (!foundId) setMatchedNodeObj(null);
-      return;
-    }
+    setSearchValue(foundId ?? "");
+    setMatchedNodeId(foundId);
+    if (!foundId) setMatchedNodeObj(null);
   }
 
-  const staticRootNode = React.useMemo(() => {
+  const staticRootNode = useMemo(() => {
     if (!treeData) return null;
     return {
       data: treeData,
@@ -215,78 +116,42 @@ export const VisualizeTree: React.FC = () => {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          flex: "1 1 auto",
-          display: "flex",
-          alignItems: "flex-start",
-          paddingTop: "80px",
-          paddingLeft: "20px",
-          paddingRight: "20px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{
-          flex: "0 0 25%",
-          width: "25%",
-          minWidth: 180,
-          maxWidth: "30%",
-          height: "100%",
-          overflowY: "auto",
-          paddingBottom: 200,
-        }}>
+    <div style={{ minHeight: "100vh", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: "1 1 auto", display: "flex", alignItems: "flex-start", paddingTop: "80px", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box", overflow: "hidden" }}>
+        <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto", paddingBottom: 200 }}>
           <div style={{ marginBottom: 16 }}>
-            <TreeInfoPanel
-              node={staticRootNode}
-              title="Tree statistics"
-              hideNodeName={true}
-              sortLogKeys={true}
-            />
+            <TreeInfoPanel node={staticRootNode} title="Tree statistics" hideNodeName={true} sortLogKeys={true} />
           </div>
           <TreeControls
-            {...{
-              collapseEntities,
-              setCollapseEntities,
-              collapseActions,
-              setCollapseActions,
-              collapseStatuses,
-              setCollapseStatuses,
-              searchInput,
-              setSearchInput,
-              handleSearchSubmit,
-              handleClearSearch,
-              searchValue,
-              matchedNodeId,
-              treeData,
-              onPathSearch: handlePathSearch,
-              selectedEntity,
-              setSelectedEntity,
-              selectedAction,
-              setSelectedAction,
-              selectedStatus,
-              setSelectedStatus,
+            collapse={{
+              entities: collapseEntities,
+              actions: collapseActions,
+              statuses: collapseStatuses,
+              setEntities: setCollapseEntities,
+              setActions: setCollapseActions,
+              setStatuses: setCollapseStatuses,
             }}
+            search={{
+              input: searchInput,
+              setInput: setSearchInput,
+              value: searchValue,
+              matchedNodeId,
+              handleSubmit: handleSearchSubmit,
+              handleClear: handleClearSearch,
+            }}
+            selection={{
+              entity: selectedEntity,
+              setEntity: setSelectedEntity,
+              action: selectedAction,
+              setAction: setSelectedAction,
+              status: selectedStatus,
+              setStatus: setSelectedStatus,
+              onPathSearch: handlePathSearch,
+            }}
+            treeData={treeData}
           />
         </div>
-        <div style={{
-          flex: "0 0 50%",
-          width: "50%",
-          minWidth: 0,
-          height: "100%",
-          overflow: "auto",
-          display: "flex",
-          flexDirection: "column"
-        }}>
+        <div style={{ flex: "0 0 50%", width: "50%", minWidth: 0, height: "100%", overflow: "auto", display: "flex", flexDirection: "column" }}>
           {treeData && (
             <VizTree
               treeData={treeData}
@@ -300,14 +165,7 @@ export const VisualizeTree: React.FC = () => {
             />
           )}
         </div>
-        <div style={{
-          flex: "0 0 25%",
-          width: "25%",
-          minWidth: 180,
-          maxWidth: "30%",
-          height: "100%",
-          overflowY: "auto"
-        }}>
+        <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto" }}>
           <TreeInfoPanel node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode} />
         </div>
       </div>

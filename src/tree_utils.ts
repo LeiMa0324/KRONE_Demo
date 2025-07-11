@@ -1,6 +1,7 @@
 import { hierarchy } from "d3-hierarchy";
 import { select } from "d3-selection";
 import type { HierarchyLink, HierarchyNode } from "d3-hierarchy";
+import type { Selection } from "d3-selection";
 
 export type TreeNode = {
   name: string;

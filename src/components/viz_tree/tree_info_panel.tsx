@@ -1,6 +1,6 @@
 import React from "react";
 import type { HierarchyNode } from "d3-hierarchy";
-import type { TreeNode } from "../tree_utils";
+import type { TreeNode } from "../../tree_utils";
 
 type TreeInfoPanelProps = {
   node: HierarchyNode<TreeNode> | null;
@@ -23,6 +23,34 @@ function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
   }
   collect(node);
   return keys;
+}
+
+function collectStats(node: HierarchyNode<TreeNode> | null) {
+  let numEntities = 0, numActions = 0, numStatuses = 0;
+  const normalLogKeys: string[] = [];
+  const abnormalLogKeys: string[] = [];
+
+  function traverse(n: any, depth: number) {
+    if (!n) return;
+    if (depth === 0) {
+      numEntities = n.children?.length ?? 0;
+      n.children?.forEach((entity: any) => traverse(entity, 1));
+    } else if (depth === 1) {
+      numActions += n.children?.length ?? 0;
+      n.children?.forEach((action: any) => traverse(action, 2));
+    } else if (depth === 2) {
+      numStatuses += n.children?.length ?? 0;
+      n.children?.forEach((status: any) => traverse(status, 3));
+    } else if (depth === 3) {
+      if (n.event_id) {
+        (n.isAnomaly ? abnormalLogKeys : normalLogKeys).push(n.event_id);
+      }
+    }
+  }
+
+  if (node) traverse(node.data, node.depth);
+
+  return { numEntities, numActions, numStatuses, normalLogKeys, abnormalLogKeys };
 }
 
 export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
@@ -52,75 +80,11 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
     );
   }
 
-  let numEntities = 0,
-    numActions = 0,
-    numStatuses = 0;
-  const normalLogKeys: string[] = [];
-  const abnormalLogKeys: string[] = [];
-
-  if (node.depth === 0) {
-    // Root node
-    numEntities = node.data.children?.length ?? 0;
-    for (const entity of node.data.children ?? []) {
-      numActions += entity.children?.length ?? 0;
-      for (const action of entity.children ?? []) {
-        numStatuses += action.children?.length ?? 0;
-        for (const status of action.children ?? []) {
-          if (status.event_id) {
-            if (status.isAnomaly) {
-              abnormalLogKeys.push(status.event_id);
-            } else {
-              normalLogKeys.push(status.event_id);
-            }
-          }
-        }
-      }
-    }
-  } else if (node.depth === 1) {
-    // Entity node
-    numActions = node.data.children?.length ?? 0;
-    for (const action of node.data.children ?? []) {
-      numStatuses += action.children?.length ?? 0;
-      for (const status of action.children ?? []) {
-        if (status.event_id) {
-          if (status.isAnomaly) {
-            abnormalLogKeys.push(status.event_id);
-          } else {
-            normalLogKeys.push(status.event_id);
-          }
-        }
-      }
-    }
-  } else if (node.depth === 2) {
-    // Action node
-    numStatuses = node.data.children?.length ?? 0;
-    for (const status of node.data.children ?? []) {
-      if (status.event_id) {
-        if (status.isAnomaly) {
-          abnormalLogKeys.push(status.event_id);
-        } else {
-          normalLogKeys.push(status.event_id);
-        }
-      }
-    }
-  } else if (node.depth === 3) {
-    // Status node
-    if (node.data.event_id) {
-      if (node.data.isAnomaly) {
-        abnormalLogKeys.push(node.data.event_id);
-      } else {
-        normalLogKeys.push(node.data.event_id);
-      }
-    }
-  }
+  const { numEntities, numActions, numStatuses, normalLogKeys, abnormalLogKeys } = collectStats(node);
 
   if (sortLogKeys) {
-    normalLogKeys.sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true })
-    );
-    abnormalLogKeys.sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true })
-    );
+    normalLogKeys.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    abnormalLogKeys.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }
 
   return (
