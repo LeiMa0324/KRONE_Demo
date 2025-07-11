@@ -43,14 +43,14 @@ type ControlProps = {
 // Helper to flatten all status nodes (log keys) with their templates
 function getAllLogKeys(tree: TreeNode | null): { event_id: string; log_template: string; status: string }[] {
   const result: { event_id: string; log_template: string; status: string }[] = [];
-  function traverse(node: any) {
+  function traverse(node: TreeNode | undefined): void {
     if (!node) return;
     if (node.event_id && node.log_template) {
       result.push({ event_id: node.event_id, log_template: node.log_template, status: node.name });
     }
     if (node.children) node.children.forEach(traverse);
   }
-  traverse(tree);
+  traverse(tree ?? undefined);
   return result;
 }
 
@@ -281,13 +281,7 @@ export const TreeControls: React.FC<ControlProps> = ({
                         <CommandItem
                           key={opt.event_id}
                           value={opt.event_id}
-                          onSelect={() => {
-                            setSearchInput(opt.event_id);
-                            setLogKeyDropdownOpen(false);
-                            setTimeout(() => {
-                              document.activeElement && (document.activeElement as HTMLElement).blur();
-                            }, 0);
-                          }}
+                          onSelect={() => setSearchInput(opt.event_id)}
                           style={{
                             display: "flex",
                             alignItems: "flex-start",

@@ -37,8 +37,8 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   let numEntities = 0,
     numActions = 0,
     numStatuses = 0;
-  let normalLogKeys: string[] = [];
-  let abnormalLogKeys: string[] = [];
+  const normalLogKeys: string[] = [];
+  const abnormalLogKeys: string[] = [];
 
   if (node.depth === 0) {
     // Root node
