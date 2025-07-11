@@ -269,11 +269,14 @@ export const KnowledgeBaseViz = () => {
 
     return (
         <>
-            <div className="pt-[4.5rem]"></div>
-            <button onClick={toggleSidebar} className="bg-WPIRed text-white px-4 py-2 rounded">
-                Toggle Sidebar
-            </button>
-            <div style={{ width: "100%", margin: "2rem auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div className="pt-[4.75rem]"></div>
+            <div className="text-center my-8">
+                <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
+                <p className="text-WPIGrey/110 text-lg mt-2">
+                    Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences.
+                </p>
+            </div>
+            <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
                 {treeData && (
                     <VizTree
                         treeData={treeData}
@@ -305,7 +308,6 @@ export const KnowledgeBaseViz = () => {
                     }
                 />
             )}
-            <h1>Knowledge Base Visualization</h1>
             <Footer />
         </>
     );
