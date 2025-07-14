@@ -2,7 +2,7 @@ import { Footer } from "@/components/footer";
 import Papa from "papaparse";
 import { useEffect, useState } from "react";
 import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
-import { VizTree } from "@/components/viz_tree/viz_tree";
+import { VizTree } from "@/components/viz_tree_components/viz_tree/viz_tree";
 import { buildTree } from "@/tree_utils";
 import type { TreeNode } from "@/tree_utils";
 

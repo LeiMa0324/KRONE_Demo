@@ -1,19 +1,12 @@
-import React, { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { csv } from "d3-fetch";
 import { hierarchy } from "d3-hierarchy";
+import { buildTree } from "../../tree_utils";
+import type {TreeNode } from "../../tree_utils";
+import { findStatusNode, findNodeId } from "./viz_tree_utils";
 import type { HierarchyNode } from "d3-hierarchy";
-import { buildTree } from "../tree_utils";
-import { 
-  findStatusNode,
-  findNodeId, 
-} from "../components/viz_tree_components/viz_tree_utils";
-import type { TreeNode } from "../tree_utils";
-import { TreeControls } from "@/components/viz_tree_components/control_panel/viz_tree_controls";
-import { VizTree } from "@/components/viz_tree_components/viz_tree/viz_tree";
-import { TreeInfoPanel } from "@/components/viz_tree_components/info_panel/tree_info_panel";
-import { Footer } from "@/components/footer";
 
-export const VisualizeTree: React.FC = () => {
+export function useTreeSearch() {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
   const [collapseEntities, setCollapseEntities] = useState(false);
   const [collapseActions, setCollapseActions] = useState(false);
@@ -110,68 +103,23 @@ export const VisualizeTree: React.FC = () => {
     } as unknown as HierarchyNode<TreeNode>;
   }, [treeData]);
 
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, []);
-
-  return (
-    <div style={{ minHeight: "100vh", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ flex: "1 1 auto", display: "flex", alignItems: "flex-start", paddingTop: "80px", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box", overflow: "hidden" }}>
-        <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto", paddingBottom: 200 }}>
-          <div style={{ marginBottom: 16 }}>
-            <TreeInfoPanel node={staticRootNode} title="Tree statistics" hideNodeName={true} sortLogKeys={true} />
-          </div>
-          <TreeControls
-            collapse={{
-              entities: collapseEntities,
-              actions: collapseActions,
-              statuses: collapseStatuses,
-              setEntities: setCollapseEntities,
-              setActions: setCollapseActions,
-              setStatuses: setCollapseStatuses,
-            }}
-            search={{
-              input: searchInput,
-              setInput: setSearchInput,
-              value: searchValue,
-              matchedNodeId,
-              handleSubmit: handleSearchSubmit,
-              handleClear: handleClearSearch,
-            }}
-            selection={{
-              entity: selectedEntity,
-              setEntity: setSelectedEntity,
-              action: selectedAction,
-              setAction: setSelectedAction,
-              status: selectedStatus,
-              setStatus: setSelectedStatus,
-              onPathSearch: handlePathSearch,
-            }}
-            treeData={treeData}
-          />
-        </div>
-        <div style={{ flex: "0 0 50%", width: "50%", minWidth: 0, height: "100%", overflow: "auto", display: "flex", flexDirection: "column" }}>
-          {treeData && (
-            <VizTree
-              treeData={treeData}
-              collapseEntities={collapseEntities}
-              collapseActions={collapseActions}
-              collapseStatuses={collapseStatuses}
-              matchedNodeId={matchedNodeId}
-              setHoveredNode={setHoveredNode}
-              showAnomalySymbols={true}
-              disableHoverHighlight={!!matchedNodeId}
-            />
-          )}
-        </div>
-        <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto" }}>
-          <TreeInfoPanel node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode} />
-        </div>
-      </div>
-      <div style={{ flex: "0 0 auto" }}>
-        <Footer />
-      </div>
-    </div>
-  );
-};
+  return {
+    treeData,
+    collapseEntities, setCollapseEntities,
+    collapseActions, setCollapseActions,
+    collapseStatuses, setCollapseStatuses,
+    searchInput, setSearchInput,
+    searchValue, setSearchValue,
+    matchedNodeId, setMatchedNodeId,
+    hoveredNode, setHoveredNode,
+    matchedNodeObj, setMatchedNodeObj,
+    selectedEntity, setSelectedEntity,
+    selectedAction, setSelectedAction,
+    selectedStatus, setSelectedStatus,
+    searchMode, setSearchMode,
+    handleSearchSubmit,
+    handleClearSearch,
+    handlePathSearch,
+    staticRootNode
+  };
+}

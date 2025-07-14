@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import { Footer } from "@/components/footer";
-//import { SequenceTreeNew } from "@/components/sequence_tree_new";
 import { SequenceTree } from "@/components/sequence_tree";
-import { TreeInfoPanel } from "@/components//viz_tree/tree_info_panel";
+import { TreeInfoPanel } from "@/components/viz_tree_components/info_panel/tree_info_panel";
 import type { HierarchyNode } from "d3-hierarchy";
 import type { TreeNode } from "@/tree_utils";
 

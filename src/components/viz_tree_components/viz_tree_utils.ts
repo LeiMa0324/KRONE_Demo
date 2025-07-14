@@ -1,8 +1,9 @@
 import { select, type Selection } from "d3-selection";
 import type { HierarchyNode } from "d3-hierarchy";
-import type { TreeNode } from "./tree_utils";
-import type { HierarchyNodeWithHiddenChildren, TreeLink } from "./components/viz_tree/types";
-import { linkBorderColor, linkFillColor } from "./tree_utils";
+import type { TreeNode } from "../../tree_utils";
+// import type { HierarchyNodeWithHiddenChildren, TreeLink } from "./types";
+import type { HierarchyNodeWithHiddenChildren, TreeLink } from "./types";
+import { linkBorderColor, linkFillColor } from "../../tree_utils";
 
 
 export function hasHiddenChildren(node: HierarchyNode<TreeNode>): node is HierarchyNodeWithHiddenChildren<TreeNode> {
@@ -125,3 +126,44 @@ export function findNodeId(treeData: TreeNode, entity?: string, action?: string,
   return null;
 }
 
+export function collectStats(node: HierarchyNode<TreeNode> | null) {
+  let numEntities = 0, numActions = 0, numStatuses = 0;
+  const normalLogKeys: string[] = [];
+  const abnormalLogKeys: string[] = [];
+
+  function traverse(n: any, depth: number) {
+    if (!n) return;
+    if (depth === 0) {
+      numEntities = n.children?.length ?? 0;
+      n.children?.forEach((entity: any) => traverse(entity, 1));
+    } else if (depth === 1) {
+      numActions += n.children?.length ?? 0;
+      n.children?.forEach((action: any) => traverse(action, 2));
+    } else if (depth === 2) {
+      numStatuses += n.children?.length ?? 0;
+      n.children?.forEach((status: any) => traverse(status, 3));
+    } else if (depth === 3) {
+      if (n.event_id) {
+        (n.isAnomaly ? abnormalLogKeys : normalLogKeys).push(n.event_id);
+      }
+    }
+  }
+
+  if (node) traverse(node.data, node.depth);
+
+  return { numEntities, numActions, numStatuses, normalLogKeys, abnormalLogKeys };
+}
+
+export function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
+  if (!node) return [];
+  if (node.depth === 3 && node.data.event_id) return [node.data.event_id];
+  const keys: string[] = [];
+  function collect(n: HierarchyNode<TreeNode>) {
+    if (n.depth === 3 && n.data.event_id) {
+      keys.push(n.data.event_id);
+    }
+    if (n.children) n.children.forEach(collect);
+  }
+  collect(node);
+  return keys;
+}

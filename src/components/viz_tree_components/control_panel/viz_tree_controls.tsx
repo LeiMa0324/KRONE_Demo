@@ -1,10 +1,11 @@
 import React from "react";
-import { CollapseControls } from "./collapse_controls";
-import { LogKeySearch } from "./log_key_search";
-import { SequenceSearch } from "./sequence_search";
-import { UnifiedClearButton } from "./unified_clear_button";
+import { CollapseControls } from "./control_panel_parts/collapse_controls";
+import { LogKeySearch } from "./control_panel_parts/log_key_search";
+import { SequenceSearch } from "./control_panel_parts/sequence_search";
+import { UnifiedClearButton } from "./control_panel_parts/unified_clear_button";
 import type { TreeControlsProps } from "../types";
-import { getAllLogKeys } from "@/viz_tree_utils";
+import { getAllLogKeys } from "@/components/viz_tree_components/viz_tree_utils";
+import { getEntities, getActions, getStatuses } from "./control_selectors";
 
 export const TreeControls: React.FC<TreeControlsProps> = ({
   collapse,
@@ -53,53 +54,9 @@ export const TreeControls: React.FC<TreeControlsProps> = ({
     selection.entity, selection.action, selection.status,
   ]);
 
-  const entities = React.useMemo(() => {
-    if (!treeData) return [];
-    return treeData.children?.map(e => e.name) ?? [];
-  }, [treeData]);
-
-  const actions = React.useMemo(() => {
-    if (!treeData) return [];
-    if (selection.entity) {
-      const entityNode = treeData.children?.find(e => e.name === selection.entity);
-      return entityNode?.children?.map(a => a.name) ?? [];
-    }
-    const allActions = (treeData.children ?? []).flatMap(e => e.children ?? []).map(a => a.name);
-    return Array.from(new Set(allActions));
-  }, [treeData, selection.entity]);
-
-  const statuses = React.useMemo(() => {
-    if (!treeData) return [];
-    if (selection.entity && selection.action) {
-      const entityNode = treeData.children?.find(e => e.name === selection.entity);
-      const actionNode = entityNode?.children?.find(a => a.name === selection.action);
-      return actionNode?.children?.map(s => s.name) ?? [];
-    }
-    if (selection.action && !selection.entity) {
-      const allStatuses = (treeData.children ?? [])
-        .flatMap(e =>
-          (e.children ?? [])
-            .filter(a => a.name === selection.action)
-            .flatMap(a => a.children ?? [])
-        )
-        .map(s => s.name);
-      return Array.from(new Set(allStatuses));
-    }
-    if (selection.entity && !selection.action) {
-      const entityNode = treeData.children?.find(e => e.name === selection.entity);
-      const allStatuses = (entityNode?.children ?? [])
-        .flatMap(a => a.children ?? [])
-        .map(s => s.name);
-      return Array.from(new Set(allStatuses));
-    }
-    const allStatuses = (treeData.children ?? [])
-      .flatMap(e =>
-        (e.children ?? [])
-          .flatMap(a => a.children ?? [])
-      )
-      .map(s => s.name);
-    return Array.from(new Set(allStatuses));
-  }, [treeData, selection.entity, selection.action]);
+  const entities = React.useMemo(() => getEntities(treeData ?? {}), [treeData]);
+  const actions = React.useMemo(() => getActions(treeData ?? {}, selection.entity), [treeData, selection.entity]);
+  const statuses = React.useMemo(() => getStatuses(treeData ?? {}, selection.entity, selection.action), [treeData, selection.entity, selection.action]);
 
   function handleUnifiedClear() {
     search.handleClear();
