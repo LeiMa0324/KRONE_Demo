@@ -161,6 +161,7 @@ function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }
     );
 }
 
+
 type KnowledgeBaseSideBarProps = {
     showSidebar: boolean;
     toggleSidebar: () => void;
@@ -168,6 +169,7 @@ type KnowledgeBaseSideBarProps = {
     testingData: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences };
     allSequences: Seq[];
     query: string;
+    initialSearchLogKey?: string;
 };
 
 export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
@@ -177,6 +179,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     testingData,
     allSequences,
     query,
+    initialSearchLogKey = "",
 }) => {
     const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">("train");
     const [searchLogKey, setSearchLogKey] = useState<string>("");
@@ -184,7 +187,9 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     const [currentTestingDisplay, setCurrentTestingDisplay] = useState<Seq[]>([]);
     const [approxDisplay, setApproxDisplay] = useState<Seq[]>([]);
 
+
     useEffect(() => {
+        if (initialSearchLogKey) return; // Don't overwrite if searching by logkeys
         const getSeq = (data: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences }) => {
             const { entityDict, actionDict, entitySequences } = data;
             if (query === "ROOT") return entitySequences;
@@ -194,7 +199,18 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         };
         setCurrentTrainingDisplay(getSeq(trainingData));
         setCurrentTestingDisplay(getSeq(testingData));
-    }, [trainingData, testingData, query]);
+    }, [trainingData, testingData, query, initialSearchLogKey]);
+
+    useEffect(() => {
+        if (showSidebar && initialSearchLogKey) {
+            setSearchLogKey(initialSearchLogKey);
+            const keys = initialSearchLogKey.split(",").map((k) => k.trim());
+            const results = exactSearch(allSequences, keys);
+            setCurrentTrainingDisplay(results);
+            setSelectedTab("train");   
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showSidebar, initialSearchLogKey]);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
