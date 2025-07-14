@@ -354,7 +354,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 setHoveredNode?.(d);
             }
         );
-        node.on("dblclick", function (event: any, d) {
+        node.on("dblclick", function (event: MouseEvent, d) {
                 event.stopPropagation();
                 const idx = d.data.indexPath;
                 if (!idx) return;
@@ -813,7 +813,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 .attr("pointer-events", "none")
                 .lower();
         }
-        node.each(function (this: SVGGElement, d: HierarchyNode<TreeNode>) {
+        node.each(function (d: HierarchyNode<TreeNode>) {
+            if (!this) return;
             const hidden: boolean = isNodeHidden(d);
             select(this).selectAll<SVGRectElement, unknown>("rect")
             .attr("opacity", hidden ? 0 : 1)
