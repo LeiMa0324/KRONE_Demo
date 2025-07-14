@@ -1,4 +1,3 @@
-// import { getLogKeySubsequence } from "../../../viz_tree_utils";
 import type { HierarchyNode } from "d3-hierarchy";
 import type { TreeNode } from "@/tree_utils";
 import {
@@ -19,7 +18,7 @@ function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
     if (n.children) n.children.forEach(collect);
   }
   collect(node);
-  return keys;
+  return keys.sort();
 }
 
 
@@ -84,19 +83,59 @@ export function NodeStats({ node, numEntities, numActions, numStatuses }: any) {
   }
 }
 
-export function LogKeys({ normalLogKeys, abnormalLogKeys }: any) {
+export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: any) {
+  const renderLogKeys = (keys: string[], color: string) =>
+    keys.length > 0 ? (
+      keys.map((key, idx) => (
+        <span
+          key={key}
+          style={{
+            marginRight: 6,
+            cursor: "pointer",
+            color,
+            textDecoration: "underline",
+          }}
+          onClick={() => onLogKeySearch?.(key)}
+          title="Search this log key"
+        >
+          {key}
+          {idx < keys.length - 1 ? "," : ""}
+        </span>
+      ))
+    ) : (
+      <span style={{ color: "#aaa" }}>None</span>
+    );
+
   return (
     <div style={logKeyStyle}>
       <div>
         <span style={{ color: "#4caf50", fontWeight: 500 }}>Normal log keys:</span>
-        <span style={{ marginLeft: 6 }}>
-          {normalLogKeys.length > 0 ? normalLogKeys.join(", ") : <span style={{ color: "#aaa" }}>None</span>}
+        <span
+          style={{
+            marginLeft: 6,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            alignItems: "center",
+            minWidth: 0,
+          }}
+        >
+          {renderLogKeys(normalLogKeys, "#4caf50")}
         </span>
       </div>
       <div>
         <span style={{ color: "#f44336", fontWeight: 500 }}>Abnormal log keys:</span>
-        <span style={{ marginLeft: 6 }}>
-          {abnormalLogKeys.length > 0 ? abnormalLogKeys.join(", ") : <span style={{ color: "#aaa" }}>None</span>}
+        <span
+          style={{
+            marginLeft: 6,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            alignItems: "center",
+            minWidth: 0,
+          }}
+        >
+          {renderLogKeys(abnormalLogKeys, "#f44336")}
         </span>
       </div>
     </div>

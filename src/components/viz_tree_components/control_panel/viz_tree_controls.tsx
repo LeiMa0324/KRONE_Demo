@@ -93,7 +93,7 @@ export const TreeControls: React.FC<TreeControlsProps> = ({
         />
       </div>
       <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #eee", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Sequence Search</div>
+        <div style={{ fontWeight: 600, marginBottom: 8 }}>Sub-Tree Search</div>
         <SequenceSearch
           selection={selection}
           entities={entities}

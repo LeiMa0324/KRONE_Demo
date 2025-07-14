@@ -115,12 +115,24 @@ export const VisualizeTree: React.FC = () => {
     return () => { document.body.style.overflow = ""; };
   }, []);
 
+  function handleLogKeySearch(logKey: string) {
+    setSearchInput(logKey);
+    setSearchValue(logKey);
+    setSearchMode("logKey");
+  }
+
   return (
     <div style={{ minHeight: "100vh", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ flex: "1 1 auto", display: "flex", alignItems: "flex-start", paddingTop: "80px", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box", overflow: "hidden" }}>
         <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto", paddingBottom: 200 }}>
           <div style={{ marginBottom: 16 }}>
-            <TreeInfoPanel node={staticRootNode} title="Tree statistics" hideNodeName={true} sortLogKeys={true} />
+            <TreeInfoPanel
+              node={staticRootNode}
+              title="Tree statistics"
+              hideNodeName={true}
+              sortLogKeys={true}
+              onLogKeySearch={handleLogKeySearch}
+            />
           </div>
           <TreeControls
             collapse={{
@@ -166,7 +178,10 @@ export const VisualizeTree: React.FC = () => {
           )}
         </div>
         <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto" }}>
-          <TreeInfoPanel node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode} />
+          <TreeInfoPanel
+            node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode}
+            onLogKeySearch={handleLogKeySearch}
+          />
         </div>
       </div>
       <div style={{ flex: "0 0 auto" }}>
