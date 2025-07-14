@@ -276,7 +276,7 @@ export const KnowledgeBaseViz = () => {
                     Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences.
                 </p>
             </div>
-            <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
                 {treeData && (
                     <VizTree
                         treeData={treeData}
@@ -308,7 +308,9 @@ export const KnowledgeBaseViz = () => {
                     }
                 />
             )}
-            <Footer />
+            <div className="w-full fixed bottom-0">
+                <Footer />
+            </div>
         </>
     );
 };

@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { X, ChevronDown, Search } from "lucide-react";
+import { X, ChevronDown, Search, PanelBottomClose } from "lucide-react";
 import type { EntityDict, ActionDict, EntitySequences, Seq } from "@/pages/knowledge_base_viz";
 import { exactSearch, approximateSearch } from "@/pages/knowledge_base_viz";
 
 type SequenceUnitDisplayProps = {
+    orderNum: number;
     seq: Seq;
     allSequences: Seq[];
     handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
 };
 
-function SequenceUnitDisplay({ seq, allSequences, handleApproximateSearch }: SequenceUnitDisplayProps) {
+//Global Counter For Each SequenceUnitDisplay
+function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch }: SequenceUnitDisplayProps) {
     const [isAnomalyChecked, setIsAnomalyChecked] = useState<boolean>(seq.isAnomaly === true);
-    const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === "GT");
+    const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === "Ground Truth");
     const [k, setK] = useState<number>(5);
     const [userSelection, setUserSelection] = useState<string | null>(null);
+    const [isCollapsed, setCollapsibility] = useState<boolean>(false);
 
     useEffect(() => {
         setIsAnomalyChecked(seq.isAnomaly === true);
-        setIsGTChecked(seq.explanation === "GT");
+        setIsGTChecked(seq.explanation === "Ground Truth");
     }, [seq.isAnomaly, seq.explanation]);
 
     const getFinalPrediction = (): string => {
@@ -28,71 +31,101 @@ function SequenceUnitDisplay({ seq, allSequences, handleApproximateSearch }: Seq
 
     return (
         <div className={`flex flex-col ${getFinalPrediction() == "Abnormal" ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
-            <h1 className="font-WPIfont font-bold mb-1.5">{`${seq.seqType} ${getFinalPrediction() == "Abnormal" ? "Anomaly" : ""} Sequence`}</h1>
-            <div className="flex">
-                <div className="flex flex-col mb-4 flex-1">
-                    {seq.arr.map((element, index) => (
-                        <div key={index} className="flex flex-col items-center">
-                            <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${
-                                seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
-                                seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{element}</span>
-                            {index < seq.arr.length - 1 && <ChevronDown className="text-neutral-500" />}
-                        </div>
-                    ))}
-                </div>
-                <p className="text-neutral-600 flex-1 italic self-center justify-self-center">
-                    {seq.path_summary || "No summary available"}
-                </p>
+            {/* Header Section w/ Collapse */}
+            <div className="flex items-start justify-center gap-3 mb-1.5 relative">
+                {isCollapsed ?
+                    <h1 className="font-WPIfont font-bold text-center flex-1">{`${orderNum}. ${seq.seqType} ${getFinalPrediction() == "Abnormal" ? "Anomaly" : ""} Seq\t`}</h1> 
+                    :
+                    <h1 className="font-WPIfont font-bold text-left flex-1">{`${orderNum}.`}
+                        <span className={`text-neutral-800 p-1 ml-3 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
+                                seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{seq.arr[0]}</span>
+                        
+                        {seq.arr.length > 1 &&
+                            <>
+                                {`➡➡`}
+                                <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
+                                    seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{seq.arr[seq.arr.length-1]}</span>
+                            </>
+                        }
+                    </h1> 
+                }
+                <PanelBottomClose 
+                    onClick={() => {setCollapsibility(!isCollapsed)}} 
+                    className="transition-transform hover:scale-110 absolute right-1 top-1/2 transform -translate-y-1/2" 
+                />
             </div>
-            <table className="table-auto w-full border-collapse border border-neutral-300 bg-neutral-100">
-                <thead>
-                    <tr>
-                        <th className="border border-neutral-300 px-4 py-2 bg-neutral-200 font-semibold">Source</th>
-                        <th className="border border-neutral-300 px-4 py-2 bg-neutral-200 font-semibold">Prediction</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td className="border px-4 py-2">LLM</td><td className="border px-4 py-2">{isAnomalyChecked ? "Abnormal" : !isGTChecked ? "Normal" : "---"}</td></tr>
-                    <tr><td className="border px-4 py-2">Pattern Miner</td><td className="border px-4 py-2">{isGTChecked ? "Normal" : "---"}</td></tr>
-                    <tr>
-                        <td className="border px-4 py-2">Human</td>
-                        <td className="border px-4 py-2">
-                            <select
-                                className="w-full p-2 bg-neutral-200 border border-neutral-300 rounded-md"
-                                defaultValue=""
-                                onChange={(e) => setUserSelection(e.target.value)}
-                            >
-                                <option value="" disabled hidden>Select...</option>
-                                <option value="Abnormal">Abnormal</option>
-                                <option value="Normal">Normal</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr><td colSpan={2} className="bg-black h-1"></td></tr>
-                    <tr><td className="border px-4 py-2 font-bold">Final Prediction:</td><td className="border px-4 py-2">{getFinalPrediction()}</td></tr>
-                    {isGTChecked && <tr><td className="border px-4 py-2 font-bold">Ground Truth:</td><td className="border px-4 py-2"> Normal </td></tr>}
-                </tbody>
-            </table>
-            {seq.explanation && <><h1 className="font-WPIfont font-bold">Final Prediction Explanation</h1><p>{seq.explanation}</p></>}
-            <div className="flex flex-col items-center justify-center space-y-4 text-xl font-serif mt-2">
-                <div className="flex items-center space-x-4">
-                    <span className="font-bold">Find</span>
-                    <input
-                        type="number"
-                        value={k === 0 ? "" : k}
-                        onChange={(e) => setK(Number(e.target.value) || 0)}
-                        className="w-10 h-10 text-center font-bold bg-neutral-200 rounded-full focus:ring-2 focus:ring-neutral-400"
-                        min="1" max="999"
-                    />
-                    <span className="font-bold">most similar</span>
-                    <button
-                        onClick={() => handleApproximateSearch(allSequences, seq.embedding, k)}
-                        className="hover:scale-110 transition-transform"
-                    >
-                        <Search className="w-6 h-6 text-neutral-500 hover:text-black" />
-                    </button>
+
+            {isCollapsed && <>
+                {/* Seq Display */}
+                <div className="flex">
+                    <div className="flex flex-col mb-4 flex-1">
+                        {seq.arr.map((element, index) => (
+                            <div key={index} className="flex flex-col items-center">
+                                <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${
+                                    seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
+                                    seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{element}</span>
+                                {index < seq.arr.length - 1 && <ChevronDown className="text-neutral-500" />}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-neutral-600 flex-1 italic self-center justify-self-center">
+                        {seq.path_summary || "No summary available"}
+                    </p>
                 </div>
-            </div>
+
+                {/* Table Display */}
+                <table className="table-auto w-full border-collapse border border-neutral-300 bg-neutral-100">
+                    <thead>
+                        <tr>
+                            <th className="border border-neutral-300 px-4 py-2 bg-neutral-200 font-semibold">Source</th>
+                            <th className="border border-neutral-300 px-4 py-2 bg-neutral-200 font-semibold">Prediction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td className="border px-4 py-2">LLM</td><td className="border px-4 py-2">{isAnomalyChecked ? "Abnormal" : !isGTChecked ? "Normal" : "---"}</td></tr>
+                        <tr><td className="border px-4 py-2">Pattern Miner</td><td className="border px-4 py-2">{isGTChecked ? "Normal" : "---"}</td></tr>
+                        <tr>
+                            <td className="border px-4 py-2">Human</td>
+                            <td className="border px-4 py-2">
+                                <select
+                                    className="w-full p-2 bg-neutral-200 border border-neutral-300 rounded-md"
+                                    defaultValue=""
+                                    onChange={(e) => setUserSelection(e.target.value)}
+                                >
+                                    <option value="" disabled hidden>Select...</option>
+                                    <option value="Abnormal">Abnormal</option>
+                                    <option value="Normal">Normal</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr><td colSpan={2} className="bg-black h-1"></td></tr>
+                        <tr><td className="border px-4 py-2 font-bold">Final Prediction:</td><td className="border px-4 py-2">{getFinalPrediction()}</td></tr>
+                        {isGTChecked && <tr><td className="border px-4 py-2 font-bold">Ground Truth:</td><td className="border px-4 py-2"> Normal </td></tr>}
+                    </tbody>
+                </table>
+
+                {/* Seq Explanation and Approximate K Search */}
+                {seq.explanation && <><h1 className="font-WPIfont font-bold">Final Prediction Explanation</h1><p>{seq.explanation}</p></>}
+                <div className="flex flex-col items-center justify-center space-y-4 text-xl font-serif mt-2">
+                    <div className="flex items-center space-x-4">
+                        <span className="font-bold">Find</span>
+                        <input
+                            type="number"
+                            value={k === 0 ? "" : k}
+                            onChange={(e) => setK(Number(e.target.value) || 0)}
+                            className="w-10 h-10 text-center font-bold bg-neutral-200 rounded-full focus:ring-2 focus:ring-neutral-400"
+                            min="1" max="999"
+                        />
+                        <span className="font-bold">most similar</span>
+                        <button
+                            onClick={() => handleApproximateSearch(allSequences, seq.embedding, k)}
+                            className="hover:scale-110 transition-transform"
+                        >
+                            <Search className="w-6 h-6 text-neutral-500 hover:text-black" />
+                        </button>
+                    </div>
+                </div>
+            </>}
         </div>
     );
 }
@@ -107,16 +140,17 @@ type SequenceScrollableProps = {
 function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }: SequenceScrollableProps) {
     if (!sequences || sequences.length === 0) {
         return (
-            <div className="flex justify-center h-full p-4">
-                <span className="italic text-neutral-500">No Sequences</span>
+            <div className="flex justify-center h-full p-4 border-8 border-WPIGrey/45 border-t-0">
+                <span className="italic text-neutral-500">{`No Sequences Available`}</span>
             </div>
         );
     }
     return (
-        <div className="overflow-y-auto h-[calc(100vh-200px)] p-4">
+        <div className="overflow-y-auto h-[calc(100vh-200px)] p-4 border-8 border-WPIGrey/45 border-t-0">
             {sequences.slice(0, 1000).map((element, index) => (
                 <div key={index} className="scroll-mt-4">
-                    <SequenceUnitDisplay
+                    <SequenceUnitDisplay 
+                        orderNum={index+1}
                         seq={element}
                         allSequences={allSequences}
                         handleApproximateSearch={handleApproximateSearch}
@@ -213,13 +247,13 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     <button
                         key={tab}
                         onClick={() => setSelectedTab(tab as "train" | "test" | "approx")}
-                        className={`text-black px-4 py-2 w-full hover:bg-neutral-300 ${selectedTab === tab ? "bg-WPIGrey/45 underline" : "bg-white"}`}
+                        className={`text-black px-4 py-2 w-full hover:bg-neutral-300 ${selectedTab === tab ? "bg-WPIGrey/45 underline" : "bg-white"} rounded-t-2xl`}
                     >
                         {tab === "train" ? "Training Data" : tab === "test" ? "Testing Data" : "Approx-Search"}
                     </button>
                 ))}
             </div>
-            <form className="p-4 flex items-center justify-center" onSubmit={handleSearchSubmit}>
+            <form className="p-4 flex items-center justify-center border-8 border-WPIGrey/45 border-b-0" onSubmit={handleSearchSubmit}>
                 <div className="relative w-full">
                     <input
                         type="text"
@@ -256,7 +290,9 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     setCurrentDisplay={() => {}}
                     handleApproximateSearch={handleApproximateSearch}
                 /> :
-                <h1 className="font-WPIfont border-WPIGrey border-2"> No Display Currently Available </h1>
+                <div className="flex justify-center h-full p-4 border-8 border-WPIGrey/45 border-t-0">
+                    <span className="italic text-neutral-500">{`No Display Currently Available (Try Searching Something)`}</span>
+                </div>
             )}
         </div>
     );
