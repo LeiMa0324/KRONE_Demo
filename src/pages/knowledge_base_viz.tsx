@@ -71,7 +71,6 @@ function parseEmbeddingField(field: string): number[] {
     }
 }
 
-
 function buildKnowledgeStructures(rows: CSVRow[]): {
     entityDict: EntityDict;
     actionDict: ActionDict;
@@ -147,7 +146,7 @@ function parseKnowledgeCSV(
     });
 }
 
-//Cosine Similarity calculation function
+//Cosine Similarity Calculation Function
 function cosineSimilarity(a: number[], b: number[]): number {
     const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
     const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
@@ -187,7 +186,7 @@ export function approximateSearch(sequences: Seq[], targetEmbedding: number[], k
     return validSimilarities.slice(0, k);
 }
 
-// Exact search for sequences with a matching logkey_seq
+// Exact search, matches log key sequence to query
 export function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] {
     return sequences.filter(seq =>
         seq.logkey_seq.length === targetLogkeySeq.length &&
@@ -296,12 +295,15 @@ export const KnowledgeBaseViz = () => {
             <div className="pt-[4.75rem]"></div>
             <SmallViewportWarning />
             <div className="hidden lg:block">
+                {/* HEADER AND TITLE */}
                 <div className="text-center my-8">
                     <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
                     <p className="text-WPIGrey/110 text-lg mt-2">
                         {KNOWLEDGE_BASE_DESC}
                     </p>
                 </div>
+                
+                {/* TREE DISPLAY */}
                 <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
                     {treeData && (
                         <>
@@ -320,6 +322,8 @@ export const KnowledgeBaseViz = () => {
                         </>
                     )}
                 </div>
+
+                {/* SIDEBAR DISPLAY */}
                 {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
                     <KnowledgeBaseSideBar
                         showSidebar={showSidebar}

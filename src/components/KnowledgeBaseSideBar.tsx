@@ -32,7 +32,7 @@ type SequenceUnitDisplayProps = {
     handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
 };
 
-//Global Counter For Each SequenceUnitDisplay
+//Individual display of one sequence : Includes anomaly status, LLM description, prediction table, and approximate search option.
 function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch }: SequenceUnitDisplayProps) {
     const [isAnomalyChecked, setIsAnomalyChecked] = useState<boolean>(seq.isAnomaly === true);
     const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === GROUND_TRUTH);
@@ -157,6 +157,7 @@ type SequenceScrollableProps = {
     handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
 };
 
+/* Returns scrollable composed of multiple sequence units */
 function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }: SequenceScrollableProps) {
     if (!sequences || sequences.length === 0) {
         return (
