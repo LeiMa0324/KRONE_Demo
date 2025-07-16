@@ -5,6 +5,7 @@ import { SequenceTree } from "@/components/sequence_tree";
 import { TreeInfoPanel } from "@/components/viz_tree_components/info_panel/tree_info_panel";
 import type { HierarchyNode } from "d3-hierarchy";
 import type { TreeNode } from "@/tree_utils";
+import { SmallViewportWarning } from "@/components/smallViewportWarning";
 
 
 // Data type for visualizing new tree
@@ -130,10 +131,11 @@ export const VisualizeTable = () => {
                 overflow: "hidden",
             }}
         >
-            <div
+            <div className="lg:hidden pt-[4.5rem]"></div>
+            <SmallViewportWarning />
+            <div className="hidden lg:flex"
                 style={{
                     flex: "1 1 auto",
-                    display: "flex",
                     alignItems: "flex-start",
                     paddingTop: "80px",
                     paddingLeft: "20px",
@@ -177,7 +179,7 @@ export const VisualizeTable = () => {
                     <TreeInfoPanel node={hoveredNode} multiLineAnomaly={multiLineAnomaly} isSequencePanel={true}/>
                 </div>
             </div>
-            <div style={{ flex: "0 0 auto" }}>
+            <div className="w-full fixed bottom-0">
                 <Footer />
             </div>
         </div>

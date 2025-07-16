@@ -12,6 +12,7 @@ import { TreeControls } from "@/components/viz_tree_components/control_panel/viz
 import { VizTree } from "@/components/viz_tree_components/viz_tree/viz_tree";
 import { TreeInfoPanel } from "@/components/viz_tree_components/info_panel/tree_info_panel";
 import { Footer } from "@/components/footer";
+import { SmallViewportWarning } from "@/components/smallViewportWarning";
 
 export const VisualizeTree: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);
@@ -123,7 +124,9 @@ export const VisualizeTree: React.FC = () => {
 
   return (
     <div style={{ minHeight: "100vh", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ flex: "1 1 auto", display: "flex", alignItems: "flex-start", paddingTop: "80px", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box", overflow: "hidden" }}>
+      <div className="lg:hidden pt-[4.5rem]"></div>
+      <SmallViewportWarning />
+      <div className="hidden lg:flex" style={{ flex: "1 1 auto", alignItems: "flex-start", paddingTop: "80px", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box", overflow: "hidden" }}>
         <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto", paddingBottom: 200 }}>
           <div style={{ marginBottom: 16 }}>
             <TreeInfoPanel
@@ -184,7 +187,7 @@ export const VisualizeTree: React.FC = () => {
           />
         </div>
       </div>
-      <div style={{ flex: "0 0 auto" }}>
+      <div className="w-full fixed bottom-0">
         <Footer />
       </div>
     </div>
