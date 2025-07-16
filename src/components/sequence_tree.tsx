@@ -172,26 +172,52 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                 });
             });
     }, []);
-
     useEffect(() => {
         if (kroneDecompData.length && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
             setLoading(true);
             const decomp = kroneDecompData[selectedIndex];
             const treeNode = toTreeNode(decomp, kroneDetectData, eventIdToLogTemplate);
             const anomalyRow = kroneDetectData.find(row => row.seq_id === decomp.seq_id);
+
+            // If anomaly exists, expand only the parent nodes of the anomaly
+            if (anomalyRow) {
+                // Find the anomaly segment in the tree
+                // We'll expand the entity and action parents of the anomaly
+                // Find the matching index in the sequence
+                const anomalyLength = anomalyRow.anomaly_seg.length;
+                const seq = decomp.seq;
+                let anomalyStartIdx = -1;
+                for (let i = 0; i <= seq.length - anomalyLength; i++) {
+                    if (arraysEqual(seq.slice(i, i + anomalyLength), anomalyRow.anomaly_seg)) {
+                        anomalyStartIdx = i;
+                        break;
+                    }
+                }
+                if (anomalyStartIdx !== -1) {
+                    // Expand the entity and action parents of the anomaly
+                    setCollapseAtDepth(treeNode, 1, true); // collapse all entities
+                    setCollapseAtDepth(treeNode, 2, true); // collapse all actions
+                    // Expand only the relevant entity and action nodes
+
+                }
+            } else {
+                // No anomaly, collapse everything
+                setCollapseAtDepth(treeNode, 1, entitiesCollapsed);
+                setCollapseAtDepth(treeNode, 2, actionsCollapsed);
+            }
+
+            addIndexPath(treeNode);
+            setTreeData(treeNode);
+
             if (anomalyRow && anomalyRow.anomaly_seg.length > 1) {
                 setMultiLineAnomaly(true);
                 setAnomalyLevelMulti(anomalyRow.anomaly_level || "Normal");
             } else {
                 setMultiLineAnomaly(false);
             }
-            setCollapseAtDepth(treeNode, 1, entitiesCollapsed);
-            setCollapseAtDepth(treeNode, 2, actionsCollapsed);
-            addIndexPath(treeNode);
-            setTreeData(treeNode);
             setLoading(false);
         }
-    }, [kroneDecompData, kroneDetectData, selectedIndex, actionsCollapsed, entitiesCollapsed]);
+    }, [kroneDecompData, kroneDetectData, selectedIndex, actionsCollapsed, entitiesCollapsed, eventIdToLogTemplate]);
 
     useEffect(() => {
         if (!treeData) return;
