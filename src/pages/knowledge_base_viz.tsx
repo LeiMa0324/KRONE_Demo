@@ -5,6 +5,7 @@ import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
 import { VizTree } from "@/components/viz_tree_components/viz_tree/viz_tree";
 import { buildTree } from "@/tree_utils";
 import type { TreeNode } from "@/tree_utils";
+import { SmallViewportWarning } from "@/components/smallViewportWarning";
 
 export type KnowledgeBaseData = {
     entityDict: EntityDict;
@@ -288,48 +289,51 @@ export const KnowledgeBaseViz = () => {
     return (
         <>
             <div className="pt-[4.75rem]"></div>
-            <div className="text-center my-8">
-                <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
-                <p className="text-WPIGrey/110 text-lg mt-2">
-                    Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences.
-                </p>
-            </div>
-            <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
-                {treeData && (
-                    <>
-                    {console.log("Tree Data:", treeData)}
-                    <VizTree
-                        treeData={treeData}
-                        collapseEntities={false}
-                        collapseActions={false}
-                        collapseStatuses={false}
-                        matchedNodeId={null}
-                        showAnomalySymbols={false}
-                        collapsible={false}
-                        disableHoverHighlight={true}
-                        onNodeClick={handleNodeClick}
-                        clickableNodes={true}
+            <SmallViewportWarning />
+            <div className="hidden lg:block">
+                <div className="text-center my-8">
+                    <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
+                    <p className="text-WPIGrey/110 text-lg mt-2">
+                        Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences.
+                    </p>
+                </div>
+                <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
+                    {treeData && (
+                        <>
+                        {console.log("Tree Data:", treeData)}
+                        <VizTree
+                            treeData={treeData}
+                            collapseEntities={false}
+                            collapseActions={false}
+                            collapseStatuses={false}
+                            matchedNodeId={null}
+                            showAnomalySymbols={false}
+                            collapsible={false}
+                            disableHoverHighlight={true}
+                            onNodeClick={handleNodeClick}
+                            clickableNodes={true}
+                        />
+                        </>
+                    )}
+                </div>
+                {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
+                    <KnowledgeBaseSideBar
+                        showSidebar={showSidebar}
+                        toggleSidebar={toggleSidebar}
+                        trainingData={knowledgeStructures.trainingData}
+                        testingData={knowledgeStructures.testingData}
+                        allSequences={knowledgeStructures.allSequences}
+                        query={
+                            selectedQuery
+                                ? selectedQuery === "Root"
+                                    ? "ROOT"
+                                    : selectedQuery
+                                : "blk_4"
+                        }
+                        initialSearchLogKey={searchLogKey}
                     />
-                    </>
                 )}
             </div>
-            {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
-                <KnowledgeBaseSideBar
-                    showSidebar={showSidebar}
-                    toggleSidebar={toggleSidebar}
-                    trainingData={knowledgeStructures.trainingData}
-                    testingData={knowledgeStructures.testingData}
-                    allSequences={knowledgeStructures.allSequences}
-                    query={
-                        selectedQuery
-                            ? selectedQuery === "Root"
-                                ? "ROOT"
-                                : selectedQuery
-                            : "blk_4"
-                    }
-                    initialSearchLogKey={searchLogKey}
-                />
-            )}
             <div className="w-full fixed bottom-0">
                 <Footer />
             </div>

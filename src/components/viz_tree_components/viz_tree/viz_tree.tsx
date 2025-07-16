@@ -139,7 +139,7 @@ export const VizTree: React.FC<VizTreeProps> = ({
   ]);
 
   return (
-    <div style={{ flex: 1, width: "100%", height: "100%", overflow: "auto" }}>
+    <div className="mb-8" style={{ flex: 1, width: "100%", height: "100%", overflow: "auto" }}>
       <svg ref={svgRef} style={{ display: "block" }} />
     </div>
   );
