@@ -3,6 +3,25 @@ import { X, ChevronDown, Search, PanelBottomClose } from "lucide-react";
 import type { EntityDict, ActionDict, EntitySequences, Seq } from "@/pages/knowledge_base_viz";
 import { exactSearch, approximateSearch } from "@/pages/knowledge_base_viz";
 
+// CONSTANTS
+const ABNORMAL = "Abnormal";
+const NORMAL = "Normal";
+const GROUND_TRUTH = "Ground Truth";
+const ROOT_QUERY = "ROOT";
+const NO_SUMMARY_MESSAGE = "No summary available";
+const NO_SEQUENCES_MESSAGE = "No Sequences Available";
+const NO_DISPLAY_MSG = "No Display Currently Available (Try Searching Something)";
+const FINAL_PREDICTION_HEADER = "Final Prediction:";
+const GROUND_TRUTH_HEADER = "Ground Truth:";
+const SELECT_PROMPT = "Select...";
+const LOGKEY_SEARCH_PLACEHOLDER = "Search logkey...";
+const SEQ_TYPE_COLORS: Record<string, string> = {
+    STATUS: "bg-WPIGrey/45 border-WPIGrey",
+    ACTION: "bg-WPIGold/45 border-WPIGold",
+    DEFAULT: "bg-WPIRed/45 border-WPIRed"
+};
+
+//TYPES
 type SequenceUnitDisplayProps = {
     orderNum: number;
     seq: Seq;
@@ -13,38 +32,38 @@ type SequenceUnitDisplayProps = {
 //Global Counter For Each SequenceUnitDisplay
 function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch }: SequenceUnitDisplayProps) {
     const [isAnomalyChecked, setIsAnomalyChecked] = useState<boolean>(seq.isAnomaly === true);
-    const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === "Ground Truth");
+    const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === GROUND_TRUTH);
     const [k, setK] = useState<number>(5);
     const [userSelection, setUserSelection] = useState<string | null>(null);
     const [isCollapsed, setCollapsibility] = useState<boolean>(false);
 
     useEffect(() => {
         setIsAnomalyChecked(seq.isAnomaly === true);
-        setIsGTChecked(seq.explanation === "Ground Truth");
+        setIsGTChecked(seq.explanation === GROUND_TRUTH);
     }, [seq.isAnomaly, seq.explanation]);
 
     const getFinalPrediction = (): string => {
-        if (userSelection === "Abnormal") return "Abnormal";
-        if (userSelection === "Normal") return "Normal";
-        return isAnomalyChecked ? "Abnormal" : "Normal";
+        if (userSelection === ABNORMAL) return ABNORMAL;
+        if (userSelection === NORMAL) return NORMAL;
+        return isAnomalyChecked ? ABNORMAL : NORMAL;
     };
 
+    const typeStyle = SEQ_TYPE_COLORS[seq.seqType] || SEQ_TYPE_COLORS.DEFAULT;
+
     return (
-        <div className={`flex flex-col ${getFinalPrediction() == "Abnormal" ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
+        <div className={`flex flex-col ${getFinalPrediction() == ABNORMAL ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
             {/* Header Section w/ Collapse */}
             <div className="flex items-start justify-center gap-3 mb-1.5 relative">
                 {isCollapsed ?
-                    <h1 className="font-WPIfont font-bold text-center flex-1">{`${orderNum}. ${seq.seqType} ${getFinalPrediction() == "Abnormal" ? "Anomaly" : ""} Seq\t`}</h1> 
+                    <h1 className="font-WPIfont font-bold text-center flex-1">{`${orderNum}. ${seq.seqType} ${getFinalPrediction() == ABNORMAL ? "Anomaly" : ""} Seq\t`}</h1> 
                     :
                     <h1 className="font-WPIfont font-bold text-left flex-1">{`${orderNum}.`}
-                        <span className={`text-neutral-800 p-1 ml-3 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
-                                seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{seq.arr[0]}</span>
+                        <span className={`text-neutral-800 p-1 ml-3 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${typeStyle}`}>{seq.arr[0]}</span>
                         
                         {seq.arr.length > 1 &&
                             <>
                                 {`➡➡`}
-                                <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
-                                    seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{seq.arr[seq.arr.length-1]}</span>
+                                <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${typeStyle}`}>{seq.arr[seq.arr.length-1]}</span>
                             </>
                         }
                     </h1> 
@@ -61,15 +80,13 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
                     <div className="flex flex-col mb-4 flex-1">
                         {seq.arr.map((element, index) => (
                             <div key={index} className="flex flex-col items-center">
-                                <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${
-                                    seq.seqType === "STATUS" ? "bg-WPIGrey/45 border-WPIGrey" :
-                                    seq.seqType === "ACTION" ? "bg-WPIGold/45 border-WPIGold" : "bg-WPIRed/45 border-WPIRed"}`}>{element}</span>
+                                <span className={`text-neutral-800 p-1 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${typeStyle}`}>{element}</span>
                                 {index < seq.arr.length - 1 && <ChevronDown className="text-neutral-500" />}
                             </div>
                         ))}
                     </div>
                     <p className="text-neutral-600 flex-1 italic self-center justify-self-center">
-                        {seq.path_summary || "No summary available"}
+                        {seq.path_summary || NO_SUMMARY_MESSAGE}
                     </p>
                 </div>
 
@@ -82,8 +99,8 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td className="border px-4 py-2">LLM</td><td className="border px-4 py-2">{isAnomalyChecked ? "Abnormal" : !isGTChecked ? "Normal" : "---"}</td></tr>
-                        <tr><td className="border px-4 py-2">Pattern Miner</td><td className="border px-4 py-2">{isGTChecked ? "Normal" : "---"}</td></tr>
+                        <tr><td className="border px-4 py-2">LLM</td><td className="border px-4 py-2">{isAnomalyChecked ? ABNORMAL : !isGTChecked ? NORMAL : "---"}</td></tr>
+                        <tr><td className="border px-4 py-2">Pattern Miner</td><td className="border px-4 py-2">{isGTChecked ? NORMAL : "---"}</td></tr>
                         <tr>
                             <td className="border px-4 py-2">Human</td>
                             <td className="border px-4 py-2">
@@ -92,15 +109,15 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
                                     defaultValue=""
                                     onChange={(e) => setUserSelection(e.target.value)}
                                 >
-                                    <option value="" disabled hidden>Select...</option>
-                                    <option value="Abnormal">Abnormal</option>
-                                    <option value="Normal">Normal</option>
+                                    <option value="" disabled hidden>{SELECT_PROMPT}</option>
+                                    <option value={ABNORMAL}>Abnormal</option>
+                                    <option value={NORMAL}>Normal</option>
                                 </select>
                             </td>
                         </tr>
                         <tr><td colSpan={2} className="bg-black h-1"></td></tr>
-                        <tr><td className="border px-4 py-2 font-bold">Final Prediction:</td><td className="border px-4 py-2">{getFinalPrediction()}</td></tr>
-                        {isGTChecked && <tr><td className="border px-4 py-2 font-bold">Ground Truth:</td><td className="border px-4 py-2"> Normal </td></tr>}
+                        <tr><td className="border px-4 py-2 font-bold">{FINAL_PREDICTION_HEADER}</td><td className="border px-4 py-2">{getFinalPrediction()}</td></tr>
+                        {isGTChecked && <tr><td className="border px-4 py-2 font-bold">{GROUND_TRUTH_HEADER}</td><td className="border px-4 py-2"> Normal </td></tr>}
                     </tbody>
                 </table>
 
@@ -141,7 +158,7 @@ function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }
     if (!sequences || sequences.length === 0) {
         return (
             <div className="flex justify-center h-full p-4 border-8 border-WPIGrey/45 border-t-0">
-                <span className="italic text-neutral-500">{`No Sequences Available`}</span>
+                <span className="italic text-neutral-500">{NO_SEQUENCES_MESSAGE}</span>
             </div>
         );
     }
@@ -192,7 +209,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         if (initialSearchLogKey) return; // Don't overwrite if searching by logkeys
         const getSeq = (data: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences }) => {
             const { entityDict, actionDict, entitySequences } = data;
-            if (query === "ROOT") return entitySequences;
+            if (query === ROOT_QUERY) return entitySequences;
             if (entityDict[query]) return entityDict[query];
             if (actionDict[query]) return actionDict[query];
             return [];
@@ -217,7 +234,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         if (!searchLogKey.trim()) {
             const getSeq = (data: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences }) => {
                 const { entityDict, actionDict, entitySequences } = data;
-                if (query === "ROOT") return entitySequences;
+                if (query === ROOT_QUERY) return entitySequences;
                 if (entityDict[query]) return entityDict[query];
                 if (actionDict[query]) return actionDict[query];
                 return [];
@@ -273,7 +290,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                 <div className="relative w-full">
                     <input
                         type="text"
-                        placeholder="Search logkey..."
+                        placeholder={LOGKEY_SEARCH_PLACEHOLDER}
                         value={searchLogKey}
                         onChange={(e) => setSearchLogKey(e.target.value)}
                         className="w-full p-2 pr-10 bg-white border-4 border-WPIGrey rounded-md placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-500"
@@ -307,7 +324,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     handleApproximateSearch={handleApproximateSearch}
                 /> :
                 <div className="flex justify-center h-full p-4 border-8 border-WPIGrey/45 border-t-0">
-                    <span className="italic text-neutral-500">{`No Display Currently Available (Try Searching Something)`}</span>
+                    <span className="italic text-neutral-500">{NO_DISPLAY_MSG}</span>
                 </div>
             )}
         </div>

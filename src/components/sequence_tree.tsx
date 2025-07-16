@@ -840,7 +840,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         <div style={{ width: "100%", position: "relative" }}>
             <div className="sequence-tree h-max">
                 {/* Nav Panel */ }
-                <h2 className="text-3xl mb-4">Sequence Tree</h2>
+                <h2 className="text-3xl mb-2">Sequence Tree</h2>
+                <h1 className="mt-0"> Select a log sequence and click on individual nodes to view detailed information about each log entry </h1>
                 <div style={{ marginBottom: 12, marginLeft: 20, gap: 12, alignItems: "center" }}>
                     <label>
                         Sequence:&nbsp;
