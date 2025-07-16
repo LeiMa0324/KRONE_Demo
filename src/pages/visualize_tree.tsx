@@ -122,71 +122,77 @@ export const VisualizeTree: React.FC = () => {
   }
 
   return (
-    <div style={{ minHeight: "100vh", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ flex: "1 1 auto", display: "flex", alignItems: "flex-start", paddingTop: "80px", paddingLeft: "20px", paddingRight: "20px", boxSizing: "border-box", overflow: "hidden" }}>
-        <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto", paddingBottom: 200 }}>
-          <div style={{ marginBottom: 16 }}>
+    <>
+      <div style={{ minHeight: "100vh", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ paddingTop: "4.5rem" }}></div>
+        <div style={{ flex: "1 1 auto", display: "flex", alignItems: "flex-start", padding: "20px", boxSizing: "border-box", overflow: "hidden" }}>
+          <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto", paddingBottom: 200 }}>
+            <div style={{ marginBottom: 16 }}>
+              <TreeInfoPanel
+                node={staticRootNode}
+                title="Tree statistics"
+                hideNodeName={true}
+                sortLogKeys={true}
+                onLogKeySearch={handleLogKeySearch}
+              />
+            </div>
+            <TreeControls
+              collapse={{
+                entities: collapseEntities,
+                actions: collapseActions,
+                statuses: collapseStatuses,
+                setEntities: setCollapseEntities,
+                setActions: setCollapseActions,
+                setStatuses: setCollapseStatuses,
+              }}
+              search={{
+                input: searchInput,
+                setInput: setSearchInput,
+                value: searchValue,
+                matchedNodeId,
+                handleSubmit: handleSearchSubmit,
+                handleClear: handleClearSearch,
+              }}
+              selection={{
+                entity: selectedEntity,
+                setEntity: setSelectedEntity,
+                action: selectedAction,
+                setAction: setSelectedAction,
+                status: selectedStatus,
+                setStatus: setSelectedStatus,
+                onPathSearch: handlePathSearch,
+              }}
+              treeData={treeData}
+            />
+          </div>
+          <div style={{ flex: "0 0 50%", width: "50%", minWidth: 0, height: "100%", overflow: "auto", display: "flex", flexDirection: "column" }}>
+            <div className="text-center " style={{ paddingTop: "0.5rem", paddingBottom: "2rem" }} >
+              <h1 className="font-WPIfont text-WPIRed text-5xl font-bold">Hierarchy Tree</h1>
+            </div>
+            {treeData && (
+              <VizTree
+                treeData={treeData}
+                collapseEntities={collapseEntities}
+                collapseActions={collapseActions}
+                collapseStatuses={collapseStatuses}
+                matchedNodeId={matchedNodeId}
+                setHoveredNode={setHoveredNode}
+                showAnomalySymbols={true}
+                disableHoverHighlight={!!matchedNodeId}
+              />
+            )}
+          </div>
+          <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto" }}>
             <TreeInfoPanel
-              node={staticRootNode}
-              title="Tree statistics"
-              hideNodeName={true}
-              sortLogKeys={true}
+              node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode}
               onLogKeySearch={handleLogKeySearch}
             />
           </div>
-          <TreeControls
-            collapse={{
-              entities: collapseEntities,
-              actions: collapseActions,
-              statuses: collapseStatuses,
-              setEntities: setCollapseEntities,
-              setActions: setCollapseActions,
-              setStatuses: setCollapseStatuses,
-            }}
-            search={{
-              input: searchInput,
-              setInput: setSearchInput,
-              value: searchValue,
-              matchedNodeId,
-              handleSubmit: handleSearchSubmit,
-              handleClear: handleClearSearch,
-            }}
-            selection={{
-              entity: selectedEntity,
-              setEntity: setSelectedEntity,
-              action: selectedAction,
-              setAction: setSelectedAction,
-              status: selectedStatus,
-              setStatus: setSelectedStatus,
-              onPathSearch: handlePathSearch,
-            }}
-            treeData={treeData}
-          />
         </div>
-        <div style={{ flex: "0 0 50%", width: "50%", minWidth: 0, height: "100%", overflow: "auto", display: "flex", flexDirection: "column" }}>
-          {treeData && (
-            <VizTree
-              treeData={treeData}
-              collapseEntities={collapseEntities}
-              collapseActions={collapseActions}
-              collapseStatuses={collapseStatuses}
-              matchedNodeId={matchedNodeId}
-              setHoveredNode={setHoveredNode}
-              showAnomalySymbols={true}
-              disableHoverHighlight={!!matchedNodeId}
-            />
-          )}
-        </div>
-        <div style={{ flex: "0 0 25%", width: "25%", minWidth: 180, maxWidth: "30%", height: "100%", overflowY: "auto" }}>
-          <TreeInfoPanel
-            node={searchValue && matchedNodeObj ? matchedNodeObj : hoveredNode}
-            onLogKeySearch={handleLogKeySearch}
-          />
+        <div style={{ flex: "0 0 auto" }}>
+          <Footer />
         </div>
       </div>
-      <div style={{ flex: "0 0 auto" }}>
-        <Footer />
-      </div>
-    </div>
+    </>
   );
 };
