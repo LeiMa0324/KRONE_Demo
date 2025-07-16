@@ -9,34 +9,36 @@ import {
 import {Footer} from "@/components/footer"
 import {Button} from "@/components/ui/button"
 
+//CONSTANTS
+const KRONE_desc = "KRONE is a novel log anomaly detection method designed to overcome the limitations of existing deep learning models like RNNs, LSTMs, and Transformers, which struggle with flat log structures and hierarchical anomalies. Unlike traditional approaches that rely on sequential or sliding window techniques—often grouping unrelated logs—KRONE restructures logs into a hierarchical format during training to better capture contextual relationships. Inspired by GraphRAG, KRONE decomposes logs into meaningful sequences (Krone Seqs) representing status, action, and entity, allowing for more precise anomaly detection. It incorporates Level-Decoupled Detection and Cross-Level LLM Detection to flexibly switch between high-level patterns and low-level details depending on the context. This architecture allows KRONE to pinpoint anomalies with higher accuracy and better precision than most state-of-the-art models, making it a powerful tool for identifying system failures and security breaches."
+const descriptions = [
+    "PHD Student at Worcester Polytechnic Institute (Main Author)",
+    "Faculty Advisor at WPI",
+    "PHD Student at WPI",
+    "Visiting Undergraduate Summer Researcher",
+    "WPI Summer Undergraduate Researcher",
+    "Visiting Undergraduate Summer Researcher"
+];
+
+const names = [
+    "Lei Ma",
+    "Elke Rundensteiner",
+    "Peter VanNostrand",
+    "Suhani Chaudhary",
+    "Ethan Shanbaum",
+    "Athanasios Tassiadamis"
+];
+
+const image_paths = [
+    "/team_members/lei_m.png",
+    "/team_members/elke_r.jpg",
+    "/team_members/peter_v.png",
+    "/team_members/suhani_c.jpeg",
+    "/team_members/ethan.jpg",
+    "/team_members/thanos_park.jpg"
+];
+
 function CarouselSpacing() {
-    const descriptions = [
-        "PHD Student at Worcester Polytechnic Institute (Main Author)",
-        "Faculty Advisor at WPI",
-        "PHD Student at WPI",
-        "Visiting Undergraduate Summer Researcher",
-        "WPI Summer Undergraduate Researcher",
-        "Visiting Undergraduate Summer Researcher"
-    ];
-
-    const names = [
-        "Lei Ma",
-        "Elke Rundensteiner",
-        "Peter VanNostrand",
-        "Suhani Chaudhary",
-        "Ethan Shanbaum",
-        "Athanasios Tassiadamis"
-    ];
-
-    const image_paths = [
-        "/team_members/lei_m.png",
-        "/team_members/elke_r.jpg",
-        "/team_members/peter_v.png",
-        "/team_members/suhani_c.jpeg",
-        "/team_members/ethan.jpg",
-        "/team_members/thanos_park.jpg"
-    ];
-
     return (
         <Carousel className="w-full max-w-5xl justify-self-center bg-WPIRed">
             <CarouselContent className="-ml-2">
@@ -73,9 +75,6 @@ function CarouselSpacing() {
         </Carousel>
     );
 }
-
-
-const KRONE_desc = "KRONE is a novel log anomaly detection method designed to overcome the limitations of existing deep learning models like RNNs, LSTMs, and Transformers, which struggle with flat log structures and hierarchical anomalies. Unlike traditional approaches that rely on sequential or sliding window techniques—often grouping unrelated logs—KRONE restructures logs into a hierarchical format during training to better capture contextual relationships. Inspired by GraphRAG, KRONE decomposes logs into meaningful sequences (Krone Seqs) representing status, action, and entity, allowing for more precise anomaly detection. It incorporates Level-Decoupled Detection and Cross-Level LLM Detection to flexibly switch between high-level patterns and low-level details depending on the context. This architecture allows KRONE to pinpoint anomalies with higher accuracy and better precision than most state-of-the-art models, making it a powerful tool for identifying system failures and security breaches."
 
 //Export about section
 export const About = () => {

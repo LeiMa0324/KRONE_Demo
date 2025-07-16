@@ -14,6 +14,15 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+// Dataset options
+const datasets = [
+    { value: "HDFS", label: "HDFS", path: "/demo_data_hdfs.csv" },
+    { value: "BGL", label: "BGL", path: "/demo_data_bgl.csv" },
+    { value: "ThunderBird", label: "ThunderBird", path: "/demo_data_thunderbird.csv" },
+    { value: "IaaS", label: "IaaS (Industry)", path: "/demo_data_iaas.csv" },
+];
+
+// Selection component
 function SelectDemo({ onSelect }: { onSelect: (value: string) => void }) {
     return (
         <Select onValueChange={onSelect}>
@@ -23,10 +32,11 @@ function SelectDemo({ onSelect }: { onSelect: (value: string) => void }) {
             <SelectContent>
                 <SelectGroup>
                     <SelectLabel>DataSet</SelectLabel>
-                    <SelectItem value="HDFS">HDFS</SelectItem>
-                    <SelectItem value="BGL">BGL</SelectItem>
-                    <SelectItem value="ThunderBird">ThunderBird</SelectItem>
-                    <SelectItem value="IaaS">IaaS (Industry)</SelectItem>
+                    {datasets.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                            {label}
+                        </SelectItem>
+                    ))}
                 </SelectGroup>
             </SelectContent>
         </Select>
@@ -39,7 +49,6 @@ export const FileUpload = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedDataset, setSelectedDataset] = useState<string>("");
 
-    // Parse the CSV file and update the state
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
@@ -68,24 +77,18 @@ export const FileUpload = () => {
         e.preventDefault();
         setError(null);
 
-        const datasetMap: Record<string, string> = {
-            HDFS: "/demo_data_hdfs.csv",
-            BGL: "/demo_data_bgl.csv",
-            ThunderBird: "/demo_data_thunderbird.csv",
-            IaaS: "/demo_data_iaas.csv",
-        };
-
-        if (!selectedDataset || !datasetMap[selectedDataset]) {
+        const dataset = datasets.find(d => d.value === selectedDataset);
+        if (!dataset) {
             setError("Please select a valid dataset.");
             return;
         }
 
         try {
-            const response = await fetch(datasetMap[selectedDataset]);
+            const response = await fetch(dataset.path);
             if (!response.ok) throw new Error("Failed to fetch dataset");
             const csvText = await response.text();
 
-            const demoFile = new File([csvText], `${selectedDataset}.csv`, { type: "text/csv" });
+            const demoFile = new File([csvText], `${dataset.value}.csv`, { type: "text/csv" });
             setFile(demoFile);
 
             Papa.parse(csvText, {
@@ -105,9 +108,7 @@ export const FileUpload = () => {
         <div className="flex flex-col min-h-screen">
             <div className="pt-[4.5rem]"></div>
             <div className="flex-grow flex flex-col items-center justify-center gap-8 bg-gradient-to-br from-gray-300 to-gray-400 animate-fade-in-fast">
-                {/* Top section: file upload and dataset selection */}
                 <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col md:flex-row gap-8">
-                    {/* Left side: file upload */}
                     <div className="flex flex-col items-center gap-6 flex-1">
                         <Upload className="w-12 h-12 text-WPIRed mb-2 animate-bounce" />
                         <div className="text-4xl font-WPIfont font-bold text-WPIRed">Upload a File</div>
@@ -124,7 +125,6 @@ export const FileUpload = () => {
                         </label>
                     </div>
 
-                    {/* Right side: demo dataset selection */}
                     <div className="flex flex-col items-center justify-center gap-8 flex-1">
                         <div className="text-4xl font-WPIfont font-bold text-WPIRed px-8"> Or Choose From One Of Ours </div>
                         <form onSubmit={handleDemoSubmit} className="flex gap-8">
@@ -134,7 +134,6 @@ export const FileUpload = () => {
                     </div>
                 </div>
 
-                {/* Bottom section: displays */}
                 {(file || csvData || error) && (
                     <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-5xl flex flex-col gap-8">
                         {error && (

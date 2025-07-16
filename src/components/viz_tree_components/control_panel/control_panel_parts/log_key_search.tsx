@@ -1,7 +1,7 @@
 import React from "react";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import type { SearchState } from "../types";
+import type { SearchState } from "../../types";
 
 type LogKeyOption = {
   event_id: string;

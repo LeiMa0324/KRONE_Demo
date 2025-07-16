@@ -50,12 +50,12 @@ export const NavBar = () => {
                     </Link>
                     <Link to="/visualize-tree">
                         <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            Visualize Tree
+                            Log Key Template Tree
                         </Button>
                     </Link>
-                    <Link to="/log-table">
+                    <Link to="/sequence-tree">
                         <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            Log Table
+                            Log Sequence Tree
                         </Button>
                     </Link>
                     <Link to="/knowledge-base">

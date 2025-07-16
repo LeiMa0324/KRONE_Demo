@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
-import type { SelectionState } from "../types";
+import type { SelectionState } from "../../types";
 import { DropdownSearchBar } from "./dropdown_search";
 
 export const SequenceSearch: React.FC<{
@@ -91,7 +91,7 @@ export const SequenceSearch: React.FC<{
       type="button"
       onClick={handlePathSearch}
     >
-      Search Sequence
+      Search Path
     </Button>
   </div>
 );
