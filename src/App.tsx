@@ -20,7 +20,7 @@ function App() {
             <Route path="/file-upload" element={<FileUpload />} />
             <Route path="/visualize-tree" element={<VisualizeTree />} />
             <Route path="/knowledge-base" element={<KnowledgeBaseViz />} />
-            <Route path="/log-table" element={<VisualizeTable />} />
+            <Route path="/sequence-tree" element={<VisualizeTable />} />
             <Route path="*" element={<ErrorPage />} />
           </Routes>
       </Router>

@@ -53,7 +53,7 @@ export const NavBar = () => {
                             Log Template Tree
                         </Button>
                     </Link>
-                    <Link to="/log-table">
+                    <Link to="/sequence-tree">
                         <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
                             Log Sequence Tree
                         </Button>
