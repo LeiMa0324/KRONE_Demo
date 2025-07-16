@@ -1,5 +1,5 @@
-import type { HierarchyNode } from "d3-hierarchy";
-import type { TreeNode } from "@/tree_utils";
+import { getLogKeySubsequence } from "../viz_tree_utils";
+
 import {
   logTemplateStyle,
   logLabelStyle,
@@ -7,19 +7,6 @@ import {
   buttonStyle,
 } from "./info_panel_styles";
 
-function getLogKeySubsequence(node: HierarchyNode<TreeNode>): string[] {
-  if (!node) return [];
-  if (node.depth === 3 && node.data.event_id) return [node.data.event_id];
-  const keys: string[] = [];
-  function collect(n: HierarchyNode<TreeNode>) {
-    if (n.depth === 3 && n.data.event_id) {
-      keys.push(n.data.event_id);
-    }
-    if (n.children) n.children.forEach(collect);
-  }
-  collect(node);
-  return keys.sort();
-}
 
 
 export function NodeTitle({ node, title, hideNodeName, isSequencePanel }: any) {

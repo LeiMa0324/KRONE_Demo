@@ -19,6 +19,18 @@ import {
 } from "../viz_tree_utils";
 import { drawVizTree } from "./draw_viz_tree";
 
+const DEFAULT_FONT = "sans-serif";
+const FONT_CSS_VAR = "--font-WPIfont";
+const EXTRA_COL_SPACING = [0, 60, 60, 60];
+const NODE_SIZE_X = 40;
+const NODE_SIZE_Y = 0;
+const MIN_ENTITY_GAP = 50;
+const SVG_PADDING = 200;
+const COLLAPSED_WIDTH_PADDING = 20;
+const MIN_ROOT_WIDTH = 400;
+const DIV_STYLE = { flex: 1, width: "100%", height: "100%", overflow: "auto" };
+const SVG_STYLE = { display: "block" };
+
 export const VizTree: React.FC<VizTreeProps> = ({
   treeData,
   collapseEntities,
@@ -48,10 +60,10 @@ export const VizTree: React.FC<VizTreeProps> = ({
   useEffect(() => {
     if (!svgRef.current || !localTree) return;
 
-    const font = getCssVar('--font-WPIfont') || "sans-serif";
+    const font = getCssVar(FONT_CSS_VAR) || DEFAULT_FONT;
     const widestByDepth = getWidestByDepth(localTree, font);
 
-    const extraColSpacing = [0, 60, 60, 60];
+    const extraColSpacing = EXTRA_COL_SPACING;
     const colOffsets = [0];
     for (let i = 1; i < widestByDepth.length; i++) {
       colOffsets[i] = (colOffsets[i - 1] || 0) + widestByDepth[i - 1] + extraColSpacing[i];
@@ -59,10 +71,10 @@ export const VizTree: React.FC<VizTreeProps> = ({
     const getYByDepth = (depth: number) => colOffsets[depth];
 
     const root = hierarchy<TreeNode>(localTree, childrenOrCollapsed);
-    d3Tree<TreeNode>().nodeSize([40, 0]).separation(() => 1)(root);
+    d3Tree<TreeNode>().nodeSize([NODE_SIZE_X, NODE_SIZE_Y]).separation(() => 1)(root);
 
     // Ensure minimum gap between entity nodes
-    const minEntityGap = 50;
+    const minEntityGap = MIN_ENTITY_GAP;
     const entityNodes = root.children || [];
     for (let i = 1; i < entityNodes.length; i++) {
       const prev = entityNodes[i - 1];
@@ -86,9 +98,9 @@ export const VizTree: React.FC<VizTreeProps> = ({
       if ((d.y ?? 0) > y1) y1 = d.y ?? 0;
     });
 
-    let width = y1 + 200;
-    if (collapseEntities) width = y1 + widestByDepth[1] + 20;
-    const minRootWidth = 400;
+    let width = y1 + SVG_PADDING;
+    if (collapseEntities) width = y1 + widestByDepth[1] + COLLAPSED_WIDTH_PADDING;
+    const minRootWidth = MIN_ROOT_WIDTH;
     const adjustedWidth = root.descendants().length === 1 ? minRootWidth : width;
     const height = x1 - x0 + BASE_FONT * 2;
 
@@ -139,8 +151,8 @@ export const VizTree: React.FC<VizTreeProps> = ({
   ]);
 
   return (
-    <div style={{ flex: 1, width: "100%", height: "100%", overflow: "auto" }}>
-      <svg ref={svgRef} style={{ display: "block" }} />
+    <div style={DIV_STYLE}>
+      <svg ref={svgRef} style={SVG_STYLE} />
     </div>
   );
 };

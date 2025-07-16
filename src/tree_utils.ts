@@ -6,16 +6,15 @@ import type { Selection } from "d3-selection";
 export type TreeNode = {
   name: string;
   children?: TreeNode[];
-  _children?: TreeNode[]; // for d3 collapse
+  _children?: TreeNode[];
   collapsed?: boolean;
   indexPath?: number[];
-  isAnomaly?: boolean; // unified anomaly flag
-  anomalyReason?: string; // unified anomaly explanation
+  isAnomaly?: boolean;
+  anomalyReason?: string;
   isRelatedToAnomaly?: boolean;
   lineNumber?: number;
   event_id?: string;
   log_template?: string;
-  // Add any other fields needed by either tree
 };
 
 

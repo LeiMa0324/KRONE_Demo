@@ -1,7 +1,6 @@
 import { select, type Selection } from "d3-selection";
 import type { HierarchyNode } from "d3-hierarchy";
 import type { TreeNode } from "../../tree_utils";
-// import type { HierarchyNodeWithHiddenChildren, TreeLink } from "./types";
 import type { HierarchyNodeWithHiddenChildren, TreeLink } from "./types";
 import { linkBorderColor, linkFillColor } from "../../tree_utils";
 
