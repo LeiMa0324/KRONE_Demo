@@ -7,6 +7,11 @@ import { buildTree } from "@/tree_utils";
 import type { TreeNode } from "@/tree_utils";
 import { SmallViewportWarning } from "@/components/smallViewportWarning";
 
+//CONSTANTS
+const KNOWLEDGE_BASE_DESC = "Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences."
+const ROOT_QUERY = "Root";
+
+//TYPES
 export type KnowledgeBaseData = {
     entityDict: EntityDict;
     actionDict: ActionDict;
@@ -294,13 +299,12 @@ export const KnowledgeBaseViz = () => {
                 <div className="text-center my-8">
                     <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
                     <p className="text-WPIGrey/110 text-lg mt-2">
-                        Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences.
+                        {KNOWLEDGE_BASE_DESC}
                     </p>
                 </div>
                 <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
                     {treeData && (
                         <>
-                        {console.log("Tree Data:", treeData)}
                         <VizTree
                             treeData={treeData}
                             collapseEntities={false}
@@ -325,7 +329,7 @@ export const KnowledgeBaseViz = () => {
                         allSequences={knowledgeStructures.allSequences}
                         query={
                             selectedQuery
-                                ? selectedQuery === "Root"
+                                ? selectedQuery === ROOT_QUERY
                                     ? "ROOT"
                                     : selectedQuery
                                 : "blk_4"

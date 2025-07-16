@@ -20,6 +20,9 @@ const SEQ_TYPE_COLORS: Record<string, string> = {
     ACTION: "bg-WPIGold/45 border-WPIGold",
     DEFAULT: "bg-WPIRed/45 border-WPIRed"
 };
+const TRAIN_TAB = "train";
+const TEST_TAB = "test";
+const APPROX_TAB = "approx";
 
 //TYPES
 type SequenceUnitDisplayProps = {
@@ -198,7 +201,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     query,
     initialSearchLogKey = "",
 }) => {
-    const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">("train");
+    const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">(TRAIN_TAB);
     const [searchLogKey, setSearchLogKey] = useState<string>("");
     const [currentTrainingDisplay, setCurrentTrainingDisplay] = useState<Seq[]>([]);
     const [currentTestingDisplay, setCurrentTestingDisplay] = useState<Seq[]>([]);
@@ -224,7 +227,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             const keys = initialSearchLogKey.split(",").map((k) => k.trim());
             const results = exactSearch(allSequences, keys);
             setCurrentTrainingDisplay(results);
-            setSelectedTab("train");   
+            setSelectedTab(TRAIN_TAB);   
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey]);
@@ -239,7 +242,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                 if (actionDict[query]) return actionDict[query];
                 return [];
             };
-            if (selectedTab === "train") {
+            if (selectedTab === TRAIN_TAB) {
                 setCurrentTrainingDisplay(getSeq(trainingData));
             } else {
                 setCurrentTestingDisplay(getSeq(testingData));
@@ -247,7 +250,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         } else {
             const keys = searchLogKey.split(",").map((k) => k.trim());
             const results = exactSearch(allSequences, keys);
-            if (selectedTab === "train") {
+            if (selectedTab === TRAIN_TAB) {
                 setCurrentTrainingDisplay(results);
             } else {
                 setCurrentTestingDisplay(results);
@@ -262,7 +265,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         }
         const results = approximateSearch(sequences, embedding, k);
         setApproxDisplay(results.map((r) => r.sequence));
-        setSelectedTab("approx");
+        setSelectedTab(APPROX_TAB);
     };
 
     if (!showSidebar) return null;
@@ -276,13 +279,13 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                 </button>
             </div>
             <div className="flex justify-center items-center">
-                {["train", "test", "approx"].map((tab) => (
+                {[TRAIN_TAB, TEST_TAB, APPROX_TAB].map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setSelectedTab(tab as "train" | "test" | "approx")}
                         className={`text-black px-4 py-2 w-full hover:bg-neutral-300 ${selectedTab === tab ? "bg-WPIGrey/45 underline" : "bg-white"} rounded-t-2xl`}
                     >
-                        {tab === "train" ? "Training Data" : tab === "test" ? "Testing Data" : "Approx-Search"}
+                        {tab === TRAIN_TAB ? "Training Data" : tab === TEST_TAB ? "Testing Data" : "Approx-Search"}
                     </button>
                 ))}
             </div>
@@ -300,7 +303,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     </button>
                 </div>
             </form>
-            {selectedTab === "train" && (
+            {selectedTab === TRAIN_TAB && (
                 <SequenceScrollable
                     sequences={currentTrainingDisplay}
                     allSequences={currentTrainingDisplay}
@@ -308,7 +311,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     handleApproximateSearch={handleApproximateSearch}
                 />
             )}
-            {selectedTab === "test" && (
+            {selectedTab === TEST_TAB && (
                 <SequenceScrollable
                     sequences={currentTestingDisplay}
                     allSequences={currentTestingDisplay}
@@ -316,7 +319,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     handleApproximateSearch={handleApproximateSearch}
                 />
             )}
-            {selectedTab === "approx" && (approxDisplay.length >= 1 ?
+            {selectedTab === APPROX_TAB && (approxDisplay.length >= 1 ?
                 <SequenceScrollable
                     sequences={approxDisplay}
                     allSequences={allSequences}
