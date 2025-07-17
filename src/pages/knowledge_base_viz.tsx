@@ -211,8 +211,13 @@ export const KnowledgeBaseViz = () => {
 
     const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
 
+
     const toggleSidebar = () => {
+        if (showSidebar) {
+            setSearchLogKey("");
+        }
         setShowSidebar(!showSidebar);
+
     };
 
     const handleNodeClick = (node: { data: TreeNode }) => {
@@ -227,11 +232,16 @@ export const KnowledgeBaseViz = () => {
 
     const query = useQuery();
     const logkeysParam = query.get("logkeys");
+    const tabParam = query.get("tab");
     const [searchLogKey, setSearchLogKey] = useState<string>("");
+    const [defaultTab, setDefaultTab] = useState<"train" | "test" | "approx">("train");
 
     useEffect(() => {
         if (logkeysParam && !showSidebar) {
             toggleSidebar();
+        }
+        if (tabParam) {
+            setDefaultTab(tabParam as "train" | "test" | "approx");
         }
         if (logkeysParam) {
             setSearchLogKey(logkeysParam);
@@ -339,6 +349,7 @@ export const KnowledgeBaseViz = () => {
                                 : "blk_4"
                         }
                         initialSearchLogKey={searchLogKey}
+                        defaultTab={defaultTab}
                     />
                 )}
             </div>

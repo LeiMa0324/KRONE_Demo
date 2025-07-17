@@ -160,6 +160,15 @@ export function SequencePanel({ node, multiLineAnomaly }: any) {
       >
         Search Sequence in Knowledge Base
       </button>
+      <button
+        style={buttonStyle}
+        onClick={() => {
+          const logKeys = getLogKeySubsequence(node);
+          if (logKeys.length === 0) return;
+          window.location.href = `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]&tab=approx`;
+      }}>
+        Search for Approximate Sequences
+      </button>
     </>
   );
 }

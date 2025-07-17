@@ -191,6 +191,7 @@ type KnowledgeBaseSideBarProps = {
     allSequences: Seq[];
     query: string;
     initialSearchLogKey?: string;
+    defaultTab?: "train" | "test" | "approx";
 };
 
 export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
@@ -201,8 +202,9 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     allSequences,
     query,
     initialSearchLogKey = "",
+    defaultTab = TRAIN_TAB
 }) => {
-    const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">(TRAIN_TAB);
+    const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">(defaultTab);
     const [searchLogKey, setSearchLogKey] = useState<string>("");
     const [currentTrainingDisplay, setCurrentTrainingDisplay] = useState<Seq[]>([]);
     const [currentTestingDisplay, setCurrentTestingDisplay] = useState<Seq[]>([]);
@@ -223,12 +225,30 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     }, [trainingData, testingData, query, initialSearchLogKey]);
 
     useEffect(() => {
+        if (!showSidebar) {
+            setSearchLogKey("");
+            setSelectedTab(TRAIN_TAB)
+        }
+    }, [showSidebar]);
+
+    useEffect(() => {
         if (showSidebar && initialSearchLogKey) {
             setSearchLogKey(initialSearchLogKey);
             const keys = initialSearchLogKey.split(",").map((k) => k.trim());
             const results = exactSearch(allSequences, keys);
             setCurrentTrainingDisplay(results);
-            setSelectedTab(TRAIN_TAB);   
+            setSelectedTab(defaultTab);   
+
+            if (defaultTab === APPROX_TAB) {
+                if (results.length > 0 && results[0].embedding && results[0].embedding.length > 0) {
+                    const embedding = results[0].embedding;
+                    const approxResults = approximateSearch(allSequences, embedding, 5); // Default k=5
+                    setApproxDisplay(approxResults.map((r) => r.sequence));
+                    setSelectedTab("approx");
+                } else {
+                    setApproxDisplay([]);
+                }
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey]);

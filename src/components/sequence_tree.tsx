@@ -39,7 +39,27 @@ type SequenceTreeProps = {
     multiLineAnomaly: boolean
 };
 
+function findSubsequenceIndices(sequence: string[], subsequence: string[]): [number, number] | null {
+    const len = subsequence.length;
+    for (let i = 0; i <= sequence.length - len; i++) {
+        let match = true;
+        for (let j = 0; j < len; j++) {
+            if (sequence[i + j] !== subsequence[j]) {
+                match = false;
+                break;
+            }
+        }
+        if (match) {
+            return [i, i + len - 1];
+        }
+    }
+    return null;
+}
 
+// Example usage:
+// const seq = ['9', '10', '8', '7', '6'];
+// const target = ['10', '8'];
+// findSubsequenceIndices(seq, target); // returns [1, 2]
 
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdToLogTemplate: Record<string, string>): TreeNode {
     const entities: TreeNode[] = [];
@@ -179,27 +199,44 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
             const treeNode = toTreeNode(decomp, kroneDetectData, eventIdToLogTemplate);
             const anomalyRow = kroneDetectData.find(row => row.seq_id === decomp.seq_id);
 
+            
             // If anomaly exists, expand only the parent nodes of the anomaly
             if (anomalyRow) {
-                // Find the anomaly segment in the tree
-                // We'll expand the entity and action parents of the anomaly
-                // Find the matching index in the sequence
-                const anomalyLength = anomalyRow.anomaly_seg.length;
-                const seq = decomp.seq;
-                let anomalyStartIdx = -1;
-                for (let i = 0; i <= seq.length - anomalyLength; i++) {
-                    if (arraysEqual(seq.slice(i, i + anomalyLength), anomalyRow.anomaly_seg)) {
-                        anomalyStartIdx = i;
-                        break;
+                const ids = findSubsequenceIndices(decomp.seq, anomalyRow.anomaly_seg);
+
+
+                // Expand the entity and action parents of the anomaly
+                setCollapseAtDepth(treeNode, 1, true); // collapse all entities
+                setCollapseAtDepth(treeNode, 2, true); // collapse all actions
+                // Expand only the relevant entity and action nodes
+
+                for (let i = 0; i < treeNode.children!.length; i++){
+                    for (let j = 0; j < treeNode.children![i].children!.length; j++) {
+                        for (let k = 0; k < treeNode.children![i].children![j].children!.length; k++) {
+                            const currLineNumber = treeNode.children![i].children![j].children![k].lineNumber!;
+                            if (currLineNumber >= ids![0] && currLineNumber <= ids![1]) {
+                                // Expand the entity and action parents of the anomaly
+                                treeNode.children![i].collapsed = false; // Expand entity
+                                treeNode.children![i].children![j].collapsed = false; // Expand action
+                                if (setHoveredNode) {
+                                    // Find the corresponding HierarchyNode<TreeNode> for the status node
+                                    const hierarchyRoot = hierarchy<TreeNode>(treeNode, d => d.children);
+                                    const targetLineNumber = currLineNumber;
+                                    const targetNode = hierarchyRoot
+                                        .descendants()
+                                        .find(
+                                            node =>
+                                                node.depth === 3 &&
+                                                node.data.lineNumber === targetLineNumber
+                                        );
+                                    setHoveredNode(targetNode ?? null);
+                                }
+                            }
+                        }
                     }
-                }
-                if (anomalyStartIdx !== -1) {
-                    // Expand the entity and action parents of the anomaly
-                    setCollapseAtDepth(treeNode, 1, true); // collapse all entities
-                    setCollapseAtDepth(treeNode, 2, true); // collapse all actions
-                    // Expand only the relevant entity and action nodes
 
                 }
+                
             } else {
                 // No anomaly, collapse everything
                 setCollapseAtDepth(treeNode, 1, entitiesCollapsed);
@@ -867,83 +904,94 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
         <div style={{ width: "100%", position: "relative" }}>
             <div className="sequence-tree h-max">
                 {/* Nav Panel */ }
-                <h2 className="text-3xl mb-2">Sequence Tree</h2>
-                <h1 className="mt-0"> Select a log sequence and click on individual nodes to view detailed information about each log entry </h1>
-                <div style={{ marginBottom: 12, marginLeft: 20, gap: 12, alignItems: "center" }}>
-                    <label>
-                        Sequence:&nbsp;
-                        <select
-                            value={kroneDecompData[selectedIndex]?.seq_id ?? ""}
-                            onChange={e => {
-                                const idx = kroneDecompData.findIndex(row => row.seq_id === e.target.value);
-                                if (idx !== -1) setSelectedIndex(idx);
+                <div 
+                    style={{
+                        position: "sticky",
+                        top: 0,
+                        background: "#fff",
+                        zIndex: 10,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                        paddingBottom: 8,
+                        marginBottom: 12,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                    }}
+                >
+                    <h2 className="text-3xl mb-2">Sequence Tree</h2>
+                    <h1 className="mt-0"> Select a log sequence and click on individual nodes to view detailed information about each log entry </h1>
+                    <div 
+                        style={{ 
+                            marginBottom: 12, 
+                            marginLeft: 20, 
+                            gap: 12, 
+                            alignItems: "center",
+                        }}>
+                        <label>
+                            Sequence:&nbsp;
+                            <select
+                                value={kroneDecompData[selectedIndex]?.seq_id ?? ""}
+                                onChange={e => {
+                                    const idx = kroneDecompData.findIndex(row => row.seq_id === e.target.value);
+                                    if (idx !== -1) setSelectedIndex(idx);
+                                }}
+                                style={{ minWidth: 120 }}
+                            >
+                                {kroneDecompData.map(row => (
+                                    <option key={row.seq_id} value={row.seq_id}
+                                        style={{color: kroneDetectData.find(r => r.seq_id === row.seq_id) ? "#F00" : "#000"}}
+                                    >
+                                        {row.seq_id}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <button
+                            onClick={() => {
+                                setEntitiesCollapsed(v => !v);
                             }}
-                            style={{ minWidth: 120 }}
+                            style={{
+                                marginLeft: 16,
+                                padding: "4px 12px",
+                                borderRadius: 6,
+                                border: "1px solid #ccc",
+                                background: "#eee", // Always the same color
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                minWidth: 200,      // Fixed width for consistency
+                                boxSizing: "border-box",
+                            }}
                         >
-                            {kroneDecompData.map(row => (
-                                <option key={row.seq_id} value={row.seq_id}
-                                    style={{color: kroneDetectData.find(r => r.seq_id === row.seq_id) ? "#F00" : "#000"}}
-                                >
-                                    {row.seq_id}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <button
-                        onClick={() => {
-                            setEntitiesCollapsed(v => !v);
-                        }}
-                        style={{
-                            marginLeft: 16,
-                            padding: "4px 12px",
-                            borderRadius: 6,
-                            border: "1px solid #ccc",
-                            background: "#eee", // Always the same color
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            minWidth: 200,      // Fixed width for consistency
-                            boxSizing: "border-box",
-                        }}
-                    >
-                        {entitiesCollapsed ? "Expand Entities" : "Collapse Entities"}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setActionsCollapsed(v => !v);
-                        }}
-                        style={{
-                            padding: "4px 12px",
-                            borderRadius: 6,
-                            border: "1px solid #ccc",
-                            background: "#eee", // Always the same color
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            minWidth: 200,      // Fixed width for consistency
-                            boxSizing: "border-box",
-                        }}
-                    >
-                        {actionsCollapsed ? "Expand Actions" : "Collapse Actions"}
-                    </button>
-                    {}
-                    <h1 className="text-xl mt-4 mb-2">
-                        Total Anomalous Sequences: &nbsp;
-                        <span className="text-[#F00] font-semibold">
-                            {numAnomalousSequences}
-                        </span>
-                        &nbsp;&nbsp;
-                        Total Normal Sequences: &nbsp;
-                        <span className="text-[#4caf50] font-semibold">
-                            {kroneDecompData.length - numAnomalousSequences}
-                        </span>
-                    </h1>
-                </div>
-                {loading ? (
-                    <div style={{ textAlign: "center", padding: "2rem" }}>
-                        <span className="animate-spin inline-block mr-2" style={{ fontSize: 24 }}>⏳</span>
-                        Loading sequence tree...
-                    </div>
-                ) : (
-                    <>
+                            {entitiesCollapsed ? "Expand Entities" : "Collapse Entities"}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActionsCollapsed(v => !v);
+                            }}
+                            style={{
+                                padding: "4px 12px",
+                                borderRadius: 6,
+                                border: "1px solid #ccc",
+                                background: "#eee", // Always the same color
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                minWidth: 200,      // Fixed width for consistency
+                                boxSizing: "border-box",
+                            }}
+                        >
+                            {actionsCollapsed ? "Expand Actions" : "Collapse Actions"}
+                        </button>
+                        <h3 className="text-xl mt-4 mb-2">
+                            Total Anomalous Sequences: &nbsp;
+                            <span className="text-[#F00] font-semibold">
+                                {numAnomalousSequences}
+                            </span>
+                            &nbsp;&nbsp;
+                            Total Normal Sequences: &nbsp;
+                            <span className="text-[#4caf50] font-semibold">
+                                {kroneDecompData.length - numAnomalousSequences}
+                            </span>
+                        </h3>
                         <div>
                             <h3 className="inline text-2xl">Prediction:  </h3>
                             <h3
@@ -960,6 +1008,16 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                                 {anomalyLevel}
                             </h3>
                         </div>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <div style={{ textAlign: "center", padding: "2rem" }}>
+                        <span className="animate-spin inline-block mr-2" style={{ fontSize: 24 }}>⏳</span>
+                        Loading sequence tree...
+                    </div>
+                ) : (
+                    <>
                         <svg ref={svgRef} />
                     </>
                 )}
