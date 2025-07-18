@@ -899,12 +899,12 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
                     </button>
                     {}
                     <h1 className="text-xl mt-4 mb-2">
-                        Total Anomalous Sequences: &nbsp;
+                        Total Anomalous Sequences (Dataset): &nbsp;
                         <span className="text-[#F00] font-semibold">
                             {numAnomalousSequences}
                         </span>
                         &nbsp;&nbsp;
-                        Total Normal Sequences: &nbsp;
+                        Total Normal Sequences (Dataset): &nbsp;
                         <span className="text-[#4caf50] font-semibold">
                             {kroneDecompData.length - numAnomalousSequences}
                         </span>
