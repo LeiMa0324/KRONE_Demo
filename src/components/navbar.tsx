@@ -5,8 +5,17 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react"; // Icons for the hamburger menu
 
 // Constants
-const BUTTON_STYLE =
-    "bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100 relative after:absolute after:left-0 after:bottom-0 after:h-[2px] after:bg-white after:transition-all after:duration-300 after:ease-in-out after:w-0 hover:after:w-full";
+const BUTTON_STYLE = `
+  bg-transparent font-WPIfont shadow-none border-none
+  hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100
+  relative inline-block overflow-hidden rounded-b-lg
+  px-3 py-2
+  after:absolute after:left-0 after:bottom-0 after:h-[2px]
+  after:bg-white after:w-full after:origin-center
+  after:scale-x-0 hover:after:scale-x-100
+  after:transition-transform after:duration-500 after:ease-in-out
+`;
+
 const navLinks = [
     { path: "/file-upload", label: "File Upload" },
     { path: "/visualize-tree", label: "Log Key Template Tree" },
@@ -66,7 +75,7 @@ export const NavBar = () => {
                         <Link key={link.path} to={link.path}>
                             <Button
                                 className={`${BUTTON_STYLE} ${location.pathname === link.path
-                                        ? "after:w-full after:bg-white font-semibold"
+                                        ? "after:scale-x-100 after:bg-white font-semibold"
                                         : ""
                                     }`}
                             >
@@ -74,6 +83,7 @@ export const NavBar = () => {
                             </Button>
                         </Link>
                     ))}
+
                 </div>
             </div>
         </nav>
