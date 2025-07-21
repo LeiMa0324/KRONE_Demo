@@ -220,7 +220,12 @@ export const KnowledgeBaseViz = () => {
 
     /* -- LOCAL FUNCTIONS -- */
     const toggleSidebar = () => {
+        if (showSidebar) {
+            setSearchLogKey("");
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
         setShowSidebar(!showSidebar);
+
     };
 
     // When a node is clicked it query's the selected node and displays sidebar with that nodes children sequences
@@ -236,10 +241,15 @@ export const KnowledgeBaseViz = () => {
 
     const query = useQuery();
     const logkeysParam = query.get("logkeys");
+    const tabParam = query.get("tab");
+    const [defaultTab, setDefaultTab] = useState<"train" | "test" | "approx">("train");
 
     useEffect(() => {
         if (logkeysParam && !showSidebar) {
             toggleSidebar();
+        }
+        if (tabParam) {
+            setDefaultTab(tabParam as "train" | "test" | "approx");
         }
         if (logkeysParam) {
             setSearchLogKey(logkeysParam);
@@ -349,6 +359,7 @@ export const KnowledgeBaseViz = () => {
                                 : "blk_4"
                         }
                         initialSearchLogKey={searchLogKey}
+                        defaultTab={defaultTab}
                     />
                 )}
             </div>

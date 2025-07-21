@@ -1,4 +1,5 @@
 import { getLogKeySubsequence } from "../viz_tree_utils";
+import { useState } from "react";
 
 import {
   logTemplateStyle,
@@ -131,6 +132,18 @@ export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: any)
 }
 
 export function SequencePanel({ node, multiLineAnomaly }: any) {
+  const [includeNormal, setIncludeNormal] = useState(true);
+  const [includeAnomalous, setIncludeAnomalous] = useState(true);
+
+  const handleNormalChange = (checked: boolean) => {
+    if (!checked && !includeAnomalous) return;
+    setIncludeNormal(checked);
+  };
+  const handleAnomalousChange = (checked: boolean) => {
+    if (!checked && !includeNormal) return;
+    setIncludeAnomalous(checked);
+  };
+
   return (
     <>
       {node.data.isAnomaly && (
@@ -155,11 +168,33 @@ export function SequencePanel({ node, multiLineAnomaly }: any) {
         onClick={() => {
           const logKeys = getLogKeySubsequence(node);
           if (logKeys.length === 0) return;
-          window.location.href = `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]`;
+          // Add includeNormal and includeAnomalous as query params
+          window.location.href =
+            `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]&tab=approx` +
+            `&includeNormal=${includeNormal ? "1" : "0"}&includeAnomalous=${includeAnomalous ? "1" : "0"}`;
         }}
       >
-        Search Sequence in Knowledge Base
+        Search for Approximate Sequences
       </button>
+      {/* Add checkboxes below the button */}
+      <div style={{ marginTop: 12, display: "flex", gap: 16 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input
+            type="checkbox"
+            checked={includeNormal}
+            onChange={e => handleNormalChange(e.target.checked)}
+          />
+          Include normal sequences
+        </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input
+            type="checkbox"
+            checked={includeAnomalous}
+            onChange={e => handleAnomalousChange(e.target.checked)}
+          />
+          Include anomalous sequences
+        </label>
+      </div>
     </>
   );
 }

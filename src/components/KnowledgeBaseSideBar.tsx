@@ -187,6 +187,16 @@ function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }
     );
 }
 
+// Get the parameters for the approximate search from the URL
+function getCheckboxParamsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const includeNormal = params.get("includeNormal");
+    const includeAnomalous = params.get("includeAnomalous");
+    return {
+        includeNormal: includeNormal === null ? true : includeNormal === "1",
+        includeAnomalous: includeAnomalous === null ? true : includeAnomalous === "1",
+    };
+}
 
 type KnowledgeBaseSideBarProps = {
     showSidebar: boolean;
@@ -196,6 +206,7 @@ type KnowledgeBaseSideBarProps = {
     allSequences: Seq[];
     query: string;
     initialSearchLogKey?: string;
+    defaultTab?: "train" | "test" | "approx";
 };
 
 // -- KnowledgeBaseSideBar Component -- Takes in knowledge structure data, an inital query search, and a togglesidebar state
@@ -208,12 +219,22 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     allSequences,
     query,
     initialSearchLogKey = "",
+    defaultTab = TRAIN_TAB
 }) => {
-    const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">(TRAIN_TAB);
+    const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">(defaultTab);
     const [searchLogKey, setSearchLogKey] = useState<string>("");
     const [currentTrainingDisplay, setCurrentTrainingDisplay] = useState<Seq[]>([]);
     const [currentTestingDisplay, setCurrentTestingDisplay] = useState<Seq[]>([]);
     const [approxDisplay, setApproxDisplay] = useState<Seq[]>([]);
+    const [includeNormal, setIncludeNormal] = useState<boolean>(true);
+    const [includeAnomalous, setIncludeAnomalous] = useState<boolean>(true);
+
+    const getFilteredSequences = (sequences: Seq[]) => {
+        return sequences.filter(seq =>
+            (includeNormal && !seq.isAnomaly) ||
+            (includeAnomalous && seq.isAnomaly)
+        );
+    };
 
     // When the component mounts set the current training and testing displays based off query
     useEffect(() => {
@@ -230,15 +251,57 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     }, [trainingData, testingData, query, initialSearchLogKey]);
 
     useEffect(() => {
+        if (!showSidebar) {
+            setSearchLogKey("");
+            setSelectedTab(TRAIN_TAB)
+        }
+        else {
+            const params = getCheckboxParamsFromUrl();
+            setIncludeNormal(params.includeNormal);
+            setIncludeAnomalous(params.includeAnomalous);            
+        }
+    }, [showSidebar]);
+
+    useEffect(() => {
         if (showSidebar && initialSearchLogKey) {
             setSearchLogKey(initialSearchLogKey);
             const keys = initialSearchLogKey.split(",").map((k) => k.trim());
             const results = exactSearch(allSequences, keys);
             setCurrentTrainingDisplay(results);
-            setSelectedTab(TRAIN_TAB);   
+            setSelectedTab(defaultTab);   
+
+            if (defaultTab === APPROX_TAB) {
+                if (results.length > 0 && results[0].embedding && results[0].embedding.length > 0) {
+                    const embedding = results[0].embedding;
+                    // Use filtered sequences here!
+                    const filtered = getFilteredSequences(allSequences);
+                    const approxResults = approximateSearch(filtered, embedding, 5); // Default k=5
+                    setApproxDisplay(approxResults.map((r) => r.sequence));
+                    setSelectedTab("approx");
+                } else {
+                    setApproxDisplay([]);
+                }
+            }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showSidebar, initialSearchLogKey]);
+    }, [showSidebar, initialSearchLogKey, includeNormal, includeAnomalous]);
+        useEffect(() => {
+        // Only update if we're on the approx tab and have results to show
+        if (
+            selectedTab === APPROX_TAB &&
+            approxDisplay.length > 0 &&
+            approxDisplay[0].embedding &&
+            approxDisplay[0].embedding.length > 0
+        ) {
+            // Use the embedding from the first result (or store the last used embedding in state if needed)
+            const embedding = approxDisplay[0].embedding;
+            // Use the same k as before (default to 5 if not available)
+            const k = approxDisplay.length;
+            const filtered = getFilteredSequences(allSequences);
+            const results = approximateSearch(filtered, embedding, k);
+            setApproxDisplay(results.map((r) => r.sequence));
+        }
+    }, [includeNormal, includeAnomalous, selectedTab]);
 
     // On successful search update the current training and testing display
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -273,7 +336,8 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             console.error("Invalid embedding for approximate search.");
             return;
         }
-        const results = approximateSearch(sequences, embedding, k);
+        const filtered = getFilteredSequences(sequences);
+        const results = approximateSearch(filtered, embedding, k);
         setApproxDisplay(results.map((r) => r.sequence));
         setSelectedTab(APPROX_TAB);
     };
@@ -319,6 +383,35 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     </button>
                 </div>
             </form>
+
+            {selectedTab === APPROX_TAB && (
+                <div className="flex flex-row gap-8 px-8 py-2 items-center justify-center">
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={includeNormal}
+                            onChange={e => {
+                                // Only allow unchecking if includeAnomalous is still checked
+                                if (!e.target.checked && !includeAnomalous) return;
+                                setIncludeNormal(e.target.checked);
+                            }}
+                        />
+                        Include normal sequences
+                    </label>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={includeAnomalous}
+                            onChange={e => {
+                                // Only allow unchecking if includeNormal is still checked
+                                if (!e.target.checked && !includeNormal) return;
+                                setIncludeAnomalous(e.target.checked);
+                            }}
+                        />
+                        Include anomalous sequences
+                    </label>
+                </div>
+            )}
 
             { /* DISPLAY SELECTED TAB (TRAIN, TEST, or APPROX) */}
             {selectedTab === TRAIN_TAB && (

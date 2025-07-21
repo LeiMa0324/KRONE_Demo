@@ -42,6 +42,8 @@ export const BASE_PADDING = 0.35;
 export const BASE_RADIUS = 0.25;
 export const DEPTH_SPACING = 14;
 
+// Function to build a tree structure from CSV rows
+// Each row represents a node in the tree with entity, action, and status information
 export function buildTree(rows: CsvRow[]): TreeNode {
   const root: TreeNode = { name: "Root", children: [] };
   const entityMap: Record<string, TreeNode> = {};
@@ -81,6 +83,8 @@ export function buildTree(rows: CsvRow[]): TreeNode {
   return root;
 }
 
+// Collapse and expand functions for tree nodes
+// These functions allow collapsing and expanding nodes at a specific depth in the tree structure.
 export function collapseAtDepth(node: TreeNode, targetDepth: number, currentDepth = 0) {
   if (!node.children) return;
   if (currentDepth === targetDepth) {
@@ -106,13 +110,14 @@ export function expandAtDepth(node: TreeNode, targetDepth: number, currentDepth 
 
 
 
-// --- Add indexPath recursively ---
+// Add index paths to each node in the tree
+// This function traverses the tree and assigns an index path to each node, which can be used for toggling nodes by their path.
 export function addIndexPath(node: TreeNode, path: number[] = []): void {
   node.indexPath = path;
   (node.children || []).forEach((c, i) => addIndexPath(c, [...path, i]));
 }
 
-// --- Toggle collapse by indexPath ---
+// Toggle a node by its index path
 export function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode {
   if (path.length === 0) return node;
   const [currentIndex, ...remainingPath] = path;
@@ -132,7 +137,7 @@ export function toggleNodeByIndexPath(node: TreeNode, path: number[]): TreeNode 
   };
 }
 
-// --- Collapse/expand all nodes at a given depth ---
+// Collapse/expand all nodes at a given depth
 export function setCollapseAtDepth(node: TreeNode, depth: number, collapse: boolean, cur = 1) {
   if (!node.children) return;
   if (cur === depth) {
@@ -144,7 +149,7 @@ export function setCollapseAtDepth(node: TreeNode, depth: number, collapse: bool
   }
 }
 
-// --- Is this node or any ancestor collapsed? ---
+// Is this node or any ancestor collapsed?
 export function isNodeHidden(node: HierarchyNode<TreeNode>): boolean {
   let current = node.parent;
   while (current) {
@@ -163,6 +168,7 @@ export function arraysEqual<T>(a: T[], b: T[]): boolean {
   return true;
 }
 
+// Get the first anomaly reason from a node or its children
 export function getFirstAnomalyReason(node: HierarchyNode<TreeNode>): string | undefined {
   if (node.children) {
     for (const child of node.children) {
@@ -201,6 +207,8 @@ export function linkFillColor(d: { source: { depth: number } }) {
   return [ENTITY_FILL, ACTION_FILL, STATUS_FILL, "#fff"][d.source.depth] || "#fff";
 }
 
+// Get the widest label width for each depth in the tree
+// This function creates a temporary SVG element to measure the width of text labels at different depths.
 export function getWidestByDepth(tree: TreeNode, font: string) {
   const widestByDepth = [75, 0, 0, 0];
   const root = hierarchy(tree, d => d.children);
@@ -223,6 +231,7 @@ export function getWidestByDepth(tree: TreeNode, font: string) {
   return widestByDepth;
 }
 
+// Initialize the SVG element for the tree visualization
 export function svgInit(svgRef: React.RefObject<SVGSVGElement | null>, width: number, height: number, font: string, viewBoxParam: number, x0: number) {
   const svg = select(svgRef.current);
   svg.selectAll("*").remove();
@@ -236,6 +245,8 @@ export function svgInit(svgRef: React.RefObject<SVGSVGElement | null>, width: nu
   return svg;
 }
 
+// Append lines to the SVG for the tree links
+// This function draws the lines connecting the nodes in the tree, adjusting for the widest label at each depth.
 export function svgLines(
     svg: Selection<SVGSVGElement | null, unknown, null, undefined>, 
     root: HierarchyNode<TreeNode>, 
@@ -267,6 +278,8 @@ export function svgLines(
   return svg;
 }
 
+// Append nodes to the SVG for the tree visualization
+// This function creates groups for each node in the tree, setting their position and event handlers for mouse interactions.
 export function svgNodes(
     svg: Selection<SVGSVGElement | null, unknown, null, undefined>, 
     root: HierarchyNode<TreeNode>,
