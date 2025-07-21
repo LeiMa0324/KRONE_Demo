@@ -108,6 +108,8 @@ export const About = () => {
                     <div className="font-WPIfont font-bold text-3xl text-gray-100 text-center pt-6">
                         Meet The Team
                     </div>
+
+                    {/* Carousel Component */}
                     <CarouselSpacing />
                 </div>
             </div>

@@ -193,6 +193,8 @@ type KnowledgeBaseSideBarProps = {
     initialSearchLogKey?: string;
 };
 
+// -- KnowledgeBaseSideBar Component -- Takes in knowledge structure data, an inital query search, and a togglesidebar function and showsidebar state
+// Alternate showSidebar from t/f to hide and display sidebar, change search query for different children
 export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     showSidebar,
     toggleSidebar,
@@ -208,7 +210,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     const [currentTestingDisplay, setCurrentTestingDisplay] = useState<Seq[]>([]);
     const [approxDisplay, setApproxDisplay] = useState<Seq[]>([]);
 
-
+    // When the component mounts set the current training and testing displays based off query
     useEffect(() => {
         if (initialSearchLogKey) return; // Don't overwrite if searching by logkeys
         const getSeq = (data: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences }) => {
@@ -233,6 +235,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey]);
 
+    // On successful search update the current training and testing display
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!searchLogKey.trim()) {
@@ -259,6 +262,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         }
     };
 
+    // On approximate serach call approxSearch imported function and update ApproxDisplay tab
     const handleApproximateSearch = (sequences: Seq[], embedding: number[], k: number) => {
         if (!embedding || embedding.length === 0) {
             console.error("Invalid embedding for approximate search.");
@@ -273,12 +277,16 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
 
     return (
         <div className="fixed top-0 right-0 h-full w-2/5 bg-white border-l-8 border-l-WPIGrey text-black shadow-lg z-50 animate-slide-in-right-fast">
+            
+            { /* -- TITLE DISPLAY W/ CLOSEOUT */}
             <div className="p-4 flex justify-between items-center">
                 <h2 className="text-xl font-bold font-WPIfont">Knowledge Base Sequences</h2>
                 <button onClick={toggleSidebar} className="text-neutral-400 hover:text-black hover:scale-110">
                     <X />
                 </button>
             </div>
+
+            { /* -- TAB SELECTION -- */}
             <div className="flex justify-center items-center">
                 {[TRAIN_TAB, TEST_TAB, APPROX_TAB].map((tab) => (
                     <button
@@ -290,6 +298,8 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     </button>
                 ))}
             </div>
+
+            { /* EXACT LOGKEY SEARCH */}
             <form className="p-4 flex items-center justify-center border-8 border-WPIGrey/45 border-b-0" onSubmit={handleSearchSubmit}>
                 <div className="relative w-full">
                     <input
@@ -304,6 +314,8 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     </button>
                 </div>
             </form>
+
+            { /* DISPLAY SELECTED TAB (TRAIN, TEST, or APPROX) */}
             {selectedTab === TRAIN_TAB && (
                 <SequenceScrollable
                     sequences={currentTrainingDisplay}
