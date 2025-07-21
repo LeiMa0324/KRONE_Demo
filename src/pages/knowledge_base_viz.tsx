@@ -5,7 +5,13 @@ import { KnowledgeBaseSideBar } from "@/components/KnowledgeBaseSideBar";
 import { VizTree } from "@/components/viz_tree_components/viz_tree/viz_tree";
 import { buildTree } from "@/tree_utils";
 import type { TreeNode } from "@/tree_utils";
+import { SmallViewportWarning } from "@/components/smallViewportWarning";
 
+//CONSTANTS
+const KNOWLEDGE_BASE_DESC = "Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences."
+const ROOT_QUERY = "Root";
+
+//TYPES
 export type KnowledgeBaseData = {
     entityDict: EntityDict;
     actionDict: ActionDict;
@@ -42,11 +48,13 @@ function useQuery() {
   return new URLSearchParams(window.location.search);
 }
 
+// --parseListField-- Parse individual string and return it as list
 function parseListField(field: string): string[] {
     if (!field || field.trim() === "") return [];
     return field.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+// -- parseEmbeddingField function -- Parses embedding field of csv file and returns them as array of number 
 function parseEmbeddingField(field: string): number[] {
     if (!field || field.trim() === "") return [];
 
@@ -65,7 +73,9 @@ function parseEmbeddingField(field: string): number[] {
     }
 }
 
-
+// -- buildKnowledgeStructures function -- Takes array of CSVRow's and constructs an Entity Dictionary which takes an
+// entity query and returns the list of sequence children, an actionDict that does the same for actions, and a list
+// of allSequences and entitySequences
 function buildKnowledgeStructures(rows: CSVRow[]): {
     entityDict: EntityDict;
     actionDict: ActionDict;
@@ -123,6 +133,7 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
     return { entityDict, actionDict, entitySequences, allSequences };
 }
 
+// -- parseKnowledgeCSV Function -- Parses knowledge base csv and returns callback with build knowledge structures
 function parseKnowledgeCSV(
     csvText: string,
     callback: (structures: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences; allSequences: Seq[] }) => void
@@ -141,7 +152,7 @@ function parseKnowledgeCSV(
     });
 }
 
-//Cosine Similarity calculation function
+//Cosine Similarity Calculation Function
 function cosineSimilarity(a: number[], b: number[]): number {
     const dot = a.reduce((sum, val, i) => sum + val * b[i], 0);
     const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
@@ -181,7 +192,7 @@ export function approximateSearch(sequences: Seq[], targetEmbedding: number[], k
     return validSimilarities.slice(0, k);
 }
 
-// Exact search for sequences with a matching logkey_seq
+// Exact search, matches log key sequence to query
 export function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] {
     return sequences.filter(seq =>
         seq.logkey_seq.length === targetLogkeySeq.length &&
@@ -189,7 +200,10 @@ export function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] 
     );
 }
 
+// Full Knowlege Base Visualization Component - Includes tree and navbar
 export const KnowledgeBaseViz = () => {
+
+    /* -- STATES -- */
     const [knowledgeStructures, setKnowledgeStructures] = useState<{
         trainingData: KnowledgeBaseData | null;
         testingData: KnowledgeBaseData | null;
@@ -199,17 +213,17 @@ export const KnowledgeBaseViz = () => {
         testingData: null,
         allSequences: [],
     });
-
     const [showSidebar, setShowSidebar] = useState(false);
-
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
-
     const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
+    const [searchLogKey, setSearchLogKey] = useState<string>("");
 
+    /* -- LOCAL FUNCTIONS -- */
     const toggleSidebar = () => {
         setShowSidebar(!showSidebar);
     };
 
+    // When a node is clicked it query's the selected node and displays sidebar with that nodes children sequences
     const handleNodeClick = (node: { data: TreeNode }) => {
     console.log("Clicked node:", node);
         if (node.data?.name) {
@@ -222,7 +236,6 @@ export const KnowledgeBaseViz = () => {
 
     const query = useQuery();
     const logkeysParam = query.get("logkeys");
-    const [searchLogKey, setSearchLogKey] = useState<string>("");
 
     useEffect(() => {
         if (logkeysParam && !showSidebar) {
@@ -231,7 +244,9 @@ export const KnowledgeBaseViz = () => {
         if (logkeysParam) {
             setSearchLogKey(logkeysParam);
         }
-    }, [logkeysParam]);
+    }, [logkeysParam, showSidebar, toggleSidebar]);
+
+    // On component mount fetches the training and testing knowledge and builds their respective knowledge structures
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
@@ -288,48 +303,57 @@ export const KnowledgeBaseViz = () => {
     return (
         <>
             <div className="pt-[4.75rem]"></div>
-            <div className="text-center my-8">
-                <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
-                <p className="text-WPIGrey/110 text-lg mt-2">
-                    Explore the knowledge base by interacting with the visualization below. Click on a node to query its child sequences.
-                </p>
-            </div>
-            <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
-                {treeData && (
-                    <>
-                    {console.log("Tree Data:", treeData)}
-                    <VizTree
-                        treeData={treeData}
-                        collapseEntities={false}
-                        collapseActions={false}
-                        collapseStatuses={false}
-                        matchedNodeId={null}
-                        showAnomalySymbols={false}
-                        collapsible={false}
-                        disableHoverHighlight={true}
-                        onNodeClick={handleNodeClick}
-                        clickableNodes={true}
+            <SmallViewportWarning />
+            <div className="hidden lg:block">
+                {/* HEADER AND TITLE */}
+                <div className="text-center my-8">
+                    <h1 className="font-WPIfont text-WPIRed text-6xl font-bold">Knowledge Base Visualization</h1>
+                    <p className="text-WPIGrey/110 text-lg mt-2">
+                        {KNOWLEDGE_BASE_DESC}
+                    </p>
+                </div>
+                
+                {/* TREE DISPLAY */}
+                <div style={{ width: "100%", margin: "0.5rem auto", display: "flex", justifyContent: "center", alignItems: "center", marginBottom: "2rem" }}>
+                    {treeData && (
+                        <>
+                        <VizTree
+                            treeData={treeData}
+                            collapseEntities={false}
+                            collapseActions={false}
+                            collapseStatuses={false}
+                            matchedNodeId={null}
+                            showAnomalySymbols={false}
+                            collapsible={false}
+                            disableHoverHighlight={true}
+                            onNodeClick={handleNodeClick}
+                            clickableNodes={true}
+                        />
+                        </>
+                    )}
+                </div>
+
+                {/* SIDEBAR DISPLAY */}
+                {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
+                    <KnowledgeBaseSideBar
+                        showSidebar={showSidebar}
+                        toggleSidebar={toggleSidebar}
+                        trainingData={knowledgeStructures.trainingData}
+                        testingData={knowledgeStructures.testingData}
+                        allSequences={knowledgeStructures.allSequences}
+                        query={
+                            selectedQuery
+                                ? selectedQuery === ROOT_QUERY
+                                    ? "ROOT"
+                                    : selectedQuery
+                                : "blk_4"
+                        }
+                        initialSearchLogKey={searchLogKey}
                     />
-                    </>
                 )}
             </div>
-            {knowledgeStructures.trainingData && knowledgeStructures.testingData && (
-                <KnowledgeBaseSideBar
-                    showSidebar={showSidebar}
-                    toggleSidebar={toggleSidebar}
-                    trainingData={knowledgeStructures.trainingData}
-                    testingData={knowledgeStructures.testingData}
-                    allSequences={knowledgeStructures.allSequences}
-                    query={
-                        selectedQuery
-                            ? selectedQuery === "Root"
-                                ? "ROOT"
-                                : selectedQuery
-                            : "blk_4"
-                    }
-                    initialSearchLogKey={searchLogKey}
-                />
-            )}
+
+            {/* FOOTER */}
             <div className="w-full fixed bottom-0">
                 <Footer />
             </div>

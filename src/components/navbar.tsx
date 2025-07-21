@@ -4,6 +4,27 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react"; // Icons for the hamburger menu
 
+// CONSTANTS
+const BUTTON_STYLE = `
+  bg-transparent font-WPIfont shadow-none border-none
+  hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100
+  relative inline-block overflow-hidden rounded-b-lg
+  px-3 py-2
+  after:absolute after:left-0 after:bottom-0 after:h-[2px]
+  after:bg-white after:w-full after:origin-center
+  after:scale-x-0 hover:after:scale-x-100
+  after:transition-transform after:duration-500 after:ease-in-out
+`;
+
+const navLinks = [
+    { path: "/file-upload", label: "File Upload" },
+    { path: "/visualize-tree", label: "Log Key Template Tree" },
+    { path: "/sequence-tree", label: "Log Sequence Tree" },
+    { path: "/knowledge-base", label: "Knowledge Base" },
+    { path: "/about", label: "About" },
+];
+
+//NAVAR COMPONENT - Iterates through navLinks and displays them as fixed buttons on top of screen with BUTTON_STYLE styling
 export const NavBar = () => {
     const location = useLocation();
     const isHeroPage = location.pathname === "/";
@@ -11,7 +32,10 @@ export const NavBar = () => {
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
     return (
-        <nav className={`fixed w-full z-40 bg-WPIRed ${isHeroPage ? "animate-slide-in-top" : ""}`}>
+        <nav
+            className={`fixed w-full z-40 bg-WPIRed ${isHeroPage ? "animate-slide-in-top" : ""
+                }`}
+        >
             <div className="flex w-full justify-between items-center px-4 py-3">
                 {/* Logo Section */}
                 <div className="flex items-center gap-4">
@@ -22,7 +46,9 @@ export const NavBar = () => {
                         </Avatar>
                     </Link>
                     <Link to="/">
-                        <span className="font-WPIfont font-bold text-3xl text-gray-100">KRONE</span>
+                        <span className="font-WPIfont font-bold text-3xl text-gray-100">
+                            KRONE
+                        </span>
                     </Link>
                 </div>
 
@@ -31,43 +57,34 @@ export const NavBar = () => {
                     <Button
                         className="bg-transparent shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0"
                         onClick={toggleMenu}
-                        aria-label={isMenuOpen ? "Close menu" : "Open menu"} // Add accessible name
+                        aria-label={isMenuOpen ? "Close menu" : "Open menu"}
                     >
-                        {isMenuOpen ? <X className="text-gray-100 w-6 h-6" /> : <Menu className="text-gray-100 w-6 h-6" />}
+                        {isMenuOpen ? (
+                            <X className="text-gray-100 w-6 h-6" />
+                        ) : (
+                            <Menu className="text-gray-100 w-6 h-6" />
+                        )}
                     </Button>
                 </div>
 
                 {/* Navigation Links */}
                 <div
-                    className={`flex-col lg:flex-row lg:flex items-center gap-4 absolute lg:static top-16 left-0 w-full lg:w-auto bg-WPIRed lg:bg-transparent transition-all duration-300 ${
-                        isMenuOpen ? "flex" : "hidden"
-                    }`}
+                    className={`flex-col lg:flex-row lg:flex items-center gap-4 absolute lg:static top-16 left-0 w-full lg:w-auto bg-WPIRed lg:bg-transparent transition-all duration-300 ${isMenuOpen ? "flex" : "hidden"
+                        }`}
                 >
-                    <Link to="/file-upload">
-                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            File Upload
-                        </Button>
-                    </Link>
-                    <Link to="/visualize-tree">
-                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            Visualize Tree
-                        </Button>
-                    </Link>
-                    <Link to="/log-table">
-                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            Log Table
-                        </Button>
-                    </Link>
-                    <Link to="/knowledge-base">
-                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            Knowledge Base 
-                        </Button>
-                    </Link>
-                    <Link to="/about">
-                        <Button className="bg-transparent font-WPIfont shadow-none border-none hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100">
-                            About
-                        </Button>
-                    </Link>
+                    {navLinks.map((link) => (
+                        <Link key={link.path} to={link.path}>
+                            <Button
+                                className={`${BUTTON_STYLE} ${location.pathname === link.path
+                                        ? "after:scale-x-100 after:bg-white font-semibold"
+                                        : ""
+                                    }`}
+                            >
+                                {link.label}
+                            </Button>
+                        </Link>
+                    ))}
+
                 </div>
             </div>
         </nav>

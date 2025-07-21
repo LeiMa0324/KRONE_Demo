@@ -96,7 +96,7 @@ export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: any)
   return (
     <div style={logKeyStyle}>
       <div>
-        <span style={{ color: "#4caf50", fontWeight: 500 }}>Normal log keys:</span>
+        <span style={{ color: "#4caf50", fontWeight: 500 }}>{`Normal Log Keys (${normalLogKeys.length} Total): `}</span>
         <span
           style={{
             marginLeft: 6,
@@ -110,8 +110,9 @@ export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: any)
           {renderLogKeys(normalLogKeys, "#4caf50")}
         </span>
       </div>
+      <br></br>
       <div>
-        <span style={{ color: "#f44336", fontWeight: 500 }}>Abnormal log keys:</span>
+        <span style={{ color: "#f44336", fontWeight: 500 }}>{`Abnormal Log Keys (${abnormalLogKeys.length} Total): `}</span>
         <span
           style={{
             marginLeft: 6,

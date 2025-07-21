@@ -151,8 +151,8 @@ export const VizTree: React.FC<VizTreeProps> = ({
   ]);
 
   return (
-    <div style={DIV_STYLE}>
-      <svg ref={svgRef} style={SVG_STYLE} />
+    <div className="mb-8" style={DIV_STYLE}>
+      <svg ref={svgRef} style={{ display: "block" }} />
     </div>
   );
 };

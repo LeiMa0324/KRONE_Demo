@@ -12,6 +12,7 @@ import { TreeControls } from "@/components/viz_tree_components/control_panel/viz
 import { VizTree } from "@/components/viz_tree_components/viz_tree/viz_tree";
 import { TreeInfoPanel } from "@/components/viz_tree_components/info_panel/tree_info_panel";
 import { Footer } from "@/components/footer";
+import { SmallViewportWarning } from "@/components/smallViewportWarning";
 
 export const VisualizeTree: React.FC = () => {
   const [treeData, setTreeData] = useState<TreeNode | null>(null);

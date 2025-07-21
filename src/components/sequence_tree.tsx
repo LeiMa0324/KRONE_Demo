@@ -849,10 +849,16 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
         else anomalyLevel = String(anomalyRow.anomaly_level);
     }
 
+    const numAnomalousSequences = kroneDecompData.filter(row =>
+        kroneDetectData.find(r => r.seq_id === row.seq_id)
+    ).length;
+
     return (
         <div style={{ width: "100%", position: "relative" }}>
             <div className="sequence-tree h-max">
-                <h2 className="text-3xl mb-4">Sequence Tree</h2>
+                {/* Nav Panel */ }
+                <h2 className="text-3xl mb-2">Sequence Tree</h2>
+                <h1 className="mt-0"> Select a log sequence and click on individual nodes to view detailed information about each log entry </h1>
                 <div style={{ marginBottom: 12, marginLeft: 20, gap: 12, alignItems: "center" }}>
                     <label>
                         Sequence:&nbsp;
@@ -908,6 +914,18 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                     >
                         {actionsCollapsed ? "Expand Actions" : "Collapse Actions"}
                     </button>
+                    {}
+                    <h1 className="text-xl mt-4 mb-2">
+                        Total Anomalous Sequences (Dataset): &nbsp;
+                        <span className="text-[#F00] font-semibold">
+                            {numAnomalousSequences}
+                        </span>
+                        &nbsp;&nbsp;
+                        Total Normal Sequences (Dataset): &nbsp;
+                        <span className="text-[#4caf50] font-semibold">
+                            {kroneDecompData.length - numAnomalousSequences}
+                        </span>
+                    </h1>
                 </div>
                 {loading ? (
                     <div style={{ textAlign: "center", padding: "2rem" }}>
