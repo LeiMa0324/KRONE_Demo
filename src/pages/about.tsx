@@ -46,7 +46,7 @@ const carouselCards = [
     },
 ]
 
-// CAROUSEL COMPONENT
+// CAROUSEL COMPONENT - Iterates and displays carouselcards
 function CarouselSpacing() {
     return (
         <Carousel className="w-full max-w-5xl justify-self-center bg-WPIRed">
@@ -84,7 +84,7 @@ function CarouselSpacing() {
     )
 }
 
-// Export About Section
+// ABOUT SECTION - Contains KRONE_DESC and carousel of team members
 export const About = () => {
     return (
         <div className="bg-white overflow-x-hidden">
