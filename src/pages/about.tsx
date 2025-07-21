@@ -46,7 +46,7 @@ const carouselCards = [
     },
 ]
 
-// CAROUSEL COMPONENT - Iterates and displays carouselcards
+// CAROUSEL COMPONENT - Iterates and displays carouselCards
 function CarouselSpacing() {
     return (
         <Carousel className="w-full max-w-5xl justify-self-center bg-WPIRed">
@@ -88,7 +88,7 @@ function CarouselSpacing() {
 export const About = () => {
     return (
         <div className="bg-white overflow-x-hidden">
-            {/* Account for navbar */}
+            {/* Account for navbar spacing */}
             <div className="pt-[4.5rem]" />
 
             <div className="flex flex-col w-full min-h-screen bg-white py-6 px-4 sm:px-8 md:px-16 lg:px-24">

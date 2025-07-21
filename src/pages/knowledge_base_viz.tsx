@@ -48,11 +48,13 @@ function useQuery() {
   return new URLSearchParams(window.location.search);
 }
 
+// --parseListField-- Parse individual string and return it as list
 function parseListField(field: string): string[] {
     if (!field || field.trim() === "") return [];
     return field.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
+// -- parseEmbeddingField function -- Parses embedding field of csv file and returns them as array of number 
 function parseEmbeddingField(field: string): number[] {
     if (!field || field.trim() === "") return [];
 
@@ -71,6 +73,9 @@ function parseEmbeddingField(field: string): number[] {
     }
 }
 
+// -- buildKnowledgeStructures function -- Takes array of CSVRow's and constructs an Entity Dictionary which takes an
+// entity query and returns the list of sequence children, an actionDict that does the same for actions, and a list
+// of allSequences and entitySequences
 function buildKnowledgeStructures(rows: CSVRow[]): {
     entityDict: EntityDict;
     actionDict: ActionDict;
@@ -128,6 +133,7 @@ function buildKnowledgeStructures(rows: CSVRow[]): {
     return { entityDict, actionDict, entitySequences, allSequences };
 }
 
+// -- parseKnowledgeCSV Function -- Parses knowledge base csv and returns callback with build knowledge structures
 function parseKnowledgeCSV(
     csvText: string,
     callback: (structures: { entityDict: EntityDict; actionDict: ActionDict; entitySequences: EntitySequences; allSequences: Seq[] }) => void
@@ -194,7 +200,10 @@ export function exactSearch(sequences: Seq[], targetLogkeySeq: string[]): Seq[] 
     );
 }
 
+// Full Knowlege Base Visualization Component - Includes tree and navbar
 export const KnowledgeBaseViz = () => {
+
+    /* -- STATES -- */
     const [knowledgeStructures, setKnowledgeStructures] = useState<{
         trainingData: KnowledgeBaseData | null;
         testingData: KnowledgeBaseData | null;
@@ -204,17 +213,17 @@ export const KnowledgeBaseViz = () => {
         testingData: null,
         allSequences: [],
     });
-
     const [showSidebar, setShowSidebar] = useState(false);
-
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
-
     const [selectedQuery, setSelectedQuery] = useState<string | null>(null);
+    const [searchLogKey, setSearchLogKey] = useState<string>("");
 
+    /* -- LOCAL FUNCTIONS -- */
     const toggleSidebar = () => {
         setShowSidebar(!showSidebar);
     };
 
+    // When a node is clicked it query's the selected node and displays sidebar with that nodes children sequences
     const handleNodeClick = (node: { data: TreeNode }) => {
     console.log("Clicked node:", node);
         if (node.data?.name) {
@@ -227,7 +236,6 @@ export const KnowledgeBaseViz = () => {
 
     const query = useQuery();
     const logkeysParam = query.get("logkeys");
-    const [searchLogKey, setSearchLogKey] = useState<string>("");
 
     useEffect(() => {
         if (logkeysParam && !showSidebar) {
@@ -236,7 +244,9 @@ export const KnowledgeBaseViz = () => {
         if (logkeysParam) {
             setSearchLogKey(logkeysParam);
         }
-    }, [logkeysParam]);
+    }, [logkeysParam, showSidebar, toggleSidebar]);
+
+    // On component mount fetches the training and testing knowledge and builds their respective knowledge structures
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
@@ -342,6 +352,8 @@ export const KnowledgeBaseViz = () => {
                     />
                 )}
             </div>
+
+            {/* FOOTER */}
             <div className="w-full fixed bottom-0">
                 <Footer />
             </div>
