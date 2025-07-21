@@ -24,6 +24,7 @@ const navLinks = [
     { path: "/about", label: "About" },
 ];
 
+//NAVAR COMPONENT - Iterates through navLinks and displays them as fixed buttons on top of screen with BUTTON_STYLE styling
 export const NavBar = () => {
     const location = useLocation();
     const isHeroPage = location.pathname === "/";
