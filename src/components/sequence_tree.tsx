@@ -36,10 +36,16 @@ type SequenceTreeProps = {
     kroneDetectData: KroneDetectRow[];
     setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void;
     setMultiLineAnomaly: (isMultiLineAnomaly: boolean) => void;
-    multiLineAnomaly: boolean
+    multiLineAnomaly: boolean;
+    demoMode?: boolean;
 };
 
-
+const DEMO_EVENT_ID_TO_LOG_TEMPLATE: Record<string, string> = {
+    "1": "Session started",
+    "2": "Session opened successfully",
+    "3": "Auth start initiated",
+    "4": "Auth succeeded",
+};
 
 function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdToLogTemplate: Record<string, string>): TreeNode {
     const entities: TreeNode[] = [];
@@ -143,7 +149,14 @@ function toTreeNode(data: KroneDecompRow, anomalies: KroneDetectRow[], eventIdTo
     return { name: "Root", children: entities };
 }
 
-export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData, setHoveredNode, setMultiLineAnomaly, multiLineAnomaly }) => {
+export const SequenceTree: React.FC<SequenceTreeProps> = ({
+    kroneDecompData,
+    kroneDetectData,
+    setHoveredNode,
+    setMultiLineAnomaly,
+    multiLineAnomaly,
+    demoMode = false,
+}) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -156,22 +169,26 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
     
 
     useEffect(() => {
-        fetch("/structured_processes.csv")
-            .then(res => res.text())
-            .then(csvText => {
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        const mapping: Record<string, string> = {};
-                        for (const row of results.data as Record<string, string>[]) {
-                            if (row.event_id && row.log_template) mapping[String(row.event_id)] = String(row.log_template);
+        if (demoMode) {
+            setEventIdToLogTemplate(DEMO_EVENT_ID_TO_LOG_TEMPLATE);
+        } else {
+            fetch("/structured_processes.csv")
+                .then(res => res.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            const mapping: Record<string, string> = {};
+                            for (const row of results.data as Record<string, string>[]) {
+                                if (row.event_id && row.log_template) mapping[String(row.event_id)] = String(row.log_template);
+                            }
+                            setEventIdToLogTemplate(mapping);
                         }
-                        setEventIdToLogTemplate(mapping);
-                    }
+                    });
                 });
-            });
-    }, []);
+        }
+    }, [demoMode]);
 
     useEffect(() => {
         if (kroneDecompData.length && selectedIndex >= 0 && selectedIndex < kroneDecompData.length) {
