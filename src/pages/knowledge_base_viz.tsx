@@ -222,6 +222,7 @@ export const KnowledgeBaseViz = () => {
     const toggleSidebar = () => {
         if (showSidebar) {
             setSearchLogKey("");
+            window.history.replaceState({}, document.title, window.location.pathname);
         }
         setShowSidebar(!showSidebar);
 

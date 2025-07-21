@@ -211,6 +211,15 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     const [currentTrainingDisplay, setCurrentTrainingDisplay] = useState<Seq[]>([]);
     const [currentTestingDisplay, setCurrentTestingDisplay] = useState<Seq[]>([]);
     const [approxDisplay, setApproxDisplay] = useState<Seq[]>([]);
+    const [includeNormal, setIncludeNormal] = useState<boolean>(true);
+    const [includeAnomalous, setIncludeAnomalous] = useState<boolean>(true);
+
+    const getFilteredSequences = (sequences: Seq[]) => {
+        return sequences.filter(seq =>
+            (includeNormal && !seq.isAnomaly) ||
+            (includeAnomalous && seq.isAnomaly)
+        );
+    };
 
     // When the component mounts set the current training and testing displays based off query
     useEffect(() => {
@@ -255,6 +264,24 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey]);
 
+    useEffect(() => {
+        // Only update if we're on the approx tab and have results to show
+        if (
+            selectedTab === APPROX_TAB &&
+            approxDisplay.length > 0 &&
+            approxDisplay[0].embedding &&
+            approxDisplay[0].embedding.length > 0
+        ) {
+            // Use the embedding from the first result (or store the last used embedding in state if needed)
+            const embedding = approxDisplay[0].embedding;
+            // Use the same k as before (default to 5 if not available)
+            const k = approxDisplay.length;
+            const filtered = getFilteredSequences(allSequences);
+            const results = approximateSearch(filtered, embedding, k);
+            setApproxDisplay(results.map((r) => r.sequence));
+        }
+    }, [includeNormal, includeAnomalous, selectedTab]);
+
     // On successful search update the current training and testing display
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -288,7 +315,8 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             console.error("Invalid embedding for approximate search.");
             return;
         }
-        const results = approximateSearch(sequences, embedding, k);
+        const filtered = getFilteredSequences(sequences);
+        const results = approximateSearch(filtered, embedding, k);
         setApproxDisplay(results.map((r) => r.sequence));
         setSelectedTab(APPROX_TAB);
     };
@@ -334,6 +362,35 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     </button>
                 </div>
             </form>
+
+            {selectedTab === APPROX_TAB && (
+                <div className="flex flex-row gap-8 px-8 py-2 items-center justify-center">
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={includeNormal}
+                            onChange={e => {
+                                // Only allow unchecking if includeAnomalous is still checked
+                                if (!e.target.checked && !includeAnomalous) return;
+                                setIncludeNormal(e.target.checked);
+                            }}
+                        />
+                        Include normal sequences
+                    </label>
+                    <label className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={includeAnomalous}
+                            onChange={e => {
+                                // Only allow unchecking if includeNormal is still checked
+                                if (!e.target.checked && !includeNormal) return;
+                                setIncludeAnomalous(e.target.checked);
+                            }}
+                        />
+                        Include anomalous sequences
+                    </label>
+                </div>
+            )}
 
             { /* DISPLAY SELECTED TAB (TRAIN, TEST, or APPROX) */}
             {selectedTab === TRAIN_TAB && (
