@@ -10,7 +10,7 @@ export const HeroSection = () => {
     return (
         <section
             id="hero"
-            className="relative min-h-screen flex flex-col items-center justify-center px-4"
+            className="relative flex flex-col min-h-[90vh] items-center justify-center px-4"
         >
             <div className="relative text-center flex flex-col items-center">
                 {/* KRONE INTRODUCTION BLOCK */}

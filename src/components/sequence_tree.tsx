@@ -37,8 +37,10 @@ type SequenceTreeProps = {
     kroneDetectData: KroneDetectRow[];
     setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void;
     setMultiLineAnomaly: (isMultiLineAnomaly: boolean) => void;
-    multiLineAnomaly: boolean
+    multiLineAnomaly: boolean;
+    demoMode?: boolean;
 };
+
 
 // Returns the starting and ending indices of the first subsequence in `sequence` that matches `subsequence`.
 // If no match is found, returns null.
@@ -63,6 +65,14 @@ function findSubsequenceIndices(sequence: string[], subsequence: string[]): [num
     }
     return null;
 }
+
+
+const DEMO_EVENT_ID_TO_LOG_TEMPLATE: Record<string, string> = {
+    "1": "Session started",
+    "2": "Session opened successfully",
+    "3": "Auth start initiated",
+    "4": "Auth succeeded",
+};
 
 
 // Converts a KroneDecompRow to a TreeNode structure, including anomaly detection and log template mapping.
@@ -266,7 +276,15 @@ function getActionHighlightY(
 }
 
 // The SequenceTree component renders a hierarchical tree structure based on the provided Krone decomposition and detection data.
-export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kroneDetectData, setHoveredNode, setMultiLineAnomaly, multiLineAnomaly }) => {
+
+export const SequenceTree: React.FC<SequenceTreeProps> = ({
+    kroneDecompData,
+    kroneDetectData,
+    setHoveredNode,
+    setMultiLineAnomaly,
+    multiLineAnomaly,
+    demoMode = false,
+}) => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const [treeData, setTreeData] = useState<TreeNode | null>(null);
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -280,22 +298,26 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({ kroneDecompData, kro
 
     // Create mapping between the event IDs and their corresponding log templates from the CSV file.
     useEffect(() => {
-        fetch("/structured_processes.csv")
-            .then(res => res.text())
-            .then(csvText => {
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        const mapping: Record<string, string> = {};
-                        for (const row of results.data as Record<string, string>[]) {
-                            if (row.event_id && row.log_template) mapping[String(row.event_id)] = String(row.log_template);
+        if (demoMode) {
+            setEventIdToLogTemplate(DEMO_EVENT_ID_TO_LOG_TEMPLATE);
+        } else {
+            fetch("/structured_processes.csv")
+                .then(res => res.text())
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            const mapping: Record<string, string> = {};
+                            for (const row of results.data as Record<string, string>[]) {
+                                if (row.event_id && row.log_template) mapping[String(row.event_id)] = String(row.log_template);
+                            }
+                            setEventIdToLogTemplate(mapping);
                         }
-                        setEventIdToLogTemplate(mapping);
-                    }
+                    });
                 });
-            });
-    }, []);
+        }
+    }, [demoMode]);
 
     // Mark nodes in the tree as anomalies or related to anomalies based on the Krone detection data.
     useEffect(() => {

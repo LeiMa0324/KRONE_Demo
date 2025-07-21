@@ -30,15 +30,17 @@ type SequenceUnitDisplayProps = {
     seq: Seq;
     allSequences: Seq[];
     handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
+    collapsible?: boolean;
 };
 
 //Individual display of one sequence : Includes anomaly status, LLM description, prediction table, and approximate search option.
-function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch }: SequenceUnitDisplayProps) {
+export function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch, collapsible = true }: SequenceUnitDisplayProps) {
+
     const [isAnomalyChecked, setIsAnomalyChecked] = useState<boolean>(seq.isAnomaly === true);
     const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === GROUND_TRUTH);
     const [k, setK] = useState<number>(5);
     const [userSelection, setUserSelection] = useState<string | null>(null);
-    const [isCollapsed, setCollapsibility] = useState<boolean>(false);
+    const [isCollapsed, setCollapsibility] = useState<boolean>(true); 
 
     useEffect(() => {
         setIsAnomalyChecked(seq.isAnomaly === true);
@@ -51,14 +53,15 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
         return isAnomalyChecked ? ABNORMAL : NORMAL;
     };
 
+    const showCollapsed = collapsible ? isCollapsed : false;
     const typeStyle = SEQ_TYPE_COLORS[seq.seqType] || SEQ_TYPE_COLORS.DEFAULT;
 
     return (
         <div className={`flex flex-col ${getFinalPrediction() == ABNORMAL ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
             {/* Header Section w/ Collapse */}
             <div className="flex items-start justify-center gap-3 mb-1.5 relative">
-                {isCollapsed ?
-                    <h1 className="font-WPIfont font-bold text-center flex-1">{`${orderNum}. ${seq.seqType} ${getFinalPrediction() == ABNORMAL ? "Anomaly" : ""} Seq\t`}</h1> 
+                {!showCollapsed ?
+                    <h1 className="font-WPIfont font-bold text-center flex-1">{`${orderNum}. ${seq.seqType} ${getFinalPrediction() == "Abnormal" ? "Anomaly" : ""} Seq\t`}</h1> 
                     :
                     <h1 className="font-WPIfont font-bold text-left flex-1">{`${orderNum}.`}
                         <span className={`text-neutral-800 p-1 ml-3 font-medium rounded-sm border-2 w-7/10 break-words whitespace-normal ${typeStyle}`}>{seq.arr[0]}</span>
@@ -71,13 +74,15 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
                         }
                     </h1> 
                 }
-                <PanelBottomClose 
-                    onClick={() => {setCollapsibility(!isCollapsed)}} 
-                    className="transition-transform hover:scale-110 absolute right-1 top-1/2 transform -translate-y-1/2" 
-                />
+                {collapsible && (
+                    <PanelBottomClose 
+                        onClick={() => {setCollapsibility((prev) => !prev)}} 
+                        className="transition-transform hover:scale-110 absolute right-1 top-1/2 transform -translate-y-1/2" 
+                    />
+                )}
             </div>
 
-            {isCollapsed && <>
+            {!showCollapsed && <>
                 {/* Seq Display */}
                 <div className="flex">
                     <div className="flex flex-col mb-4 flex-1">
@@ -204,7 +209,7 @@ type KnowledgeBaseSideBarProps = {
     defaultTab?: "train" | "test" | "approx";
 };
 
-// -- KnowledgeBaseSideBar Component -- Takes in knowledge structure data, an inital query search, and a togglesidebar function and showsidebar state
+// -- KnowledgeBaseSideBar Component -- Takes in knowledge structure data, an inital query search, and a togglesidebar state
 // Alternate showSidebar from t/f to hide and display sidebar, change search query for different children
 export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     showSidebar,
