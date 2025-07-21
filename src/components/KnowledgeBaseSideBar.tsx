@@ -182,6 +182,16 @@ function SequenceScrollable({ sequences, allSequences, handleApproximateSearch }
     );
 }
 
+// Get the parameters for the approximate search from the URL
+function getCheckboxParamsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const includeNormal = params.get("includeNormal");
+    const includeAnomalous = params.get("includeAnomalous");
+    return {
+        includeNormal: includeNormal === null ? true : includeNormal === "1",
+        includeAnomalous: includeAnomalous === null ? true : includeAnomalous === "1",
+    };
+}
 
 type KnowledgeBaseSideBarProps = {
     showSidebar: boolean;
@@ -240,6 +250,11 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             setSearchLogKey("");
             setSelectedTab(TRAIN_TAB)
         }
+        else {
+            const params = getCheckboxParamsFromUrl();
+            setIncludeNormal(params.includeNormal);
+            setIncludeAnomalous(params.includeAnomalous);            
+        }
     }, [showSidebar]);
 
     useEffect(() => {
@@ -253,7 +268,9 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             if (defaultTab === APPROX_TAB) {
                 if (results.length > 0 && results[0].embedding && results[0].embedding.length > 0) {
                     const embedding = results[0].embedding;
-                    const approxResults = approximateSearch(allSequences, embedding, 5); // Default k=5
+                    // Use filtered sequences here!
+                    const filtered = getFilteredSequences(allSequences);
+                    const approxResults = approximateSearch(filtered, embedding, 5); // Default k=5
                     setApproxDisplay(approxResults.map((r) => r.sequence));
                     setSelectedTab("approx");
                 } else {
@@ -262,9 +279,8 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showSidebar, initialSearchLogKey]);
-
-    useEffect(() => {
+    }, [showSidebar, initialSearchLogKey, includeNormal, includeAnomalous]);
+        useEffect(() => {
         // Only update if we're on the approx tab and have results to show
         if (
             selectedTab === APPROX_TAB &&
