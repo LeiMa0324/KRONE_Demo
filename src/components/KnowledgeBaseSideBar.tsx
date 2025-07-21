@@ -8,10 +8,11 @@ type SequenceUnitDisplayProps = {
     seq: Seq;
     allSequences: Seq[];
     handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
+    collapsible?: boolean;
 };
 
 //Global Counter For Each SequenceUnitDisplay
-function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch }: SequenceUnitDisplayProps) {
+export function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSearch, collapsible = true }: SequenceUnitDisplayProps) {
     const [isAnomalyChecked, setIsAnomalyChecked] = useState<boolean>(seq.isAnomaly === true);
     const [isGTChecked, setIsGTChecked] = useState<boolean>(seq.explanation === "Ground Truth");
     const [k, setK] = useState<number>(5);
@@ -29,11 +30,13 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
         return isAnomalyChecked ? "Abnormal" : "Normal";
     };
 
+    const showCollapsed = collapsible ? isCollapsed : true;
+
     return (
         <div className={`flex flex-col ${getFinalPrediction() == "Abnormal" ? "bg-WPIRed/15" : "bg-neutral-100"} p-4 mb-4 rounded-lg shadow-md border border-neutral-300`}>
             {/* Header Section w/ Collapse */}
             <div className="flex items-start justify-center gap-3 mb-1.5 relative">
-                {isCollapsed ?
+                {showCollapsed ?
                     <h1 className="font-WPIfont font-bold text-center flex-1">{`${orderNum}. ${seq.seqType} ${getFinalPrediction() == "Abnormal" ? "Anomaly" : ""} Seq\t`}</h1> 
                     :
                     <h1 className="font-WPIfont font-bold text-left flex-1">{`${orderNum}.`}
@@ -49,13 +52,15 @@ function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproximateSea
                         }
                     </h1> 
                 }
-                <PanelBottomClose 
-                    onClick={() => {setCollapsibility(!isCollapsed)}} 
-                    className="transition-transform hover:scale-110 absolute right-1 top-1/2 transform -translate-y-1/2" 
-                />
+                {collapsible && (
+                    <PanelBottomClose 
+                        onClick={() => {setCollapsibility(!isCollapsed)}} 
+                        className="transition-transform hover:scale-110 absolute right-1 top-1/2 transform -translate-y-1/2" 
+                    />
+                )}
             </div>
 
-            {isCollapsed && <>
+            {showCollapsed && <>
                 {/* Seq Display */}
                 <div className="flex">
                     <div className="flex flex-col mb-4 flex-1">
