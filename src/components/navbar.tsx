@@ -4,7 +4,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react"; // Icons for the hamburger menu
 
-// Constants
+// CONSTANTS
 const BUTTON_STYLE = `
   bg-transparent font-WPIfont shadow-none border-none
   hover:bg-red-800 focus:outline-none focus:ring-0 text-gray-100
