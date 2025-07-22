@@ -18,8 +18,8 @@ const BUTTON_STYLE = `
 
 const navLinks = [
     { path: "/file-upload", label: "File Upload" },
-    { path: "/visualize-tree", label: "Log Key Template Tree" },
-    { path: "/sequence-tree", label: "Log Sequence Tree" },
+    { path: "/visualize-tree", label: "Hierarchy Mining" },
+    { path: "/sequence-tree", label: "Log Anomaly Detection" },
     { path: "/knowledge-base", label: "Knowledge Base" },
     { path: "/about", label: "About" },
 ];
