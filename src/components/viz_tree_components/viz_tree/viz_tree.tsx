@@ -29,7 +29,6 @@ const SVG_PADDING = 200;
 const COLLAPSED_WIDTH_PADDING = 20;
 const MIN_ROOT_WIDTH = 400;
 const DIV_STYLE = { flex: 1, width: "100%", height: "100%", overflow: "auto" };
-const SVG_STYLE = { display: "block" };
 
 export const VizTree: React.FC<VizTreeProps> = ({
   treeData,

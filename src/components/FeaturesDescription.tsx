@@ -141,6 +141,11 @@ const demoDetectData = [
 export const FeaturesDescription = () => (
   <div className="w-full bg-white py-16 px-4 flex flex-col items-center justify-center z-10 relative">
     <h1 className="text-4xl font-bold mb-8">Welcome to KRONE</h1>
+    <div className="w-full flex justify-center mb-8">
+      <p className="text-center text-neutral-700 text-lg max-w-7xl mb-15">
+        KRONE helps you monitor and understand your system logs by turning raw messages into structured, interactive knowledge graphs. Instead of treating logs as simple lists, KRONE breaks each message into its core components, status, action, and entity, so you can easily visualize how events unfold, spot unusual patterns, and pinpoint the root causes of problems. With KRONE, you can explore log sequences, detect anomalies at any level, and quickly compare normal and abnormal behaviors, making it easier to keep your systems secure and reliable.
+      </p>
+    </div>
     <div className="w-full max-w-5xl flex flex-col gap-12">
       {/* Row 1: Visualize Tree */}
       <div className="flex flex-col items-center bg-neutral-50 rounded-lg shadow p-8">
