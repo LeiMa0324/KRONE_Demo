@@ -506,26 +506,22 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
 
         // Append header text to the SVG
 
+        const entityX = root.children?.[0]?.y ?? colOffsets[1];
+        const actionX = root.children?.[0]?.children?.[0]?.y ?? colOffsets[2];
+        const statusX = root.children?.[0]?.children?.[0]?.children?.[0]?.y ?? colOffsets[3];
+
         svg.append("text")
-            .attr("x", 140)
+            .attr("x", entityX)
             .attr("y", x0 - BASE_FONT)
             .attr("font-size", 30)
             .attr("font-weight", "bold")
             .attr("fill", ENTITY_BORDER)
             .style("pointer-events", "none")
             .text("Entity");
-        svg.append("text")
-            .attr("x", 675)
-            .attr("y", x0 - BASE_FONT)
-            .attr("font-size", 30)
-            .attr("font-weight", "bold")
-            .attr("fill", "#000")
-            .style("pointer-events", "none")
-            .text("Log Template");
 
         if (hasVisibleAction) {
             svg.append("text")
-                .attr("x", 315)
+                .attr("x", actionX)
                 .attr("y", x0 - BASE_FONT)
                 .attr("font-size", 30)
                 .attr("font-weight", "bold")
@@ -535,7 +531,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
         }
         if (hasVisibleStatus) {
             svg.append("text")
-                .attr("x", 485)
+                .attr("x", statusX)
                 .attr("y", x0 - BASE_FONT)
                 .attr("font-size", 30)
                 .attr("font-weight", "bold")
@@ -543,6 +539,15 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                 .style("pointer-events", "none")
                 .text("Status");
         }
+
+        svg.append("text")
+            .attr("x", statusX + widestByDepth[3] + 40)
+            .attr("y", x0 - BASE_FONT)
+            .attr("font-size", 30)
+            .attr("font-weight", "bold")
+            .attr("fill", "#000")
+            .style("pointer-events", "none")
+            .text("Log Template");
 
         svg = svgLines(svg, root, widestByDepth);
         
@@ -1008,15 +1013,56 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                         alignItems: "start",
                     }}
                 >
-
                     <div 
                         style={{ 
                             marginBottom: 12, 
                             marginLeft: 20, 
                             gap: 12, 
                             alignItems: "center",
-                        }}>
+                    }}>
                         <h1 className="text-3xl mb-2 text-center">Sequence Tree</h1>
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 32,
+                                margin: "8px auto",
+                                padding: "8px 20px",
+                                background: "#f7f7fa",
+                                borderRadius: 12,
+                                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                                fontSize: 17,
+                                fontWeight: 500,
+                                border: "1px solid #e0e0e0",
+                                width: "fit-content"
+                            }}
+                        >
+                            <span className="font-bold">Legend</span>
+                            <span style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                padding: "4px 12px",
+                                borderRadius: 8,
+                                background: "#fffbe6",
+                                border: "1px solid #ffe58f"
+                            }}>
+                                <span style={{ fontSize: 24 }}>⚠️</span>
+                                <span style={{ color: "#b8860b" }}>Template Anomaly</span>
+                            </span>
+                            <span style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                padding: "4px 12px",
+                                borderRadius: 8,
+                                background: "#ffe6e6",
+                                border: "1px solid #ffb3b3"
+                            }}>
+                                <span style={{ fontSize: 24 }}>🚨</span>
+                                <span style={{ color: "#d32f2f" }}>Multi-line Anomaly</span>
+                            </span>
+                        </div>
                         <h2 className="mt-0"> Select a log sequence and click on individual nodes to view detailed information about each log entry </h2>
                         <h3 className="text-xl mt-4 mb-2">
                             Total Anomalous Sequences: &nbsp;
