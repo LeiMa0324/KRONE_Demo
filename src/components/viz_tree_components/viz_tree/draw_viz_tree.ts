@@ -43,8 +43,11 @@ export function drawVizTree({
   collapsible,
   clickableNodes,
   disableHoverHighlight,
-  onNodeClick,
 }: DrawVizTreeParams) {
+  const levelLabels = ["Entity", "Action", "Status"];
+  const labelFontSize = 30;
+  const labelToTreeGap = 8;
+
   let x0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   root.each(d => {
     if ((d.x ?? 0) > x1) x1 = d.x ?? 0;
@@ -62,12 +65,36 @@ export function drawVizTree({
   }
   const svg = select(svgRef.current as SVGSVGElement);
   svg.selectAll("*").remove();
+  const verticalOffset = labelFontSize + labelToTreeGap;
+  const extraBottomPadding = 40;
   svg
     .attr("width", svgWidth + 35)
-    .attr("height", height)
-    .attr("viewBox", `0 ${x0 - BASE_FONT} ${svgWidth} ${height}`)
+    .attr("height", height + verticalOffset + extraBottomPadding)
+    .attr("viewBox", `0 ${x0 - BASE_FONT - verticalOffset} ${svgWidth} ${height + verticalOffset + extraBottomPadding}`)
     .attr("style", "max-width: 100%; height: auto; font: 10px;")
     .attr("font-family", font);
+
+  svg.append("g")
+    .attr("class", "level-labels")
+    .selectAll("text")
+    .data(levelLabels)
+    .join("text")
+    .attr("x", (_d, i) => {
+      const nodesAtDepth = root.descendants().filter(d => d.depth === i + 1 && !isNodeHidden(d));
+      if (nodesAtDepth.length === 0) return 0;
+      return Math.min(...nodesAtDepth.map(d => d.y ?? 0));
+    })
+    .attr("y", x0 - BASE_FONT + labelFontSize)
+    .attr("text-anchor", "start")
+    .attr("font-size", labelFontSize)
+    .attr("font-weight", "bold")
+    .attr("fill", (_d, i) => linkBorderColor({ source: { depth: i } }))
+    .attr("opacity", (_d, i) => {
+      const nodesAtDepth = root.descendants().filter(d => d.depth === i + 1 && !isNodeHidden(d));
+      return nodesAtDepth.length === 0 ? 0 : 1;
+    })
+    .text(d => d);
+ 
 
   // Draw links
   svg.append("g").attr("fill", "none").attr("stroke-width", 1.5)
@@ -77,9 +104,9 @@ export function drawVizTree({
     .attr("d", (d: TreeLink) => {
       const sourceWidth = widestByDepth[d.source.depth];
       const sourceY = (d.source.y ?? 0) + sourceWidth - 20;
-      const sourceX = d.source.x;
+      const sourceX = (d.source.x ?? 0) + labelFontSize + labelToTreeGap;
       const targetY = d.target.y ?? 0;
-      const targetX = d.target.x;
+      const targetX = (d.target.x ?? 0) + labelFontSize + labelToTreeGap;
       const midY = (sourceY + targetY) / 2;
       return [
         `M${sourceY},${sourceX}`,
@@ -98,7 +125,7 @@ export function drawVizTree({
     .selectAll<SVGGElement, HierarchyNode<TreeNode>>("g")
     .data(root.descendants())
     .join("g")
-    .attr("transform", (d: HierarchyNode<TreeNode>) => `translate(${d.y},${d.x})`)
+    .attr("transform", (d: HierarchyNode<TreeNode>) => `translate(${d.y},${(d.x ?? 0) + labelFontSize + labelToTreeGap})`)
     .attr("opacity", d => isNodeHidden(d) ? 0 : 1)
     .attr("pointer-events", d => isNodeHidden(d) ? "none" : "auto")
     .on("mouseover", function (_event: MouseEvent, d: HierarchyNode<TreeNode>) {
@@ -111,11 +138,6 @@ export function drawVizTree({
       resetHighlight(svg);
       if (setHoveredNode) setHoveredNode(null);
     })
-    .on("click", function (event: MouseEvent, d: HierarchyNode<TreeNode>) {
-      event.stopPropagation();
-      if (onNodeClick) onNodeClick(d);
-      // Add collapse/expand logic if needed
-    });
 
   // Draw node labels and decorations
   node.append("text")
@@ -139,14 +161,15 @@ export function drawVizTree({
       );
     });
 
-    if (matchedNodeId) {
+  // Highlight matched node
+  if (matchedNodeId) {
     const matched = root.descendants().find(
       d =>
         d.data.name === matchedNodeId ||
         (d.data.event_id && d.data.event_id === matchedNodeId)
     );
     if (matched) {
-      highlightRelated(svg, matched);
+      highlightRelated(svg, matched); // highlight matched node
     }
   }
 }
