@@ -79,29 +79,35 @@ const demoTreeData = {
 };
 
 const demoInfoTree: DemoInfoTreeNode = {
-  name: "Session",
-  entity: "Session",
+  name: "Root",
+  entity: "Root",
   children: [
     {
-      name: "Open",
+      name: "Session",
       entity: "Session",
-      action: "Open",
       children: [
         {
-          name: "Success",
-          event_id: "2",
-          log_template: "Session opened successfully",
+          name: "Open",
           entity: "Session",
           action: "Open",
-          status: "Success",
-          children: [],
+          children: [
+            {
+              name: "Success",
+              event_id: "2",
+              log_template: "Session opened successfully",
+              entity: "Session",
+              action: "Open",
+              status: "Success",
+              children: [],
+            },
+          ],
         },
       ],
     },
   ],
 };
 
-const demoInfoNode = hierarchy<TreeNode>(demoInfoTree).children?.[0]?.children?.[0] ?? null;
+const demoInfoNode = hierarchy<TreeNode>(demoInfoTree).children?.[0]?.children?.[0]?.children?.[0] ?? null;
 
 const demoDecompData = [
   {
