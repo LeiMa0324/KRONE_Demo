@@ -164,6 +164,17 @@ export function SequencePanel({ node, multiLineAnomaly }: any) {
         <p>[{getLogKeySubsequence(node).join(", ")}]</p>
       </div>
       <button
+          style={buttonStyle}
+        onClick={() => {
+          const logKeys = getLogKeySubsequence(node);
+          if (logKeys.length === 0) return;
+          // Add includeNormal and includeAnomalous as query params
+          window.location.href =
+            `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]&tab=train`;
+        }}>
+          Search for Exact Sequence
+      </button>
+      <button
         style={buttonStyle}
         onClick={() => {
           const logKeys = getLogKeySubsequence(node);
