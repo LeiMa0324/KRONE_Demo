@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import type { KroneDecompRow, KroneDetectRow } from "@/pages/visualize_table";
+import { Switch } from "@/components/ui/switch";
 import { hierarchy, tree } from "d3-hierarchy";
 import type { HierarchyNode, HierarchyLink } from "d3-hierarchy";
 import { select } from "d3-selection";
@@ -1021,61 +1022,102 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                             alignItems: "center",
                     }}>
                         <h1 className="text-3xl mb-2 text-center">Sequence Tree</h1>
-                        <div
+
+                        <div style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            gap: 32,
+                            margin: "8px auto",
+                            width: "fit-content"
+                        }}>
+                            {/* Legend */}
+                            <div
+                                style={{
+                                    alignItems: "center",
+                                    gap: 32,
+                                    padding: "8px 20px",
+                                    background: "#f7f7fa",
+                                    borderRadius: 12,
+                                    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                                    fontSize: 17,
+                                    fontWeight: 500,
+                                    border: "1px solid #e0e0e0",
+                                    width: "max-content"
+                                }}
+                            >
+                                <span className="font-bold">Legend</span>
+                                <span style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    padding: "4px 12px",
+                                    borderRadius: 8,
+                                    background: "#fffbe6",
+                                    border: "1px solid #ffe58f"
+                                }}>
+                                    <span style={{ fontSize: 24 }}>⚠️</span>
+                                    <span style={{ color: "#b8860b" }}>Template Anomaly</span>
+                                </span>
+                                <span style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    padding: "4px 12px",
+                                    borderRadius: 8,
+                                    background: "#ffe6e6",
+                                    border: "1px solid #ffb3b3"
+                                }}>
+                                    <span style={{ fontSize: 24 }}>🚨</span>
+                                    <span style={{ color: "#d32f2f" }}>Multi-line Anomaly</span>
+                                </span>
+                            </div>
+                            {/* Switches */}
+                            <div style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 16,
+                                marginTop: 0,
+                                width: "max-content"
+                            }}>
+                                <h2 style={{fontSize: 18, fontWeight: 600 }}>Controls</h2>
+                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400 }}>
+                                    <Switch
+                                        checked={!entitiesCollapsed}
+                                        onCheckedChange={() => setEntitiesCollapsed(v => !v)}
+                                    />
+                                    <span>Expand Entities</span>
+                                </label>
+                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400 }}>
+                                    <Switch
+                                        checked={!actionsCollapsed}
+                                        onCheckedChange={() => setActionsCollapsed(v => !v)}
+                                    />
+                                    <span>Expand Actions</span>
+                                </label>
+                            </div>
+                            <div className=" mb-2"
                             style={{
                                 display: "flex",
-                                alignItems: "center",
-                                gap: 32,
-                                margin: "8px auto",
-                                padding: "8px 20px",
-                                background: "#f7f7fa",
-                                borderRadius: 12,
-                                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                                fontSize: 17,
-                                fontWeight: 500,
-                                border: "1px solid #e0e0e0",
-                                width: "fit-content"
-                            }}
-                        >
-                            <span className="font-bold">Legend</span>
-                            <span style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                padding: "4px 12px",
-                                borderRadius: 8,
-                                background: "#fffbe6",
-                                border: "1px solid #ffe58f"
+                                flexDirection: "column",
+                                width: "max-content"
                             }}>
-                                <span style={{ fontSize: 24 }}>⚠️</span>
-                                <span style={{ color: "#b8860b" }}>Template Anomaly</span>
-                            </span>
-                            <span style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                padding: "4px 12px",
-                                borderRadius: 8,
-                                background: "#ffe6e6",
-                                border: "1px solid #ffb3b3"
-                            }}>
-                                <span style={{ fontSize: 24 }}>🚨</span>
-                                <span style={{ color: "#d32f2f" }}>Multi-line Anomaly</span>
-                            </span>
+                                <h2 style={{fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Details</h2>
+                                <h3 style={{marginBottom: 12}}>Total Anomalous Sequences: &nbsp;
+                                    <span className="text-[#F00] font-semibold">
+                                        {numAnomalousSequences}
+                                    </span>
+                                </h3>
+                                <h3>Total Normal Sequences: &nbsp;
+                                    <span className="text-[#4caf50] font-semibold">
+                                        {kroneDecompData.length - numAnomalousSequences}
+                                    </span>
+                                </h3>
+                            </div>
                         </div>
                         <h2 className="mt-0"> Select a log sequence and click on individual nodes to view detailed information about each log entry </h2>
-                        <h3 className="text-xl mt-4 mb-2">
-                            Total Anomalous Sequences: &nbsp;
-                            <span className="text-[#F00] font-semibold">
-                                {numAnomalousSequences}
-                            </span>
-                            &nbsp;&nbsp;
-                            Total Normal Sequences: &nbsp;
-                            <span className="text-[#4caf50] font-semibold">
-                                {kroneDecompData.length - numAnomalousSequences}
-                            </span>
-                        </h3>
-                        <label>
+
+                        <label className={"text-xl"}>
                             Sequence:&nbsp;
                             <select
                                 value={kroneDecompData[selectedIndex]?.seq_id ?? ""}
@@ -1083,7 +1125,10 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                                     const idx = kroneDecompData.findIndex(row => row.seq_id === e.target.value);
                                     if (idx !== -1) setSelectedIndex(idx);
                                 }}
-                                style={{ minWidth: 120 }}
+                                style={{
+                                     minWidth: 120,
+                                     border: "1px solid #ccc",
+                                }}
                             >
                                 {kroneDecompData.map(row => (
                                     <option key={row.seq_id} value={row.seq_id}
@@ -1094,42 +1139,8 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                                 ))}
                             </select>
                         </label>
-                        <button
-                            onClick={() => {
-                                setEntitiesCollapsed(v => !v);
-                            }}
-                            style={{
-                                marginLeft: 16,
-                                padding: "4px 12px",
-                                borderRadius: 6,
-                                border: "1px solid #ccc",
-                                background: "#eee",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                minWidth: 200,
-                                boxSizing: "border-box",
-                            }}
-                        >
-                            {entitiesCollapsed ? "Expand Entities" : "Collapse Entities"}
-                        </button>
-                        <button
-                            onClick={() => {
-                                setActionsCollapsed(v => !v);
-                            }}
-                            style={{
-                                padding: "4px 12px",
-                                borderRadius: 6,
-                                border: "1px solid #ccc",
-                                background: "#eee", // Always the same color
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                minWidth: 200,      // Fixed width for consistency
-                                boxSizing: "border-box",
-                            }}
-                        >
-                            {actionsCollapsed ? "Expand Actions" : "Collapse Actions"}
-                        </button>
-                        <div>
+
+                        <div className="mt-5">
                             <h3 className="inline text-2xl">Prediction:  </h3>
                             <h3
                                 className='text-2xl'
