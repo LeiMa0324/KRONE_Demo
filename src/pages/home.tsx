@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { WPIBackground } from "@/components/WPIbackground";
 import { HeroSection } from "@/components/hero";
-import { FeaturesDescription } from "@/components/FeaturesDescription";
+import { FeaturesDescription } from "@/components/home_features_description/FeaturesDescription";
 
 export const Home = () => {
     const featuresRef = useRef<HTMLDivElement>(null);
