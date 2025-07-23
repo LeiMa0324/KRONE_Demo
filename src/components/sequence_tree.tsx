@@ -1021,7 +1021,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                             gap: 12, 
                             alignItems: "center",
                     }}>
-                        <h1 className="text-3xl mb-2 text-center">Sequence Tree</h1>
+                        <h1 className="text-3xl mb-2 text-center font-bold">Sequence Tree</h1>
 
                         <div style={{
                             display: "flex",
