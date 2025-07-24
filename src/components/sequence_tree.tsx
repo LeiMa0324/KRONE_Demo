@@ -1011,7 +1011,7 @@ export const SequenceTree: React.FC<SequenceTreeProps> = ({
                         marginBottom: 12,
                         display: "flex",
                         flexDirection: "column",
-                        alignItems: "center",
+                        alignItems: "start",
                     }}
                 >
                     <div 
