@@ -1,5 +1,6 @@
 import { getLogKeySubsequence } from "../viz_tree_utils";
 import { useState } from "react";
+import type { TreeNode } from "../../../tree_utils";
 
 import {
   logTemplateStyle,
@@ -7,10 +8,18 @@ import {
   logKeyStyle,
   buttonStyle,
 } from "./info_panel_styles";
+import type { HierarchyNode } from "d3-hierarchy";
 
 
 
-export function NodeTitle({ node, title, hideNodeName, isSequencePanel }: any) {
+interface NodeTitleProps {
+  node: HierarchyNode<TreeNode>;
+  title?: string;
+  hideNodeName?: boolean;
+  isSequencePanel?: boolean;
+}
+
+export function NodeTitle({ node, title, hideNodeName, isSequencePanel }: NodeTitleProps) {
   if (title) return <>{title}</>;
   if (hideNodeName) return null;
 
@@ -45,7 +54,14 @@ export function NodeTitle({ node, title, hideNodeName, isSequencePanel }: any) {
   }
 }
 
-export function NodeStats({ node, numEntities, numActions, numStatuses }: any) {
+interface NodeStatsProps {
+  node: HierarchyNode<TreeNode>;
+  numEntities: number;
+  numActions: number;
+  numStatuses: number;
+}
+
+export function NodeStats({ node, numEntities, numActions, numStatuses }: NodeStatsProps) {
   switch (node.depth) {
     case 0:
       return (
@@ -71,7 +87,13 @@ export function NodeStats({ node, numEntities, numActions, numStatuses }: any) {
   }
 }
 
-export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: any) {
+interface LogKeysProps {
+  normalLogKeys: string[];
+  abnormalLogKeys: string[];
+  onLogKeySearch?: (key: string) => void;
+}
+
+export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: LogKeysProps) {
   const renderLogKeys = (keys: string[], color: string) =>
     keys.length > 0 ? (
       keys.map((key, idx) => (
@@ -131,7 +153,12 @@ export function LogKeys({ normalLogKeys, abnormalLogKeys, onLogKeySearch }: any)
   );
 }
 
-export function SequencePanel({ node, multiLineAnomaly }: any) {
+interface SequencePanelProps {
+  node: HierarchyNode<TreeNode>;
+  multiLineAnomaly?: boolean;
+}
+
+export function SequencePanel({ node, multiLineAnomaly }: SequencePanelProps) {
   const [includeNormal, setIncludeNormal] = useState(true);
   const [includeAnomalous, setIncludeAnomalous] = useState(true);
 

@@ -34,15 +34,10 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
   isSequencePanel = false,
   onLogKeySearch,
 }) => {
-  if (!node) {
-    return (
-      <div style={{ ...panelStyle, color: "#888", fontSize: 18 }}>
-        No node selected
-      </div>
-    );
-  }
-
-  const { numEntities, numActions, numStatuses, normalLogKeys, abnormalLogKeys } = collectStats(node);
+  // Always call hooks unconditionally
+  const { numEntities, numActions, numStatuses, normalLogKeys, abnormalLogKeys } = node
+    ? collectStats(node)
+    : { numEntities: 0, numActions: 0, numStatuses: 0, normalLogKeys: [], abnormalLogKeys: [] };
 
   const sortedNormalLogKeys = useMemo(
     () => [...normalLogKeys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
@@ -52,6 +47,14 @@ export const TreeInfoPanel: React.FC<TreeInfoPanelProps> = ({
     () => [...abnormalLogKeys].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
     [abnormalLogKeys]
   );
+
+  if (!node) {
+    return (
+      <div style={{ ...panelStyle, color: "#888", fontSize: 18 }}>
+        No node selected
+      </div>
+    );
+  }
 
   const showLogKeys = (node.depth !== 3 && !isSequencePanel) || (node.depth === 3 && !isSequencePanel);
 
