@@ -305,7 +305,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [showSidebar, initialSearchLogKey, includeNormal, includeAnomalous]);
+    }, [showSidebar, initialSearchLogKey]);
 
     useEffect(() => {
         if (selectedTab !== APPROX_TAB) return;
