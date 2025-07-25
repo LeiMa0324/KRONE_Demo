@@ -228,6 +228,11 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     const [approxDisplay, setApproxDisplay] = useState<Seq[]>([]);
     const [includeNormal, setIncludeNormal] = useState<boolean>(true);
     const [includeAnomalous, setIncludeAnomalous] = useState<boolean>(true);
+    const [approxNormal, setApproxNormal] = useState<Seq[]>([]);
+    const [approxAnomalous, setApproxAnomalous] = useState<Seq[]>([]);
+    const [approxAll, setApproxAll] = useState<Seq[]>([]);
+    const [approxK, setApproxK] = useState<number>(5);
+    const [approxEmbedding, setApproxEmbedding] = useState<number[]>([]);
 
     const getFilteredSequences = (sequences: Seq[]) => {
         return sequences.filter(seq =>
@@ -268,15 +273,31 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             const keys = initialSearchLogKey.split(",").map((k) => k.trim());
             const results = exactSearch(allSequences, keys);
             setCurrentTrainingDisplay(results);
-            setSelectedTab(defaultTab);   
+            setSelectedTab(defaultTab);
 
             if (defaultTab === APPROX_TAB) {
                 if (results.length > 0 && results[0].embedding && results[0].embedding.length > 0) {
                     const embedding = results[0].embedding;
-                    // Use filtered sequences here!
-                    const filtered = getFilteredSequences(allSequences);
-                    const approxResults = approximateSearch(filtered, embedding, 5); // Default k=5
-                    setApproxDisplay(approxResults.map((r) => r.sequence));
+                    const k = 5; // Default K, or use approxK if you want to persist user K
+
+                    // Compute all three sets regardless of filter
+                    const normalSeqs = allSequences.filter(seq => !seq.isAnomaly);
+                    const anomalousSeqs = allSequences.filter(seq => seq.isAnomaly);
+
+                    const topNormal = approximateSearch(normalSeqs, embedding, k).map(r => r.sequence);
+                    const topAnomalous = approximateSearch(anomalousSeqs, embedding, k).map(r => r.sequence);
+                    const topAll = approximateSearch(allSequences, embedding, k).map(r => r.sequence);
+
+                    setApproxNormal(topNormal);
+                    setApproxAnomalous(topAnomalous);
+                    setApproxAll(topAll);
+
+                    // Set display based on current checkboxes
+                    if (includeNormal && includeAnomalous) setApproxDisplay(topAll);
+                    else if (includeNormal) setApproxDisplay(topNormal);
+                    else if (includeAnomalous) setApproxDisplay(topAnomalous);
+                    else setApproxDisplay([]);
+
                     setSelectedTab("approx");
                 } else {
                     setApproxDisplay([]);
@@ -285,23 +306,14 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [showSidebar, initialSearchLogKey, includeNormal, includeAnomalous]);
-        useEffect(() => {
-        // Only update if we're on the approx tab and have results to show
-        if (
-            selectedTab === APPROX_TAB &&
-            approxDisplay.length > 0 &&
-            approxDisplay[0].embedding &&
-            approxDisplay[0].embedding.length > 0
-        ) {
-            // Use the embedding from the first result (or store the last used embedding in state if needed)
-            const embedding = approxDisplay[0].embedding;
-            // Use the same k as before (default to 5 if not available)
-            const k = approxDisplay.length;
-            const filtered = getFilteredSequences(allSequences);
-            const results = approximateSearch(filtered, embedding, k);
-            setApproxDisplay(results.map((r) => r.sequence));
-        }
-    }, [includeNormal, includeAnomalous, selectedTab]);
+
+    useEffect(() => {
+        if (selectedTab !== APPROX_TAB) return;
+        if (includeNormal && includeAnomalous) setApproxDisplay(approxAll);
+        else if (includeNormal) setApproxDisplay(approxNormal);
+        else if (includeAnomalous) setApproxDisplay(approxAnomalous);
+        else setApproxDisplay([]);
+    }, [includeNormal, includeAnomalous, selectedTab, approxAll, approxNormal, approxAnomalous]);
 
     // On successful search update the current training and testing display
     const handleSearchSubmit = (e: React.FormEvent) => {
@@ -336,9 +348,30 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             console.error("Invalid embedding for approximate search.");
             return;
         }
-        const filtered = getFilteredSequences(sequences);
-        const results = approximateSearch(filtered, embedding, k);
-        setApproxDisplay(results.map((r) => r.sequence));
+        setApproxK(k);
+        setApproxEmbedding(embedding);
+
+        // Compute all three sets
+        const normalSeqs = sequences.filter(seq => !seq.isAnomaly);
+        const anomalousSeqs = sequences.filter(seq => seq.isAnomaly);
+
+        console.log(normalSeqs)
+        console.log(anomalousSeqs)
+
+        const topNormal = approximateSearch(normalSeqs, embedding, k).map(r => r.sequence);
+        const topAnomalous = approximateSearch(anomalousSeqs, embedding, k).map(r => r.sequence);
+        const topAll = approximateSearch(sequences, embedding, k).map(r => r.sequence);
+
+        setApproxNormal(topNormal);
+        setApproxAnomalous(topAnomalous);
+        setApproxAll(topAll);
+
+        // Set display based on current checkboxes
+        if (includeNormal && includeAnomalous) setApproxDisplay(topAll);
+        else if (includeNormal) setApproxDisplay(topNormal);
+        else if (includeAnomalous) setApproxDisplay(topAnomalous);
+        else setApproxDisplay([]); // Shouldn't happen, but just in case
+
         setSelectedTab(APPROX_TAB);
     };
 

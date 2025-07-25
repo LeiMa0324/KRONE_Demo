@@ -9,19 +9,19 @@ const KRONE_desc =
 const teamMembers = [
     {
         name: "Lei Ma",
-        description: "PHD Student at Worcester Polytechnic Institute (Main Author)",
+        description: "PhD Student at Worcester Polytechnic Institute (Main Author)",
         image_path: "/team_members/lei_m.png",
         linkedin_url: "https://www.linkedin.com/in/lei-ma-491a6217b/",
     },
     {
         name: "Elke Rundensteiner",
-        description: "Faculty Advisor at WPI",
+        description: "Faculty Advisor at Worcester Polytechnic Institute",
         image_path: "/team_members/elke_r.jpg",
         linkedin_url: "https://www.linkedin.com/in/elke-rundensteiner-4a2825/",
     },
     {
         name: "Peter VanNostrand",
-        description: "PHD Student at WPI",
+        description: "PhD Student at Worcester Polytechnic Institute",
         image_path: "/team_members/peter_v.png",
         linkedin_url: "https://www.linkedin.com/in/petervannostrand/",
     },
@@ -33,7 +33,7 @@ const teamMembers = [
     },
     {
         name: "Ethan Shanbaum",
-        description: "WPI Summer Undergraduate Researcher",
+        description: "Worcester Polytechnic Institute Summer Undergraduate Researcher",
         image_path: "/team_members/ethan.jpg",
         linkedin_url: "https://www.linkedin.com/in/ethan-shanbaum/",
     },
