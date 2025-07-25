@@ -21,12 +21,12 @@ interface DrawVizTreeParams {
   BASE_FONT: number;
   collapseEntities: boolean;
   matchedNodeId?: string | null;
-  setHoveredNode?: (node: any) => void;
+  setHoveredNode?: (node: HierarchyNode<TreeNode> | null) => void;
   showAnomalySymbols: boolean;
   collapsible: boolean;
   clickableNodes: boolean;
   disableHoverHighlight: boolean;
-  onNodeClick?: (node: any) => void;
+  onNodeClick?: (node: HierarchyNode<TreeNode>) => void;
 }
 
 export function drawVizTree({
