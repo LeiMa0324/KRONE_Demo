@@ -43,6 +43,7 @@ export function drawVizTree({
   collapsible,
   clickableNodes,
   disableHoverHighlight,
+  onNodeClick,
 }: DrawVizTreeParams) {
   const levelLabels = ["Entity", "Action", "Status"];
   const labelFontSize = 30;
@@ -160,6 +161,13 @@ export function drawVizTree({
         }
       );
     });
+
+  if (clickableNodes && onNodeClick) {
+    node.on("click", function (_event, d) {
+      onNodeClick(d);
+    });
+  }
+
 
   // Highlight matched node
   if (matchedNodeId) {

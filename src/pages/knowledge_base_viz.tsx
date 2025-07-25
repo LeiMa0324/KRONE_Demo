@@ -230,7 +230,6 @@ export const KnowledgeBaseViz = () => {
 
     // When a node is clicked it query's the selected node and displays sidebar with that nodes children sequences
     const handleNodeClick = (node: { data: TreeNode }) => {
-    console.log("Clicked node:", node);
         if (node.data?.name) {
             setSelectedQuery(node.data.name);
             setShowSidebar(true);
