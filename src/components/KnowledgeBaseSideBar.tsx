@@ -31,7 +31,7 @@ type SequenceUnitDisplayProps = {
     orderNum: number;
     seq: Seq;
     allSequences: Seq[];
-    handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
+    handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number, level? :string) => void;
     collapsible?: boolean;
 };
 
@@ -145,7 +145,7 @@ export function SequenceUnitDisplay({ orderNum, seq, allSequences, handleApproxi
                         />
                         <span className="font-bold">most similar</span>
                         <button
-                            onClick={() => handleApproximateSearch(allSequences, seq.embedding, k)}
+                            onClick={() => handleApproximateSearch(allSequences, seq.embedding, k, seq.seqType)}
                             className="hover:scale-110 transition-transform"
                         >
                             <Search className="w-6 h-6 text-neutral-500 hover:text-black" />
@@ -161,7 +161,7 @@ type SequenceScrollableProps = {
     sequences: Seq[];
     allSequences: Seq[];
     setCurrentDisplay: (sequences: Seq[]) => void;
-    handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number) => void;
+    handleApproximateSearch: (sequences: Seq[], embedding: number[], k: number, level?: string) => void;
 };
 
 /* Returns scrollable composed of multiple sequence units */
@@ -390,10 +390,14 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     };
 
     // On approximate search call approxSearch imported function and update ApproxDisplay tab
-    const handleApproximateSearch = (sequences: Seq[], embedding: number[], k: number) => {
+    const handleApproximateSearch = (sequences: Seq[], embedding: number[], k: number, level? :string) => {
         if (!embedding || embedding.length === 0) {
             console.error("Invalid embedding for approximate search.");
             return;
+        }
+
+        if (level) {
+            sequences = sequences.filter(seq => seq.seqType === level);
         }
         // Compute all three sets
         const normalSeqs = sequences.filter(seq => !seq.isAnomaly);
