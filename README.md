@@ -47,11 +47,30 @@ KRONE’s intuitive interface optimizes the process of monitoring system health,
 # Getting Started
 
 Make sure you have the following installed:
-- Node.js
-- npm
-- Git
-- A modern browser
 
+- **Node.js** (includes npm): [Download Node.js](https://nodejs.org/)
+- **npm** (comes with Node.js): [npm Documentation](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- **Git:** [Download Git](https://git-scm.com/downloads)
+- **A modern browser** (e.g., Chrome, Firefox)
+
+## Install Prerequisites
+
+**On Ubuntu/Linux:**
+```sh
+sudo apt update
+sudo apt install nodejs npm git
+```
+
+**On macOS (with Homebrew):**
+```sh
+brew install node git
+```
+
+**On Windows:**  
+Download and install [Node.js](https://nodejs.org/) and [Git](https://git-scm.com/download/win).
+
+
+## Setup Instructions
 
 1. **Clone the repository:**
    ```sh
