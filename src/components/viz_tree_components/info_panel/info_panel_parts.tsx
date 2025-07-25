@@ -188,7 +188,7 @@ export function SequencePanel({ node, multiLineAnomaly }: any) {
             parent = node.parent.data.name;
             level = "ACTION";
           } else if (node.depth === 1) {
-            parent = node.data.name;
+            parent = "";
             level = "ENTITY";
           }
           window.location.href =

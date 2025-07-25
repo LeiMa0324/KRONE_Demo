@@ -313,7 +313,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     let filteredSequences = allSequences;
 
                     // Filter by parent (event_ids under parent node in tree)
-                    if (parent && treeData) {
+                    if (parent && parent != "" && treeData) {
                         const allowedIds = collectEventIdsUnderParent(treeData, parent);
                         filteredSequences = filteredSequences.filter(seq =>
                             seq.logkey_seq &&
