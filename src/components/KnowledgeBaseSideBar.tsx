@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { X, ChevronDown, Search, PanelBottomClose } from "lucide-react";
 import type { EntityDict, ActionDict, EntitySequences, Seq } from "@/pages/knowledge_base_viz";
 import { exactSearch, approximateSearch } from "@/pages/knowledge_base_viz";
+import type { TreeNode } from "@/tree_utils";
+import { tree } from "d3-hierarchy";
 
 // CONSTANTS
 const ABNORMAL = "Abnormal";
@@ -207,6 +209,7 @@ type KnowledgeBaseSideBarProps = {
     query: string;
     initialSearchLogKey?: string;
     defaultTab?: "train" | "test" | "approx";
+    treeData: TreeNode | null;
 };
 
 // -- KnowledgeBaseSideBar Component -- Takes in knowledge structure data, an inital query search, and a togglesidebar state
@@ -219,7 +222,8 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     allSequences,
     query,
     initialSearchLogKey = "",
-    defaultTab = TRAIN_TAB
+    defaultTab = TRAIN_TAB,
+    treeData = null,
 }) => {
     const [selectedTab, setSelectedTab] = useState<"train" | "test" | "approx">(defaultTab);
     const [searchLogKey, setSearchLogKey] = useState<string>("");
@@ -231,15 +235,32 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     const [approxNormal, setApproxNormal] = useState<Seq[]>([]);
     const [approxAnomalous, setApproxAnomalous] = useState<Seq[]>([]);
     const [approxAll, setApproxAll] = useState<Seq[]>([]);
-    const [approxK, setApproxK] = useState<number>(5);
-    const [approxEmbedding, setApproxEmbedding] = useState<number[]>([]);
 
-    const getFilteredSequences = (sequences: Seq[]) => {
-        return sequences.filter(seq =>
-            (includeNormal && !seq.isAnomaly) ||
-            (includeAnomalous && seq.isAnomaly)
-        );
-    };
+    function getParentParamFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("parent");
+    }   
+
+    // Helper: recursively collect event_ids under a parent node in the tree
+    function collectEventIdsUnderParent(tree: TreeNode | null, parentName: string): Set<string> {
+        const ids = new Set<string>();
+        function dfs(node: TreeNode | undefined) {
+            if (!node) return;
+            if (node.event_id) ids.add(node.event_id);
+            (node.children || []).forEach(dfs);
+        }
+        function findAndCollect(node: TreeNode | undefined) {
+            if (!node) return false;
+            if (node.name === parentName) {
+                dfs(node);
+                return true;
+            }
+            return (node.children || []).some(findAndCollect);
+        }
+        if (tree) findAndCollect(tree);
+        console.log(ids)
+        return ids;
+    }
 
     // When the component mounts set the current training and testing displays based off query
     useEffect(() => {
@@ -278,27 +299,38 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
             if (defaultTab === APPROX_TAB) {
                 if (results.length > 0 && results[0].embedding && results[0].embedding.length > 0) {
                     const embedding = results[0].embedding;
-                    const k = 5; // Default K, or use approxK if you want to persist user K
+                    const k = 5;
+                    const parent = getParentParamFromUrl();
 
-                    // Compute all three sets regardless of filter
-                    const normalSeqs = allSequences.filter(seq => !seq.isAnomaly);
-                    const anomalousSeqs = allSequences.filter(seq => seq.isAnomaly);
+
+                    let filteredSequences = allSequences;
+                    if (parent && treeData) {
+                        const allowedIds = collectEventIdsUnderParent(treeData, parent);
+                        filteredSequences = allSequences.filter(seq =>
+                            seq.logkey_seq && seq.logkey_seq.every(logkey => {
+                                const cleanLogkey = logkey.replace(/[\[\]\s]/g, "");
+                                return allowedIds.has(cleanLogkey);
+                            })
+                        );
+                    }
+
+                    const normalSeqs = filteredSequences.filter(seq => !seq.isAnomaly);
+                    const anomalousSeqs = filteredSequences.filter(seq => seq.isAnomaly);
 
                     const topNormal = approximateSearch(normalSeqs, embedding, k).map(r => r.sequence);
                     const topAnomalous = approximateSearch(anomalousSeqs, embedding, k).map(r => r.sequence);
-                    const topAll = approximateSearch(allSequences, embedding, k).map(r => r.sequence);
+                    const topAll = approximateSearch(filteredSequences, embedding, k).map(r => r.sequence);
 
                     setApproxNormal(topNormal);
                     setApproxAnomalous(topAnomalous);
                     setApproxAll(topAll);
 
-                    // Set display based on current checkboxes
                     if (includeNormal && includeAnomalous) setApproxDisplay(topAll);
                     else if (includeNormal) setApproxDisplay(topNormal);
                     else if (includeAnomalous) setApproxDisplay(topAnomalous);
                     else setApproxDisplay([]);
 
-                    setSelectedTab("approx");
+                    setSelectedTab(APPROX_TAB);
                 } else {
                     setApproxDisplay([]);
                 }
@@ -342,18 +374,16 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         }
     };
 
-    // On approximate serach call approxSearch imported function and update ApproxDisplay tab
+    // On approximate search call approxSearch imported function and update ApproxDisplay tab
     const handleApproximateSearch = (sequences: Seq[], embedding: number[], k: number) => {
         if (!embedding || embedding.length === 0) {
             console.error("Invalid embedding for approximate search.");
             return;
         }
-        setApproxK(k);
-        setApproxEmbedding(embedding);
-
         // Compute all three sets
         const normalSeqs = sequences.filter(seq => !seq.isAnomaly);
         const anomalousSeqs = sequences.filter(seq => seq.isAnomaly);
+        console.log(sequences)
 
         const topNormal = approximateSearch(normalSeqs, embedding, k).map(r => r.sequence);
         const topAnomalous = approximateSearch(anomalousSeqs, embedding, k).map(r => r.sequence);
@@ -376,7 +406,6 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
 
     return (
         <div className="fixed top-0 right-0 h-full w-2/5 bg-white border-l-8 border-l-WPIGrey text-black shadow-lg z-50 animate-slide-in-right-fast">
-            
             { /* -- TITLE DISPLAY W/ CLOSEOUT */}
             <div className="p-4 flex justify-between items-center">
                 <h2 className="text-xl font-bold font-WPIfont">Knowledge Base Sequences</h2>

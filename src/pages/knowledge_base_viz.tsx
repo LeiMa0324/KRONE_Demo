@@ -170,10 +170,6 @@ export function approximateSearch(sequences: Seq[], targetEmbedding: number[], k
     const similarities = sequences.map(seq => {
         if (seq.embedding.length !== targetEmbedding.length) {
             console.error("Embedding dimensionality mismatch.");
-            console.log(targetEmbedding);
-            console.log(seq.embedding);
-            console.log(targetEmbedding.length);
-            console.log(seq.embedding.length);
             return { sequence: seq, similarity: NaN };
         }
         return {
@@ -359,6 +355,7 @@ export const KnowledgeBaseViz = () => {
                         }
                         initialSearchLogKey={searchLogKey}
                         defaultTab={defaultTab}
+                        treeData={treeData!}
                     />
                 )}
             </div>
