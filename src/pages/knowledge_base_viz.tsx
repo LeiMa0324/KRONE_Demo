@@ -255,7 +255,7 @@ export const KnowledgeBaseViz = () => {
     useEffect(() => {
         Promise.all([
             fetch("/train_knowledge_all.csv").then(res => res.text()),
-            fetch("/test_knowledge_all_fixed.csv").then(res => res.text()),
+            fetch("/test_knowledge_all_fixed2.csv").then(res => res.text()),
         ])
             .then(([trainCSV, testCSV]) => {
                 let trainStructures: ReturnType<typeof buildKnowledgeStructures>;
