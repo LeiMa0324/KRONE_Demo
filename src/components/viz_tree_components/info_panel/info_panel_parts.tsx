@@ -179,10 +179,23 @@ export function SequencePanel({ node, multiLineAnomaly }: any) {
         onClick={() => {
           const logKeys = getLogKeySubsequence(node);
           if (logKeys.length === 0) return;
-          // Add includeNormal and includeAnomalous as query params
+          let parent = "";
+          let level = "";
+          if (node.depth === 3 && node.parent) {
+            parent = node.parent.data.name;
+            level = "STATUS";
+          } else if (node.depth === 2 && node.parent) {
+            parent = node.parent.data.name;
+            level = "ACTION";
+          } else if (node.depth === 1) {
+            parent = "";
+            level = "ENTITY";
+          }
           window.location.href =
             `/knowledge-base?logkeys=[${encodeURIComponent(logKeys.join(","))}]&tab=approx` +
-            `&includeNormal=${includeNormal ? "1" : "0"}&includeAnomalous=${includeAnomalous ? "1" : "0"}`;
+            `&includeNormal=${includeNormal ? "1" : "0"}&includeAnomalous=${includeAnomalous ? "1" : "0"}` +
+            `&parent=${encodeURIComponent(parent)}` +
+            `&level=${encodeURIComponent(level)}`;
         }}
       >
         Search for Approximate Sequences
