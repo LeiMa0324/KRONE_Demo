@@ -200,6 +200,17 @@ function getCheckboxParamsFromUrl() {
     };
 }
 
+function getLevelParamFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("level");
+}
+
+function getParentParamFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("parent");
+}   
+
+
 type KnowledgeBaseSideBarProps = {
     showSidebar: boolean;
     toggleSidebar: () => void;
@@ -236,10 +247,6 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
     const [approxAnomalous, setApproxAnomalous] = useState<Seq[]>([]);
     const [approxAll, setApproxAll] = useState<Seq[]>([]);
 
-    function getParentParamFromUrl() {
-        const params = new URLSearchParams(window.location.search);
-        return params.get("parent");
-    }   
 
     // Helper: recursively collect event_ids under a parent node in the tree
     function collectEventIdsUnderParent(tree: TreeNode | null, parentName: string): Set<string> {
@@ -301,17 +308,25 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                     const embedding = results[0].embedding;
                     const k = 5;
                     const parent = getParentParamFromUrl();
-
+                    const level = getLevelParamFromUrl();
 
                     let filteredSequences = allSequences;
+
+                    // Filter by parent (event_ids under parent node in tree)
                     if (parent && treeData) {
                         const allowedIds = collectEventIdsUnderParent(treeData, parent);
-                        filteredSequences = allSequences.filter(seq =>
-                            seq.logkey_seq && seq.logkey_seq.every(logkey => {
+                        filteredSequences = filteredSequences.filter(seq =>
+                            seq.logkey_seq &&
+                            seq.logkey_seq.every(logkey => {
                                 const cleanLogkey = logkey.replace(/[\[\]\s]/g, "");
                                 return allowedIds.has(cleanLogkey);
                             })
                         );
+                    }
+
+                    // Filter by level
+                    if (level) {
+                        filteredSequences = filteredSequences.filter(seq => seq.seqType === level);
                     }
 
                     const normalSeqs = filteredSequences.filter(seq => !seq.isAnomaly);
