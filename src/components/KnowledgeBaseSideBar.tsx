@@ -355,9 +355,6 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
         const normalSeqs = sequences.filter(seq => !seq.isAnomaly);
         const anomalousSeqs = sequences.filter(seq => seq.isAnomaly);
 
-        console.log(normalSeqs)
-        console.log(anomalousSeqs)
-
         const topNormal = approximateSearch(normalSeqs, embedding, k).map(r => r.sequence);
         const topAnomalous = approximateSearch(anomalousSeqs, embedding, k).map(r => r.sequence);
         const topAll = approximateSearch(sequences, embedding, k).map(r => r.sequence);
