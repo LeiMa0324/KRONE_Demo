@@ -3,7 +3,6 @@ import { X, ChevronDown, Search, PanelBottomClose } from "lucide-react";
 import type { EntityDict, ActionDict, EntitySequences, Seq } from "@/pages/knowledge_base_viz";
 import { exactSearch, approximateSearch } from "@/pages/knowledge_base_viz";
 import type { TreeNode } from "@/tree_utils";
-import { tree } from "d3-hierarchy";
 
 // CONSTANTS
 const ABNORMAL = "Abnormal";
@@ -318,7 +317,7 @@ export const KnowledgeBaseSideBar: React.FC<KnowledgeBaseSideBarProps> = ({
                         filteredSequences = filteredSequences.filter(seq =>
                             seq.logkey_seq &&
                             seq.logkey_seq.every(logkey => {
-                                const cleanLogkey = logkey.replace(/[\[\]\s]/g, "");
+                                const cleanLogkey = logkey.replace(/[[\]\s]/g, "");
                                 return allowedIds.has(cleanLogkey);
                             })
                         );
