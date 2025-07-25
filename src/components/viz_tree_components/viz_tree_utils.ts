@@ -130,17 +130,17 @@ export function collectStats(node: HierarchyNode<TreeNode> | null) {
   const normalLogKeys: string[] = [];
   const abnormalLogKeys: string[] = [];
 
-  function traverse(n: any, depth: number) {
+  function traverse(n: TreeNode, depth: number) {
     if (!n) return;
     if (depth === 0) {
       numEntities = n.children?.length ?? 0;
-      n.children?.forEach((entity: any) => traverse(entity, 1));
+      n.children?.forEach((entity: TreeNode) => traverse(entity, 1));
     } else if (depth === 1) {
       numActions += n.children?.length ?? 0;
-      n.children?.forEach((action: any) => traverse(action, 2));
+      n.children?.forEach((action: TreeNode) => traverse(action, 2));
     } else if (depth === 2) {
       numStatuses += n.children?.length ?? 0;
-      n.children?.forEach((status: any) => traverse(status, 3));
+      n.children?.forEach((status: TreeNode) => traverse(status, 3));
     } else if (depth === 3) {
       if (n.event_id) {
         (n.isAnomaly ? abnormalLogKeys : normalLogKeys).push(n.event_id);

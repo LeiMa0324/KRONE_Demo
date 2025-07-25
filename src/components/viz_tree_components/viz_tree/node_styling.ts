@@ -13,7 +13,7 @@ import type { TreeNode } from "@/tree_utils";
 
 interface TreeNodeData extends TreeNode {
   collapsed?: boolean;
-  indexPath?: any;
+  indexPath?: number[];
   isAnomaly?: boolean;
   anomalyReason?: string;
 }
@@ -86,7 +86,6 @@ export function decorateNode(
     d.depth === 3 &&
     !d.children &&
     !hasHiddenChildren(d) &&
-    // @ts-ignore
     d.data.isAnomaly
   ) {
     nodeGroup.insert("text", "text")
@@ -101,7 +100,6 @@ export function decorateNode(
       .text("⚠️")
       .append("title")
       .text(function() {
-        // @ts-ignore
         return d.data.anomalyReason || "Anomaly detected";
       });
   }
